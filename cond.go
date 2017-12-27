@@ -18,9 +18,19 @@ func (c *Cond) Equal(field string, value interface{}) string {
 	return fmt.Sprintf("%v = %v", Escape(field), c.Args.Add(value))
 }
 
+// E is an alias of Equal.
+func (c *Cond) E(field string, value interface{}) string {
+	return c.Equal(field, value)
+}
+
 // NotEqual represents "field != value".
 func (c *Cond) NotEqual(field string, value interface{}) string {
 	return fmt.Sprintf("%v != %v", Escape(field), c.Args.Add(value))
+}
+
+// NE is an alias of Equal.
+func (c *Cond) NE(field string, value interface{}) string {
+	return c.NotEqual(field, value)
 }
 
 // GreaterThan represents "field > value".
