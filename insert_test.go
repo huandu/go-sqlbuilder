@@ -1,3 +1,6 @@
+// Copyright 2018 Huan Du. All rights reserved.
+// Licensed under the MIT license that can be found in the LICENSE file.
+
 package sqlbuilder
 
 import (
@@ -10,6 +13,7 @@ func ExampleInsertBuilder() {
 	ib.Cols("id", "name", "status", "created_at")
 	ib.Values(1, "Huan Du", 1, ib.Raw("UNIX_TIMESTAMP(NOW())"))
 	ib.Values(2, "Charmy Liu", 1, 1234567890)
+
 	sql, args := ib.Build()
 	fmt.Println(sql)
 	fmt.Println(args)

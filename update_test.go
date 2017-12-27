@@ -24,6 +24,7 @@ func ExampleUpdateBuilder() {
 		),
 		"modified_at > created_at + "+ub.Var(86400), // It's allowed to write arbitrary SQL.
 	)
+
 	sql, args := ub.Build()
 	fmt.Println(sql)
 	fmt.Println(args)

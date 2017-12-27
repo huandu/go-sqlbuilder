@@ -19,6 +19,7 @@ func ExampleDeleteBuilder() {
 		),
 		"modified_at > created_at + "+db.Var(86400), // It's allowed to write arbitrary SQL.
 	)
+
 	sql, args := db.Build()
 	fmt.Println(sql)
 	fmt.Println(args)
