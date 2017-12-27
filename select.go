@@ -123,6 +123,11 @@ func (sb *SelectBuilder) String() string {
 func (sb *SelectBuilder) Build() (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
 	buf.WriteString("SELECT ")
+
+	if sb.distinct {
+		buf.WriteString("DISTINCT ")
+	}
+
 	buf.WriteString(strings.Join(sb.selectCols, ", "))
 	buf.WriteString(" FROM ")
 	buf.WriteString(strings.Join(sb.tables, ", "))
