@@ -18,20 +18,6 @@ func NewInsertBuilder() *InsertBuilder {
 }
 
 // InsertBuilder is a builder to build INSERT.
-//
-// Usage:
-//     ib := NewInsertBuilder()
-//     ib.InsertInto("demo.user")
-//         .Cols("id", "name", "status", "created_at")
-//         .Values(1, "Huan Du", 1, ib.Raw("UNIX_TIMESTAMP(NOW())"))
-//         .Values(2, "Charmy Liu", 1, 1234567890)
-//     sql, args := ib.Build()
-//     fmt.Println(sql)
-//     fmt.Println(args)
-//
-//     // Output:
-//     // INSERT INTO demo.user (id, name, status, creasted_at) VALEUS (?, ?, ?, ?), (?, ?, ?, ?)
-//     // [1, Huan Du, 1, 2, Charmy Liu, 1, 1234567890]
 type InsertBuilder struct {
 	table  string
 	cols   []string

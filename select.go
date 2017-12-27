@@ -24,30 +24,6 @@ func NewSelectBuilder() *SelectBuilder {
 }
 
 // SelectBuilder is a builder to build SELECT.
-//
-// Usage:
-//     sb := NewSelectBuilder()
-//     sb.Distinct().Select("id", "name", sb.As("COUNT(*)", "t"))
-//         .From("demo.user")
-//         .Where(
-//             sb.GreaterThan("id", 1234),
-//             sb.Like("name", "%Du"),
-//             sb.Or(
-//                 sb.IsNull("id_card"),
-//                 sb.In("status", 1, 2, 5),
-//             ),
-//             "modified_at > created_at + " + sb.Var(86400), // It's allowed to write arbitrary SQL.
-//         )
-//         .GroupBy("status").Having(sb.NotIn("status", 4, 5))
-//         .OrderBy("modified_at").Asc()
-//         .Limit(10).Offset(5)
-//     sql, args := sb.Build()
-//     fmt.Println(sql)
-//     fmt.Println(args)
-//
-//     // Output:
-//     // SELECT id, name, COUNT(*) AS t FROM demo.user WHERE id > ? AND name LIKE ? AND (id_card IS NULL OR status IN (?, ?, ?)) AND modified_at > created_at + ? GROUP BY status HAVING status NOT IN (4, 5) ORDER BY modified_at ASC LIMIT 10 OFFSET 5
-//     // [t, 1234, %Du, 1, 2, 5, 86400]
 type SelectBuilder struct {
 	Cond
 
