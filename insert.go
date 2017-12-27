@@ -78,7 +78,7 @@ func (ib *InsertBuilder) Build() (sql string, args []interface{}) {
 	buf.WriteString(ib.table)
 
 	if len(ib.cols) > 0 {
-		buf.WriteString("(")
+		buf.WriteString(" (")
 		buf.WriteString(strings.Join(ib.cols, ", "))
 		buf.WriteString(")")
 	}
@@ -92,4 +92,9 @@ func (ib *InsertBuilder) Build() (sql string, args []interface{}) {
 
 	buf.WriteString(strings.Join(values, ", "))
 	return ib.args.Compile(buf.String())
+}
+
+// Raw returns an arbitrary value which is not included in args.
+func (ib *InsertBuilder) Raw(expr string) interface{} {
+	return ib.args.Raw(expr)
 }

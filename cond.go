@@ -65,7 +65,7 @@ func (c *Cond) L(field string, value interface{}) string {
 
 // LessEqualThan represents "field <= value".
 func (c *Cond) LessEqualThan(field string, value interface{}) string {
-	return fmt.Sprintf("%v != %v", Escape(field), c.Args.Add(value))
+	return fmt.Sprintf("%v <= %v", Escape(field), c.Args.Add(value))
 }
 
 // LE is an alias of LessEqualThan.
@@ -118,6 +118,11 @@ func (c *Cond) IsNotNull(field string) string {
 // Between represents "field BETWEEN lower AND upper".
 func (c *Cond) Between(field string, lower, upper interface{}) string {
 	return fmt.Sprintf("%v BETWEEN %v AND %v", Escape(field), c.Args.Add(lower), c.Args.Add(upper))
+}
+
+// Or represents OR logic like "expr1 OR expr2 OR expr3".
+func (c *Cond) Or(orExpr ...string) string {
+	return fmt.Sprintf("(%v)", strings.Join(orExpr, " OR "))
 }
 
 // Var returns a placeholder for value.

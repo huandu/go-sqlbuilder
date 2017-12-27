@@ -33,9 +33,22 @@ type Args struct {
 
 // Add adds an arg to Args and returns a placeholder.
 func (args *Args) Add(arg interface{}) string {
+	if r, ok := arg.(rawValue); ok {
+		return r.expr
+	}
+
 	idx := len(args.args)
 	args.args = append(args.args, arg)
 	return fmt.Sprintf("$%v", idx)
+}
+
+type rawValue struct {
+	expr string
+}
+
+// Raw marks the expr as a raw value which will not be added to args.
+func (args *Args) Raw(expr string) interface{} {
+	return rawValue{expr}
 }
 
 // Compile analyzes builder's sql to standard sql and returns associated args.
@@ -48,12 +61,12 @@ func (args *Args) Compile(sql string) (query string, values []interface{}) {
 	idx := strings.IndexRune(sql, '$')
 	values = make([]interface{}, 0, len(args.args))
 
-	for idx >= 0 {
+	for idx >= 0 && len(sql) > 0 {
 		if idx > 0 {
 			buf.WriteString(sql[:idx])
 		}
 
-		sql = sql[:idx+1]
+		sql = sql[idx+1:]
 
 		// Should not happen.
 		if len(sql) == 0 {
@@ -82,6 +95,10 @@ func (args *Args) Compile(sql string) (query string, values []interface{}) {
 		}
 
 		idx = strings.IndexRune(sql, '$')
+	}
+
+	if len(sql) > 0 {
+		buf.WriteString(sql)
 	}
 
 	query = buf.String()
