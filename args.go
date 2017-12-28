@@ -101,7 +101,8 @@ func (args *Args) Compile(str string) (query string, values []interface{}) {
 	buf := &bytes.Buffer{}
 	idx := strings.IndexRune(str, '$')
 	values = make([]interface{}, 0, len(args.args))
-	namedArgs := map[string]sql.NamedArg{}
+	var namedArgs []sql.NamedArg
+	usedNamedArgs := map[string]struct{}{}
 
 	for idx >= 0 && len(str) > 0 {
 		if idx > 0 {
@@ -139,7 +140,11 @@ func (args *Args) Compile(str string) (query string, values []interface{}) {
 					} else if na, ok := arg.(sql.NamedArg); ok {
 						buf.WriteRune('@')
 						buf.WriteString(na.Name)
-						namedArgs[na.Name] = na
+
+						if _, ok := usedNamedArgs[na.Name]; !ok {
+							usedNamedArgs[na.Name] = struct{}{}
+							namedArgs = append(namedArgs, na)
+						}
 					} else {
 						buf.WriteRune('?')
 						values = append(values, arg)
