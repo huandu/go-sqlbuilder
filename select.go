@@ -107,7 +107,7 @@ func (sb *SelectBuilder) Offset(offset int) *SelectBuilder {
 	return sb
 }
 
-// As returns an AS expreesion.
+// As returns an AS expression.
 func (sb *SelectBuilder) As(col, alias string) string {
 	return fmt.Sprintf("%v AS %v", Escape(col), Escape(alias))
 }

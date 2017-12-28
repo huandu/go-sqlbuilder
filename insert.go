@@ -50,7 +50,7 @@ func (ib *InsertBuilder) Values(value ...interface{}) *InsertBuilder {
 	return ib
 }
 
-// String returns the compiled UPDATE string.
+// String returns the compiled DELETE string.
 func (ib *InsertBuilder) String() string {
 	s, _ := ib.Build()
 	return s

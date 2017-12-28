@@ -88,8 +88,16 @@ func (args *Args) Compile(sql string) (query string, values []interface{}) {
 				sql = sql[i:]
 
 				if pointer, err := strconv.Atoi(digits); err == nil && pointer < len(args.args) {
-					buf.WriteRune('?')
-					values = append(values, args.args[pointer])
+					arg := args.args[pointer]
+
+					if b, ok := arg.(Builder); ok {
+						sql, nestedArgs := b.Build()
+						buf.WriteString(sql)
+						values = append(values, nestedArgs...)
+					} else {
+						buf.WriteRune('?')
+						values = append(values, arg)
+					}
 				}
 			}
 		}

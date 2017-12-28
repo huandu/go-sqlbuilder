@@ -35,13 +35,13 @@ func (db *DeleteBuilder) DeleteFrom(table string) *DeleteBuilder {
 	return db
 }
 
-// Where sets expressions of WHERE in UPDATE.
+// Where sets expressions of WHERE in DELETE.
 func (db *DeleteBuilder) Where(andExpr ...string) *DeleteBuilder {
 	db.whereExprs = append(db.whereExprs, andExpr...)
 	return db
 }
 
-// String returns the compiled UPDATE string.
+// String returns the compiled DELETE string.
 func (db *DeleteBuilder) String() string {
 	s, _ := db.Build()
 	return s
