@@ -106,9 +106,9 @@ fmt.Println(args)
 
 There are several special argument types.
 
-* `Raw(expr)` represent an `expr` as a plain string rather than an argument. The `expr` will not be included in the final arguments after `Compile`.
-* `List(arg)` represent a list of arguments. If `arg` is a slice or array, e.g. a slice with 3 ints, it will be compiled to `?, ?, ?` and flattened in the final arguments as 3 ints. It's a tool for convenience. We can use it in the `IN` expression or `VALUES` of `INSERT INTO`.
-* `Named(name, arg)` represents a named argument. It only works with `Build` to define a named placeholder.
+* `List(arg)` represents a list of arguments. If `arg` is a slice or array, e.g. a slice with 3 ints, it will be compiled to `?, ?, ?` and flattened in the final arguments as 3 ints. It's a tool for convenience. We can use it in the `IN` expression or `VALUES` of `INSERT INTO`.
+* `Named(name, arg)` represents a named argument. It only works with `Build` to define a named placeholder using syntax `${name}`.
+* `Raw(expr)` marks an `expr` as a plain string rather than an argument. The `expr` will not be included in the final arguments after `Compile`.
 
 ### Freestyle builder ###
 
