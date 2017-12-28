@@ -120,6 +120,11 @@ func (c *Cond) Between(field string, lower, upper interface{}) string {
 	return fmt.Sprintf("%v BETWEEN %v AND %v", Escape(field), c.Args.Add(lower), c.Args.Add(upper))
 }
 
+// NotBetween represents "field NOT BETWEEN lower AND upper".
+func (c *Cond) NotBetween(field string, lower, upper interface{}) string {
+	return fmt.Sprintf("%v NOT BETWEEN %v AND %v", Escape(field), c.Args.Add(lower), c.Args.Add(upper))
+}
+
 // Or represents OR logic like "expr1 OR expr2 OR expr3".
 func (c *Cond) Or(orExpr ...string) string {
 	return fmt.Sprintf("(%v)", strings.Join(orExpr, " OR "))
