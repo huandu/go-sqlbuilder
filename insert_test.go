@@ -11,7 +11,7 @@ func ExampleInsertBuilder() {
 	ib := NewInsertBuilder()
 	ib.InsertInto("demo.user")
 	ib.Cols("id", "name", "status", "created_at")
-	ib.Values(1, "Huan Du", 1, ib.Raw("UNIX_TIMESTAMP(NOW())"))
+	ib.Values(1, "Huan Du", 1, Raw("UNIX_TIMESTAMP(NOW())"))
 	ib.Values(2, "Charmy Liu", 1, 1234567890)
 
 	sql, args := ib.Build()

@@ -7,165 +7,191 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 )
 
-// Escape replaces `$` with `$$` in ident.
-func Escape(ident string) string {
-	return strings.Replace(ident, "$", "$$", -1)
-}
-
-// EscapeAll replaces `$` with `$$` in all strings of ident.
-func EscapeAll(ident ...string) []string {
-	escaped := make([]string, 0, len(ident))
-
-	for _, i := range ident {
-		escaped = append(escaped, Escape(i))
-	}
-
-	return escaped
-}
-
-// Flatten recursively extracts values in slices and returns
-// a flattened []interface{} with all values.
-// If slices is not a slice, return `[]interface{}{slices}`.
-func Flatten(slices interface{}) (flattened []interface{}) {
-	v := reflect.ValueOf(slices)
-	slices, flattened = flatten(v)
-
-	if slices != nil {
-		return []interface{}{slices}
-	}
-
-	return flattened
-}
-
-func flatten(v reflect.Value) (elem interface{}, flattened []interface{}) {
-	k := v.Kind()
-
-	for k == reflect.Interface {
-		v = v.Elem()
-		k = v.Kind()
-	}
-
-	if k != reflect.Slice && k != reflect.Array {
-		return v.Interface(), nil
-	}
-
-	for i, l := 0, v.Len(); i < l; i++ {
-		e, f := flatten(v.Index(i))
-
-		if e == nil {
-			flattened = append(flattened, f...)
-		} else {
-			flattened = append(flattened, e)
-		}
-	}
-
-	return
-}
-
 // Args stores arguments associated with a SQL.
 type Args struct {
-	args []interface{}
+	args         []interface{}
+	namedArgs    map[string]int
+	sqlNamedArgs map[string]int
 }
 
 // Add adds an arg to Args and returns a placeholder.
 func (args *Args) Add(arg interface{}) string {
-	if r, ok := arg.(rawValue); ok {
-		return r.expr
-	}
+	return fmt.Sprintf("$%v", args.add(arg))
+}
 
+func (args *Args) add(arg interface{}) int {
 	idx := len(args.args)
-	args.args = append(args.args, arg)
-	return fmt.Sprintf("$%v", idx)
-}
 
-type rawValue struct {
-	expr string
-}
-
-// Raw marks the expr as a raw value which will not be added to args.
-func (args *Args) Raw(expr string) interface{} {
-	return rawValue{expr}
-}
-
-// Compile analyzes builder's sql to standard sql and returns associated args.
-//
-// A builder uses `$N` to represent an argument in arguments.
-// Unescape replaces `$N` to `?`, which is the placeholder supported by SQL driver,
-// and then creates a new args associated with the placeholder.
-func (args *Args) Compile(str string) (query string, values []interface{}) {
-	buf := &bytes.Buffer{}
-	idx := strings.IndexRune(str, '$')
-	values = make([]interface{}, 0, len(args.args))
-	var namedArgs []sql.NamedArg
-	usedNamedArgs := map[string]struct{}{}
-
-	for idx >= 0 && len(str) > 0 {
-		if idx > 0 {
-			buf.WriteString(str[:idx])
+	switch a := arg.(type) {
+	case sql.NamedArg:
+		if args.sqlNamedArgs == nil {
+			args.sqlNamedArgs = map[string]int{}
 		}
 
-		str = str[idx+1:]
-
-		// Should not happen.
-		if len(str) == 0 {
+		if p, ok := args.sqlNamedArgs[a.Name]; ok {
+			arg = args.args[p]
 			break
 		}
 
-		if str[0] == '$' {
+		args.sqlNamedArgs[a.Name] = idx
+	case namedArgs:
+		if args.namedArgs == nil {
+			args.namedArgs = map[string]int{}
+		}
+
+		if p, ok := args.namedArgs[a.name]; ok {
+			arg = args.args[p]
+			break
+		}
+
+		// Find out the real arg and add it to args.
+		idx = args.add(a.arg)
+		args.namedArgs[a.name] = idx
+		return idx
+	}
+
+	args.args = append(args.args, arg)
+	return idx
+}
+
+// Compile analyzes builder's format to standard sql and returns associated args.
+//
+// The format string uses a special syntax to represent arguments.
+//
+//     $? uses successive arguments passed in the call. It works similar as `%v` in `fmt.Sprintf`.
+//     $0 $1 ... $n uses nth-argument passed in the call. Next $? will use arguments n+1.
+//     ${name} uses a named argument created by `Named` with `name`.
+//     $$ represents a "$" string.
+func (args *Args) Compile(format string) (query string, values []interface{}) {
+	buf := &bytes.Buffer{}
+	idx := strings.IndexRune(format, '$')
+	offset := 0
+
+	for idx >= 0 && len(format) > 0 {
+		if idx > 0 {
+			buf.WriteString(format[:idx])
+		}
+
+		format = format[idx+1:]
+
+		// Should not happen.
+		if len(format) == 0 {
+			break
+		}
+
+		if format[0] == '$' {
 			buf.WriteRune('$')
-			str = str[1:]
-		} else {
-			i := 0
-
-			for ; i < len(str) && '0' <= str[i] && str[i] <= '9'; i++ {
-				// Nothing.
-			}
-
-			if i > 0 {
-				digits := str[:i]
-				str = str[i:]
-
-				if pointer, err := strconv.Atoi(digits); err == nil && pointer < len(args.args) {
-					arg := args.args[pointer]
-
-					if b, ok := arg.(Builder); ok {
-						s, nestedArgs := b.Build()
-						buf.WriteString(s)
-						values = append(values, nestedArgs...)
-					} else if na, ok := arg.(sql.NamedArg); ok {
-						buf.WriteRune('@')
-						buf.WriteString(na.Name)
-
-						if _, ok := usedNamedArgs[na.Name]; !ok {
-							usedNamedArgs[na.Name] = struct{}{}
-							namedArgs = append(namedArgs, na)
-						}
-					} else {
-						buf.WriteRune('?')
-						values = append(values, arg)
-					}
-				}
-			}
+			format = format[1:]
+		} else if format[0] == '{' {
+			format, values = args.compileNamed(buf, format, values)
+		} else if '0' <= format[0] && format[0] <= '9' {
+			format, values, offset = args.compileDigits(buf, format, values, offset)
+		} else if format[0] == '?' {
+			format, values, offset = args.compileSuccessive(buf, format[1:], values, offset)
 		}
 
-		idx = strings.IndexRune(str, '$')
+		idx = strings.IndexRune(format, '$')
 	}
 
-	if len(str) > 0 {
-		buf.WriteString(str)
-	}
-
-	if len(namedArgs) > 0 {
-		for _, na := range namedArgs {
-			values = append(values, na)
-		}
+	if len(format) > 0 {
+		buf.WriteString(format)
 	}
 
 	query = buf.String()
+
+	if len(args.sqlNamedArgs) > 0 {
+		// Stabilize the sequence to make it easier to write test cases.
+		ints := make([]int, 0, len(args.sqlNamedArgs))
+
+		for _, p := range args.sqlNamedArgs {
+			ints = append(ints, p)
+		}
+
+		sort.Ints(ints)
+
+		for _, i := range ints {
+			values = append(values, args.args[i])
+		}
+	}
+
 	return
+}
+
+func (args *Args) compileNamed(buf *bytes.Buffer, format string, values []interface{}) (string, []interface{}) {
+	i := 1
+
+	for ; i < len(format) && format[i] != '}'; i++ {
+		// Nothing.
+	}
+
+	// Invalid $ format. Ignore it.
+	if i == len(format) {
+		return format, values
+	}
+
+	name := format[1:i]
+	format = format[i+1:]
+
+	if p, ok := args.namedArgs[name]; ok {
+		format, values, _ = args.compileSuccessive(buf, format, values, p)
+	}
+
+	return format, values
+}
+
+func (args *Args) compileDigits(buf *bytes.Buffer, format string, values []interface{}, offset int) (string, []interface{}, int) {
+	i := 1
+
+	for ; i < len(format) && '0' <= format[i] && format[i] <= '9'; i++ {
+		// Nothing.
+	}
+
+	digits := format[:i]
+	format = format[i:]
+
+	if pointer, err := strconv.Atoi(digits); err == nil {
+		return args.compileSuccessive(buf, format, values, pointer)
+	}
+
+	return format, values, offset
+}
+
+func (args *Args) compileSuccessive(buf *bytes.Buffer, format string, values []interface{}, offset int) (string, []interface{}, int) {
+	if offset >= len(args.args) {
+		return format, values, offset
+	}
+
+	arg := args.args[offset]
+
+	switch a := arg.(type) {
+	case Builder:
+		s, nestedArgs := a.Build()
+		buf.WriteString(s)
+		values = append(values, nestedArgs...)
+	case sql.NamedArg:
+		buf.WriteRune('@')
+		buf.WriteString(a.Name)
+	case rawArgs:
+		buf.WriteString(a.expr)
+	case listArgs:
+		if len(a.args) > 0 {
+			buf.WriteRune('?')
+		}
+
+		for j := 1; j < len(a.args); j++ {
+			buf.WriteString(", ?")
+		}
+
+		values = append(values, a.args...)
+	default:
+		buf.WriteRune('?')
+		values = append(values, arg)
+	}
+
+	return format, values, offset + 1
 }

@@ -14,16 +14,18 @@ type Builder interface {
 	Build() (sql string, args []interface{})
 }
 
-type freestyleBuilder struct {
+type compiledBuilder struct {
 	sql  string
-	args *Args
+	args []interface{}
 }
 
-func (fb *freestyleBuilder) Build() (sql string, args []interface{}) {
-	return fb.args.Compile(fb.sql)
+func (cb *compiledBuilder) Build() (sql string, args []interface{}) {
+	return cb.sql, cb.args
 }
 
-// Buildf creates a Builder from a fmt string.
+// Buildf creates a Builder from a format string using `fmt.Sprintf`-like syntax.
+// As all arguments will be converted to a string internally, e.g. "$0",
+// only `%v` and `%s` are valid.
 func Buildf(format string, arg ...interface{}) Builder {
 	args := &Args{}
 	vars := make([]interface{}, 0, len(arg))
@@ -32,8 +34,28 @@ func Buildf(format string, arg ...interface{}) Builder {
 		vars = append(vars, args.Add(a))
 	}
 
-	return &freestyleBuilder{
-		sql:  fmt.Sprintf(format, vars...),
-		args: args,
+	str := fmt.Sprintf(format, vars...)
+	sql, values := args.Compile(str)
+
+	return &compiledBuilder{
+		sql:  sql,
+		args: values,
+	}
+}
+
+// Build creates a Builder from a format string.
+// The format string uses a special syntax to represent arguments.
+// See doc in `Args#Compile` for syntax details.
+func Build(format string, arg ...interface{}) Builder {
+	args := &Args{}
+
+	for _, a := range arg {
+		args.Add(a)
+	}
+
+	sql, values := args.Compile(format)
+	return &compiledBuilder{
+		sql:  sql,
+		args: values,
 	}
 }

@@ -39,6 +39,8 @@ Following builders are implemented right now. API document and examples are prov
 * [InsertBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#InsertBuilder)
 * [UpdateBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#UpdateBuilder)
 * [DeleteBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#DeleteBuilder)
+* [Build](https://godoc.org/github.com/huandu/go-sqlbuilder#Build)
+* [Buildf](https://godoc.org/github.com/huandu/go-sqlbuilder#Buildf)
 
 ### Nested SQL ###
 
@@ -100,22 +102,50 @@ fmt.Println(args)
 // [{{} start 1514458225} {{} end 1514544625}]
 ```
 
+### Special argument types ###
+
+There are several special argument types.
+
+* `Raw(expr)` represent an `expr` as a plain string rather than an argument. The `expr` will not be included in the final arguments after `Compile`.
+* `List(arg)` represent a list of arguments. If `arg` is a slice or array, e.g. a slice with 3 ints, it will be compiled to `?, ?, ?` and flattened in the final arguments as 3 ints. It's a tool for convenience. We can use it in the `IN` expression or `VALUES` of `INSERT INTO`.
+* `Named(name, arg)` represents a named argument. It only works with `Build` to define a named placeholder.
+
 ### Freestyle builder ###
 
-A builder is only a way to record arguments. If we want to build a long SQL with lots of special syntax (e.g. special comments for a database proxy), simply use `Buildf` to format a SQL string.
+A builder is only a way to record arguments. If we want to build a long SQL with lots of special syntax (e.g. special comments for a database proxy), simply use `Buildf` to format a SQL string using a `fmt.Sprintf`-like syntax.
 
 ```go
 sb := sqlbuilder.NewSelectBuilder()
 sb.Select("id").From("user")
 
-explain := sqlbuilder.Buildf("EXPLAIN %v LEFT JOIN SELECT * FROM banned WHERE state = (%v, %v)", sb, 1, 2)
+explain := sqlbuilder.Buildf("EXPLAIN %v LEFT JOIN SELECT * FROM banned WHERE state IN (%v, %v)", sb, 1, 2)
 sql, args := explain.Build()
 fmt.Println(sql)
 fmt.Println(args)
 
 // Output:
-// EXPLAIN SELECT id FROM user LEFT JOIN SELECT * FROM banned WHERE state = (?, ?)
+// EXPLAIN SELECT id FROM user LEFT JOIN SELECT * FROM banned WHERE state IN (?, ?)
 // [1 2]
+```
+
+### Using a special syntax to build SQL ###
+
+Package `sqlbuilder` defines a special syntax to represent an uncompiled SQL internally. If we want to take advantage of the syntax to build customized tools, we can use `Build` to compile it with arguments.
+
+```go
+sb := sqlbuilder.NewSelectBuilder()
+sb.Select("id").From("user").Where(sb.In("status", 1, 2))
+
+b := sqlbuilder.Build("EXPLAIN $? LEFT JOIN SELECT * FROM $? WHERE created_at > $? AND state IN (${states}) AND modified_at BETWEEN $2 AND $?",
+    sb, sqlbuilder.Raw("banned"), 1514458225, 1514544625, sqlbuilder.Named("states", sqlbuilder.List([]int{3, 4, 5})))
+sql, args := b.Build()
+
+fmt.Println(sql)
+fmt.Println(args)
+
+// Output:
+// EXPLAIN SELECT id FROM user WHERE status IN (?, ?) LEFT JOIN SELECT * FROM banned WHERE created_at > ? AND state IN (?, ?, ?) AND modified_at BETWEEN ? AND ?
+// [1 2 1514458225 3 4 5 1514458225 1514544625]
 ```
 
 ## License ##
