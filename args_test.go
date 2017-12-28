@@ -31,3 +31,29 @@ func TestEscape(t *testing.T) {
 		t.Fatalf("invalid escape result. [expected:%v] [actual:%v]", expects, actuals)
 	}
 }
+
+func TestFlatten(t *testing.T) {
+	cases := [][2]interface{}{
+		{
+			"foo",
+			[]interface{}{"foo"},
+		},
+		{
+			[]int{1, 2, 3},
+			[]interface{}{1, 2, 3},
+		},
+		{
+			[]interface{}{"abc", []int{1, 2, 3}, [3]string{"def", "ghi"}},
+			[]interface{}{"abc", 1, 2, 3, "def", "ghi", ""},
+		},
+	}
+
+	for _, c := range cases {
+		input, expected := c[0], c[1]
+		actual := Flatten(input)
+
+		if !reflect.DeepEqual(expected, actual) {
+			t.Fatalf("invalid flatten result. [expected:%v] [actual:%v]", expected, actual)
+		}
+	}
+}

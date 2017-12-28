@@ -5,7 +5,9 @@ package sqlbuilder
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -24,6 +26,45 @@ func EscapeAll(ident ...string) []string {
 	}
 
 	return escaped
+}
+
+// Flatten recursively extracts values in slices and returns
+// a flattened []interface{} with all values.
+// If slices is not a slice, return `[]interface{}{slices}`.
+func Flatten(slices interface{}) (flattened []interface{}) {
+	v := reflect.ValueOf(slices)
+	slices, flattened = flatten(v)
+
+	if slices != nil {
+		return []interface{}{slices}
+	}
+
+	return flattened
+}
+
+func flatten(v reflect.Value) (elem interface{}, flattened []interface{}) {
+	k := v.Kind()
+
+	for k == reflect.Interface {
+		v = v.Elem()
+		k = v.Kind()
+	}
+
+	if k != reflect.Slice && k != reflect.Array {
+		return v.Interface(), nil
+	}
+
+	for i, l := 0, v.Len(); i < l; i++ {
+		e, f := flatten(v.Index(i))
+
+		if e == nil {
+			flattened = append(flattened, f...)
+		} else {
+			flattened = append(flattened, e)
+		}
+	}
+
+	return
 }
 
 // Args stores arguments associated with a SQL.
@@ -56,44 +97,49 @@ func (args *Args) Raw(expr string) interface{} {
 // A builder uses `$N` to represent an argument in arguments.
 // Unescape replaces `$N` to `?`, which is the placeholder supported by SQL driver,
 // and then creates a new args associated with the placeholder.
-func (args *Args) Compile(sql string) (query string, values []interface{}) {
+func (args *Args) Compile(str string) (query string, values []interface{}) {
 	buf := &bytes.Buffer{}
-	idx := strings.IndexRune(sql, '$')
+	idx := strings.IndexRune(str, '$')
 	values = make([]interface{}, 0, len(args.args))
+	namedArgs := map[string]sql.NamedArg{}
 
-	for idx >= 0 && len(sql) > 0 {
+	for idx >= 0 && len(str) > 0 {
 		if idx > 0 {
-			buf.WriteString(sql[:idx])
+			buf.WriteString(str[:idx])
 		}
 
-		sql = sql[idx+1:]
+		str = str[idx+1:]
 
 		// Should not happen.
-		if len(sql) == 0 {
+		if len(str) == 0 {
 			break
 		}
 
-		if sql[0] == '$' {
+		if str[0] == '$' {
 			buf.WriteRune('$')
-			sql = sql[1:]
+			str = str[1:]
 		} else {
 			i := 0
 
-			for ; i < len(sql) && '0' <= sql[i] && sql[i] <= '9'; i++ {
+			for ; i < len(str) && '0' <= str[i] && str[i] <= '9'; i++ {
 				// Nothing.
 			}
 
 			if i > 0 {
-				digits := sql[:i]
-				sql = sql[i:]
+				digits := str[:i]
+				str = str[i:]
 
 				if pointer, err := strconv.Atoi(digits); err == nil && pointer < len(args.args) {
 					arg := args.args[pointer]
 
 					if b, ok := arg.(Builder); ok {
-						sql, nestedArgs := b.Build()
-						buf.WriteString(sql)
+						s, nestedArgs := b.Build()
+						buf.WriteString(s)
 						values = append(values, nestedArgs...)
+					} else if na, ok := arg.(sql.NamedArg); ok {
+						buf.WriteRune('@')
+						buf.WriteString(na.Name)
+						namedArgs[na.Name] = na
 					} else {
 						buf.WriteRune('?')
 						values = append(values, arg)
@@ -102,11 +148,17 @@ func (args *Args) Compile(sql string) (query string, values []interface{}) {
 			}
 		}
 
-		idx = strings.IndexRune(sql, '$')
+		idx = strings.IndexRune(str, '$')
 	}
 
-	if len(sql) > 0 {
-		buf.WriteString(sql)
+	if len(str) > 0 {
+		buf.WriteString(str)
+	}
+
+	if len(namedArgs) > 0 {
+		for _, na := range namedArgs {
+			values = append(values, na)
+		}
 	}
 
 	query = buf.String()

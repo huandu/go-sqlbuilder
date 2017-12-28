@@ -55,7 +55,7 @@ func (sb *SelectBuilder) Select(col ...string) *SelectBuilder {
 
 // From sets table names in SELECT.
 func (sb *SelectBuilder) From(table ...string) *SelectBuilder {
-	sb.tables = EscapeAll(table...)
+	sb.tables = table
 	return sb
 }
 
@@ -109,7 +109,7 @@ func (sb *SelectBuilder) Offset(offset int) *SelectBuilder {
 
 // As returns an AS expression.
 func (sb *SelectBuilder) As(col, alias string) string {
-	return fmt.Sprintf("%v AS %v", Escape(col), Escape(alias))
+	return fmt.Sprintf("%v AS %v", col, Escape(alias))
 }
 
 // String returns the compiled SELECT string.
