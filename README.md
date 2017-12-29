@@ -132,6 +132,13 @@ fmt.Println(args)
 
 Package `sqlbuilder` defines a special syntax to represent an uncompiled SQL internally. If we want to take advantage of the syntax to build customized tools, we can use `Build` to compile it with arguments.
 
+The format string uses a special syntax to represent arguments.
+
+* `$?` uses successive arguments passed in the call. It works similar as `%v` in `fmt.Sprintf`.
+* `$0` `$1` ... `$n` uses nth-argument passed in the call. Next `$?` will use arguments n+1.
+* `${name}` uses a named argument created by `Named` with `name`.
+* `$$` represents a `"$"` string.
+
 ```go
 sb := sqlbuilder.NewSelectBuilder()
 sb.Select("id").From("user").Where(sb.In("status", 1, 2))

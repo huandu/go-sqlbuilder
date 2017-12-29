@@ -167,7 +167,12 @@ func (args *Args) compileSuccessive(buf *bytes.Buffer, format string, values []i
 	}
 
 	arg := args.args[offset]
+	values = args.compileArg(buf, values, arg)
 
+	return format, values, offset + 1
+}
+
+func (args *Args) compileArg(buf *bytes.Buffer, values []interface{}, arg interface{}) []interface{} {
 	switch a := arg.(type) {
 	case Builder:
 		s, nestedArgs := a.Build()
@@ -180,18 +185,17 @@ func (args *Args) compileSuccessive(buf *bytes.Buffer, format string, values []i
 		buf.WriteString(a.expr)
 	case listArgs:
 		if len(a.args) > 0 {
-			buf.WriteRune('?')
+			values = args.compileArg(buf, values, a.args[0])
 		}
 
-		for j := 1; j < len(a.args); j++ {
-			buf.WriteString(", ?")
+		for i := 1; i < len(a.args); i++ {
+			buf.WriteString(", ")
+			values = args.compileArg(buf, values, a.args[i])
 		}
-
-		values = append(values, a.args...)
 	default:
 		buf.WriteRune('?')
 		values = append(values, arg)
 	}
 
-	return format, values, offset + 1
+	return values
 }
