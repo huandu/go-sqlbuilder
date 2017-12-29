@@ -35,12 +35,59 @@ fmt.Println(args)
 
 Following builders are implemented right now. API document and examples are provided in the `godoc` document.
 
-* [SelectBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#SelectBuilder)
-* [InsertBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#InsertBuilder)
-* [UpdateBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#UpdateBuilder)
-* [DeleteBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#DeleteBuilder)
-* [Build](https://godoc.org/github.com/huandu/go-sqlbuilder#Build)
-* [Buildf](https://godoc.org/github.com/huandu/go-sqlbuilder#Buildf)
+* [Struct](https://godoc.org/github.com/huandu/go-sqlbuilder#Struct): Builder factory for a struct.
+* [SelectBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#SelectBuilder): Builder for SELECT.
+* [InsertBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#InsertBuilder): Builder for INSERT.
+* [UpdateBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#UpdateBuilder): Builder for UPDATE.
+* [DeleteBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#DeleteBuilder): Builder for DELETE.
+* [Build](https://godoc.org/github.com/huandu/go-sqlbuilder#Build): Freestyle builder using `fmt.Sprintf`-like syntax.
+* [Buildf](https://godoc.org/github.com/huandu/go-sqlbuilder#Buildf): Advanced freestyle builder using special syntax defined in [Args#Compile](https://godoc.org/github.com/huandu/go-sqlbuilder#Args.Compile).
+
+### Using `Struct` to build query for a struct and scan value from results ###
+
+`Struct` stores information of type and struct fields of a struct. It works like a factory of builders. We can use `Struct` methods to create initialized SELECT/INSERT/UPDATE/DELETE builders. It can help us to save time and avoid human-error when writing column names in query for a table.
+
+Read [examples](https://godoc.org/github.com/huandu/go-sqlbuilder#Struct) for `Struct` to learn how to use it.
+
+What's cool, we can use `Struct` as a kind of ORM. It's quite light weight and clean without any magic comparing with other ORM package.
+
+```go
+type User struct {
+    ID     int64  `db:"id"`
+    Name   string `db:"name"`
+    Status int    `db:"status"`
+}
+
+var userStruct = NewStruct(new(User))
+
+func ExampleStruct() {
+    // Prepare SELECT query.
+    sb := userStruct.Select("user")
+    sb.Where(sb.E("id", 1234))
+    sql, args := sb.Build()
+    fmt.Println(sql)
+    fmt.Println(args)
+
+    // Execute the query.
+    rows, _ := db.Query(sql, args...)
+    defer rows.Close()
+
+    // Scan row data to user.
+    // Suppose we get following data.
+    //
+    //     |  id  |  name  | status |
+    //     |------|--------|--------|
+    //     | 1234 | huandu | 1      |
+    var user User
+    rows.Scan(userStruct.Addr(&user)...)
+    fmt.Printf("%#v", user)
+
+    // Output:
+    // SELECT id, name, status FROM user WHERE id = ? LIMIT 1
+    // [1234]
+    // sqlbuilder.User{ID:1234, Name:"huandu", Status:1}
+}
+```
 
 ### Nested SQL ###
 
