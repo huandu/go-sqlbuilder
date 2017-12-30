@@ -10,15 +10,15 @@ import (
 
 func TestArgs(t *testing.T) {
 	cases := map[string][]interface{}{
-		"abc ? def\n[123]":                   []interface{}{"abc $? def", 123},
-		"abc ? def\n[456]":                   []interface{}{"abc $0 def", 456},
-		"abc  def\n[]":                       []interface{}{"abc $1 def", 123},
-		"abc ? def\n[789]":                   []interface{}{"abc ${s} def", Named("s", 789)},
-		"abc  def \n[]":                      []interface{}{"abc ${unknown} def ", 123},
-		"abc $ def\n[]":                      []interface{}{"abc $$ def", 123},
-		"abcdef\n[]":                         []interface{}{"abcdef$", 123},
-		"abc ? ? ? ? def\n[123 456 123 456]": []interface{}{"abc $? $? $0 $? def", 123, 456, 789},
-		"abc ? raw ? raw def\n[123 123]":     []interface{}{"abc $? $? $0 $? def", 123, Raw("raw"), 789},
+		"abc ? def\n[123]":                   {"abc $? def", 123},
+		"abc ? def\n[456]":                   {"abc $0 def", 456},
+		"abc  def\n[]":                       {"abc $1 def", 123},
+		"abc ? def\n[789]":                   {"abc ${s} def", Named("s", 789)},
+		"abc  def \n[]":                      {"abc ${unknown} def ", 123},
+		"abc $ def\n[]":                      {"abc $$ def", 123},
+		"abcdef\n[]":                         {"abcdef$", 123},
+		"abc ? ? ? ? def\n[123 456 123 456]": {"abc $? $? $0 $? def", 123, 456, 789},
+		"abc ? raw ? raw def\n[123 123]":     {"abc $? $? $0 $? def", 123, Raw("raw"), 789},
 	}
 
 	for expected, c := range cases {
