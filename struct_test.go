@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type structUserForTest struct {
@@ -284,6 +285,7 @@ func ExampleStruct_useTag() {
 	//     var orderStruct = NewStruct(new(Order))
 
 	createOrder := func(table string) {
+		now := time.Now().Unix()
 		order := &Order{
 			ID:          1234,
 			State:       OrderStateCreated,
@@ -292,8 +294,8 @@ func ExampleStruct_useTag() {
 			Price:       1000,
 			Discount:    0,
 			Description: "Best goods",
-			CreatedAt:   1234567890,
-			ModifiedAt:  1234567890,
+			CreatedAt:   now,
+			ModifiedAt:  now,
 		}
 		b := orderStruct.InsertInto(table, &order)
 		sql, args := b.Build()
@@ -302,6 +304,7 @@ func ExampleStruct_useTag() {
 	updatePrice := func(table string) {
 		tag := "update"
 
+		// Read order from database.
 		var order Order
 		sql, args := orderStruct.SelectFromForTag(table, tag).Where("id = 1234").Build()
 		rows, _ := db.Query(sql, args...)
@@ -310,6 +313,9 @@ func ExampleStruct_useTag() {
 		// Discount for this user.
 		// Use tag "update" to update necessary columns only.
 		order.Discount += 100
+		order.ModifiedAt = time.Now().Unix()
+
+		// Save the order.
 		b := orderStruct.UpdateForTag(table, tag, &order)
 		b.Where(b.E("id", order.ID))
 		sql, args = b.Build()
@@ -318,6 +324,7 @@ func ExampleStruct_useTag() {
 	updateState := func(table string) {
 		tag := "paid"
 
+		// Read order from database.
 		var order Order
 		sql, args := orderStruct.SelectFromForTag(table, tag).Where("id = 1234").Build()
 		rows, _ := db.Query(sql, args...)
@@ -330,7 +337,11 @@ func ExampleStruct_useTag() {
 			return
 		}
 
+		// Update order state.
 		order.State = OrderStatePaid
+		order.ModifiedAt = time.Now().Unix()
+
+		// Save the order.
 		b := orderStruct.UpdateForTag(table, tag, &order)
 		b.Where(b.E("id", order.ID))
 		sql, args = b.Build()
@@ -343,6 +354,7 @@ func ExampleStruct_useTag() {
 	updateState(table)
 
 	fmt.Println("done")
+
 	// Output:
 	// done
 }
