@@ -18,8 +18,8 @@ type structUserForTest struct {
 
 var userForTest = NewStruct(new(structUserForTest))
 
-func TestStructSelect(t *testing.T) {
-	sb := userForTest.Select("user")
+func TestStructSelectFrom(t *testing.T) {
+	sb := userForTest.SelectFrom("user")
 	sql, args := sb.Build()
 
 	if expected := "SELECT id, Name, status, created_at FROM user LIMIT 1"; expected != sql {
@@ -31,8 +31,8 @@ func TestStructSelect(t *testing.T) {
 	}
 }
 
-func TestStructSelectForTag(t *testing.T) {
-	sb := userForTest.SelectForTag("user", "important")
+func TestStructSelectFromForTag(t *testing.T) {
+	sb := userForTest.SelectFromForTag("user", "important")
 	sql, args := sb.Build()
 
 	if expected := "SELECT id, Name, status FROM user LIMIT 1"; expected != sql {
@@ -189,6 +189,19 @@ type User struct {
 	Status int    `db:"status"`
 }
 
+type Order struct {
+	ID          int64  `db:"id" fieldtag:"new"`
+	State       State  `db:"state" fieldtag:"new,paid,done"`
+	SkuID       int64  `db:"sku_id" fieldtag:"new"`
+	UserID      int64  `db:"user_id" fieldtag:"new"`
+	Price       int64  `db:"price" fieldtag:"new,update"`
+	Discount    int64  `db:"discount" fieldtag:"new,update"`
+	Description string `db:"description" fieldtag:"new,update"`
+	CreatedAt   int64  `db:"created_at" fieldtag:"new"`
+	ModifiedAt  int64  `db:"modified_at" fieldtag:"new,update,paid,done"`
+}
+
+type State int
 type testDB int
 type testRows int
 
@@ -210,9 +223,16 @@ func (rows testRows) Scan(dest ...interface{}) error {
 }
 
 var userStruct = NewStruct(new(User))
+var orderStruct = NewStruct(new(Order))
 var db testDB
 
-func ExampleStruct_buildSELECTAndUseItAsORM() {
+const (
+	OrderStateInvalid State = iota
+	OrderStateCreated
+	OrderStatePaid
+)
+
+func ExampleStruct_useStructAsORM() {
 	// Suppose we defined following type and global variable.
 	//
 	//     type User struct {
@@ -224,7 +244,7 @@ func ExampleStruct_buildSELECTAndUseItAsORM() {
 	//     var userStruct = NewStruct(new(User))
 
 	// Prepare SELECT query.
-	sb := userStruct.Select("user")
+	sb := userStruct.SelectFrom("user")
 	sb.Where(sb.E("id", 1234))
 
 	// Execute the query.
@@ -244,6 +264,87 @@ func ExampleStruct_buildSELECTAndUseItAsORM() {
 	// SELECT id, name, status FROM user WHERE id = ? LIMIT 1
 	// [1234]
 	// sqlbuilder.User{ID:1234, Name:"huandu", Status:1}
+}
+
+func ExampleStruct_useTag() {
+	// Suppose we defined following type and global variable.
+	//
+	// type Order struct {
+	//     ID          int64  `db:"id" fieldtag:"update,paid"`
+	//     State       int    `db:"state" fieldtag:"paid"`
+	//     SkuID       int64  `db:"sku_id"`
+	//     UserID      int64  `db:"user_id"`
+	//     Price       int64  `db:"price" fieldtag:"update"`
+	//     Discount    int64  `db:"discount" fieldtag:"update"`
+	//     Description string `db:"description" fieldtag:"update"`
+	//     CreatedAt   int64  `db:"created_at"`
+	//     ModifiedAt  int64  `db:"modified_at" fieldtag:"update,paid"`
+	// }
+	//
+	//     var orderStruct = NewStruct(new(Order))
+
+	createOrder := func(table string) {
+		order := &Order{
+			ID:          1234,
+			State:       OrderStateCreated,
+			SkuID:       5678,
+			UserID:      7527,
+			Price:       1000,
+			Discount:    0,
+			Description: "Best goods",
+			CreatedAt:   1234567890,
+			ModifiedAt:  1234567890,
+		}
+		b := orderStruct.InsertInto(table, &order)
+		sql, args := b.Build()
+		db.Exec(sql, args)
+	}
+	updatePrice := func(table string) {
+		tag := "update"
+
+		var order Order
+		sql, args := orderStruct.SelectFromForTag(table, tag).Where("id = 1234").Build()
+		rows, _ := db.Query(sql, args...)
+		rows.Scan(orderStruct.AddrForTag(tag, &order)...)
+
+		// Discount for this user.
+		// Use tag "update" to update necessary columns only.
+		order.Discount += 100
+		b := orderStruct.UpdateForTag(table, tag, &order)
+		b.Where(b.E("id", order.ID))
+		sql, args = b.Build()
+		db.Exec(sql, args...)
+	}
+	updateState := func(table string) {
+		tag := "paid"
+
+		var order Order
+		sql, args := orderStruct.SelectFromForTag(table, tag).Where("id = 1234").Build()
+		rows, _ := db.Query(sql, args...)
+		rows.Scan(orderStruct.AddrForTag(tag, &order)...)
+
+		// Update state to paid when user has paid for the order.
+		// Use tag "paid" to update necessary columns only.
+		if order.State != OrderStateCreated {
+			// Report state error here.
+			return
+		}
+
+		order.State = OrderStatePaid
+		b := orderStruct.UpdateForTag(table, tag, &order)
+		b.Where(b.E("id", order.ID))
+		sql, args = b.Build()
+		db.Exec(sql, args...)
+	}
+
+	table := "order"
+	createOrder(table)
+	updatePrice(table)
+	updateState(table)
+
+	fmt.Println("done")
+	// Output:
+	// done
 }
 
 func ExampleStruct_buildUPDATE() {

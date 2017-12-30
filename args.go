@@ -63,10 +63,10 @@ func (args *Args) add(arg interface{}) int {
 //
 // The format string uses a special syntax to represent arguments.
 //
-//     $? uses successive arguments passed in the call. It works similar as `%v` in `fmt.Sprintf`.
-//     $0 $1 ... $n uses nth-argument passed in the call. Next $? will use arguments n+1.
-//     ${name} uses a named argument created by `Named` with `name`.
-//     $$ represents a "$" string.
+//     $? refers successive arguments passed in the call. It works similar as `%v` in `fmt.Sprintf`.
+//     $0 $1 ... $n refers nth-argument passed in the call. Next $? will use arguments n+1.
+//     ${name} refers a named argument created by `Named` with `name`.
+//     $$ is a "$" string.
 func (args *Args) Compile(format string) (query string, values []interface{}) {
 	buf := &bytes.Buffer{}
 	idx := strings.IndexRune(format, '$')

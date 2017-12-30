@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/huandu/go-sqlbuilder.svg?branch=master)](https://travis-ci.org/huandu/go-sqlbuilder)
 [![GoDoc](https://godoc.org/github.com/huandu/go-sqlbuilder?status.svg)](https://godoc.org/github.com/huandu/go-sqlbuilder)
 
-Package `sqlbuilder` provides a set of flexible and powerful SQL string builders. The only goal of this package is to build SQL string with arguments which can be used in `DB#Query` defined in package `database/sql`.
+Package `sqlbuilder` provides a set of flexible and powerful SQL string builders. The only goal of this package is to build SQL string with arguments which can be used in `DB#Query` or `DB#Exec` defined in package `database/sql`.
 
 ## Install ##
 
@@ -75,8 +75,8 @@ var userStruct = NewStruct(new(User))
 
 func ExampleStruct() {
     // Prepare SELECT query.
-    //     SELECT id, name, status FROM user WHERE id = 1234
-    sb := userStruct.Select("user")
+    //     SELECT id, name, status FROM user WHERE id = 1234 LIMIT 1
+    sb := userStruct.SelectFrom("user")
     sb.Where(sb.E("id", 1234))
 
     // Execute the query.
@@ -190,16 +190,16 @@ fmt.Println(args)
 // [1 2]
 ```
 
-### Using a special syntax to build SQL ###
+### Using special syntax to build SQL ###
 
-Package `sqlbuilder` defines a special syntax to represent an uncompiled SQL internally. If we want to take advantage of the syntax to build customized tools, we can use `Build` to compile it with arguments.
+Package `sqlbuilder` defines special syntax to represent an uncompiled SQL internally. If we want to take advantage of the syntax to build customized tools, we can use `Build` to compile it with arguments.
 
-The format string uses a special syntax to represent arguments.
+The format string uses special syntax to represent arguments.
 
-* `$?` uses successive arguments passed in the call. It works similar as `%v` in `fmt.Sprintf`.
-* `$0` `$1` ... `$n` uses nth-argument passed in the call. Next `$?` will use arguments n+1.
-* `${name}` uses a named argument created by `Named` with `name`.
-* `$$` represents a `"$"` string.
+* `$?` refers successive arguments passed in the call. It works similar as `%v` in `fmt.Sprintf`.
+* `$0` `$1` ... `$n` refers nth-argument passed in the call. Next `$?` will use arguments n+1.
+* `${name}` refers a named argument created by `Named` with `name`.
+* `$$` is a `"$"` string.
 
 ```go
 sb := sqlbuilder.NewSelectBuilder()

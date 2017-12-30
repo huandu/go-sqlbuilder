@@ -94,21 +94,21 @@ func (s *Struct) parse(t reflect.Type) {
 	}
 }
 
-// Select creates a new `SelectBuilder` with table name.
+// SelectFrom creates a new `SelectBuilder` with table name.
 // By default, all exported fields of the s are listed as columns in SELECT
 // and LIMIT is set to 1.
 //
 // Caller is responsible to set WHERE condition to find right record.
-func (s *Struct) Select(table string) *SelectBuilder {
-	return s.SelectForTag(table, "")
+func (s *Struct) SelectFrom(table string) *SelectBuilder {
+	return s.SelectFromForTag(table, "")
 }
 
-// SelectForTag creates a new `SelectBuilder` with table name for a specified tag.
+// SelectFromForTag creates a new `SelectBuilder` with table name for a specified tag.
 // By default, all fields of the s tagged with tag are listed as columns in SELECT
 // and LIMIT is set to 1.
 //
 // Caller is responsible to set WHERE condition to find right record.
-func (s *Struct) SelectForTag(table string, tag string) *SelectBuilder {
+func (s *Struct) SelectFromForTag(table string, tag string) *SelectBuilder {
 	sb := NewSelectBuilder()
 	sb.From(table)
 	sb.Limit(1)
