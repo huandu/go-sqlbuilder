@@ -43,13 +43,26 @@ Following builders are implemented right now. API document and examples are prov
 * [Build](https://godoc.org/github.com/huandu/go-sqlbuilder#Build): Freestyle builder using `fmt.Sprintf`-like syntax.
 * [Buildf](https://godoc.org/github.com/huandu/go-sqlbuilder#Buildf): Advanced freestyle builder using special syntax defined in [Args#Compile](https://godoc.org/github.com/huandu/go-sqlbuilder#Args.Compile).
 
-### Using `Struct` to build query for a struct and scan value from results ###
+### Using `Struct` as a light weight ORM ###
 
 `Struct` stores information of type and struct fields of a struct. It works like a factory of builders. We can use `Struct` methods to create initialized SELECT/INSERT/UPDATE/DELETE builders. It can help us to save time and avoid human-error when writing column names in query for a table.
 
+We can define a struct type and set some field tags to let `Struct` know how to use each field.
+
+```go
+type ATable struct {
+    Field1     string                                  // If a field doesn't has a tag, use "Field1" as column name in SQL.
+    Field2     int    `db:"field2"`                    // Use "db" in field tag to set column name used in SQL.
+    Field3     int64  `db:"field3" fieldtag:"foo,bar"` // Set fieldtag to a field. We can use methods like `Struct#SelectForTag` to use it.
+    Field4     int64  `db:"field4" fieldtag:"foo"`     // If we use `s.SelectForTag(table, "foo")`, columnes of SELECT are field3 and field3.
+    Ignored    int32  `db:"-"`                         // If we set field name as "-", Struct will ignore it.
+    unexported int                                     // Unexported field is not visible to Struct.
+}
+```
+
 Read [examples](https://godoc.org/github.com/huandu/go-sqlbuilder#Struct) for `Struct` to learn how to use it.
 
-What's cool, we can use `Struct` as a kind of ORM. It's quite light weight and clean without any magic comparing with other ORM package.
+What's more, we can use `Struct` as a kind of ORM. It's quite light weight and clean without any magic comparing with other ORM package. It just creates necessary SQL to query rows and takes address of all selected fields of a struct to let it work well with `Rows#Scan` or `Row#Scan` defined in `database/sql`.
 
 ```go
 type User struct {
@@ -62,17 +75,16 @@ var userStruct = NewStruct(new(User))
 
 func ExampleStruct() {
     // Prepare SELECT query.
+    //     SELECT id, name, status FROM user WHERE id = 1234
     sb := userStruct.Select("user")
     sb.Where(sb.E("id", 1234))
-    sql, args := sb.Build()
-    fmt.Println(sql)
-    fmt.Println(args)
 
     // Execute the query.
+    sql, args := sb.Build()
     rows, _ := db.Query(sql, args...)
     defer rows.Close()
 
-    // Scan row data to user.
+    // Scan row data and set value to user.
     // Suppose we get following data.
     //
     //     |  id  |  name  | status |
@@ -80,6 +92,9 @@ func ExampleStruct() {
     //     | 1234 | huandu | 1      |
     var user User
     rows.Scan(userStruct.Addr(&user)...)
+
+    fmt.Println(sql)
+    fmt.Println(args)
     fmt.Printf("%#v", user)
 
     // Output:

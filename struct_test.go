@@ -196,6 +196,10 @@ func (db testDB) Query(query string, args ...interface{}) (testRows, error) {
 	return 0, nil
 }
 
+func (db testDB) Exec(query string, args ...interface{}) {
+	return
+}
+
 func (rows testRows) Close() error {
 	return nil
 }
@@ -208,7 +212,7 @@ func (rows testRows) Scan(dest ...interface{}) error {
 var userStruct = NewStruct(new(User))
 var db testDB
 
-func ExampleStruct() {
+func ExampleStruct_buildSELECTAndUseItAsORM() {
 	// Suppose we defined following type and global variable.
 	//
 	//     type User struct {
@@ -222,21 +226,117 @@ func ExampleStruct() {
 	// Prepare SELECT query.
 	sb := userStruct.Select("user")
 	sb.Where(sb.E("id", 1234))
-	sql, args := sb.Build()
-	fmt.Println(sql)
-	fmt.Println(args)
 
 	// Execute the query.
+	sql, args := sb.Build()
 	rows, _ := db.Query(sql, args...)
 	defer rows.Close()
 
 	// Scan row data to user.
 	var user User
 	rows.Scan(userStruct.Addr(&user)...)
+
+	fmt.Println(sql)
+	fmt.Println(args)
 	fmt.Printf("%#v", user)
 
 	// Output:
 	// SELECT id, name, status FROM user WHERE id = ? LIMIT 1
 	// [1234]
 	// sqlbuilder.User{ID:1234, Name:"huandu", Status:1}
+}
+
+func ExampleStruct_buildUPDATE() {
+	// Suppose we defined following type and global variable.
+	//
+	//     type User struct {
+	//         ID     int64  `db:"id"`
+	//         Name   string `db:"name"`
+	//         Status int    `db:"status"`
+	//     }
+	//
+	//     var userStruct = NewStruct(new(User))
+
+	// Prepare UPDATE query.
+	user := &User{
+		ID:     1234,
+		Name:   "Huan Du",
+		Status: 1,
+	}
+	ub := userStruct.Update("user", user)
+	ub.Where(ub.E("id", user.ID))
+
+	// Execute the query.
+	sql, args := ub.Build()
+	db.Exec(sql, args...)
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// UPDATE user SET id = ?, name = ?, status = ? WHERE id = ?
+	// [1234 Huan Du 1 1234]
+}
+
+func ExampleStruct_buildINSERT() {
+	// Suppose we defined following type and global variable.
+	//
+	//     type User struct {
+	//         ID     int64  `db:"id"`
+	//         Name   string `db:"name"`
+	//         Status int    `db:"status"`
+	//     }
+	//
+	//     var userStruct = NewStruct(new(User))
+
+	// Prepare INSERT query.
+	user := &User{
+		ID:     1234,
+		Name:   "Huan Du",
+		Status: 1,
+	}
+	ib := userStruct.InsertInto("user", user)
+
+	// Execute the query.
+	sql, args := ib.Build()
+	db.Exec(sql, args...)
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// INSERT INTO user (id, name, status) VALUES (?, ?, ?)
+	// [1234 Huan Du 1]
+}
+
+func ExampleStruct_buildDELETE() {
+	// Suppose we defined following type and global variable.
+	//
+	//     type User struct {
+	//         ID     int64  `db:"id"`
+	//         Name   string `db:"name"`
+	//         Status int    `db:"status"`
+	//     }
+	//
+	//     var userStruct = NewStruct(new(User))
+
+	// Prepare DELETE query.
+	user := &User{
+		ID:     1234,
+		Name:   "Huan Du",
+		Status: 1,
+	}
+	b := userStruct.DeleteFrom("user")
+	b.Where(b.E("id", user.ID))
+
+	// Execute the query.
+	sql, args := b.Build()
+	db.Exec(sql, args...)
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// DELETE FROM user WHERE id = ?
+	// [1234]
 }
