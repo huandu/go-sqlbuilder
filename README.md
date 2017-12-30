@@ -3,6 +3,7 @@
 [![Build Status](https://travis-ci.org/huandu/go-sqlbuilder.svg?branch=master)](https://travis-ci.org/huandu/go-sqlbuilder)
 [![GoDoc](https://godoc.org/github.com/huandu/go-sqlbuilder?status.svg)](https://godoc.org/github.com/huandu/go-sqlbuilder)
 [![Go Report](https://goreportcard.com/badge/github.com/huandu/go-sqlbuilder)](https://goreportcard.com/report/github.com/huandu/go-sqlbuilder)
+[![Coverage Status](https://coveralls.io/repos/github/huandu/go-sqlbuilder/badge.svg?branch=master)](https://coveralls.io/github/huandu/go-sqlbuilder?branch=master)
 
 Package `sqlbuilder` provides a set of flexible and powerful SQL string builders. The only goal of this package is to build SQL string with arguments which can be used in `DB#Query` or `DB#Exec` defined in package `database/sql`.
 
@@ -41,8 +42,8 @@ Following builders are implemented right now. API document and examples are prov
 * [InsertBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#InsertBuilder): Builder for INSERT.
 * [UpdateBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#UpdateBuilder): Builder for UPDATE.
 * [DeleteBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#DeleteBuilder): Builder for DELETE.
-* [Build](https://godoc.org/github.com/huandu/go-sqlbuilder#Build): Freestyle builder using `fmt.Sprintf`-like syntax.
-* [Buildf](https://godoc.org/github.com/huandu/go-sqlbuilder#Buildf): Advanced freestyle builder using special syntax defined in [Args#Compile](https://godoc.org/github.com/huandu/go-sqlbuilder#Args.Compile).
+* [Buildf](https://godoc.org/github.com/huandu/go-sqlbuilder#Buildf): Freestyle builder using `fmt.Sprintf`-like syntax.
+* [Build](https://godoc.org/github.com/huandu/go-sqlbuilder#Build): Advanced freestyle builder using special syntax defined in [Args#Compile](https://godoc.org/github.com/huandu/go-sqlbuilder#Args.Compile).
 
 ### Using `Struct` as a light weight ORM ###
 

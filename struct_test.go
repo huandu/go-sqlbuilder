@@ -308,6 +308,7 @@ func ExampleStruct_useTag() {
 		var order Order
 		sql, args := orderStruct.SelectFromForTag(table, tag).Where("id = 1234").Build()
 		rows, _ := db.Query(sql, args...)
+		defer rows.Close()
 		rows.Scan(orderStruct.AddrForTag(tag, &order)...)
 
 		// Discount for this user.
@@ -328,6 +329,7 @@ func ExampleStruct_useTag() {
 		var order Order
 		sql, args := orderStruct.SelectFromForTag(table, tag).Where("id = 1234").Build()
 		rows, _ := db.Query(sql, args...)
+		defer rows.Close()
 		rows.Scan(orderStruct.AddrForTag(tag, &order)...)
 
 		// Update state to paid when user has paid for the order.
