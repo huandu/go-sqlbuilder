@@ -121,13 +121,8 @@ sb.Select("id")
 sb.From(sb.As(fmt.Sprintf("(%v)", sb.Var(fromSb), "user")))
 sb.Where(sb.In("status", statusSb))
 
-fromSb.Select("id")
-fromSb.From("user")
-fromSb.Where(sb.G("level", 4))
-
-statusSb.Select("status")
-statusSb.From("config")
-statusSb.Where(sb.E("state", 1))
+fromSb.Select("id").From("user").Where(fromSb.GreaterThan("level", 4))
+statusSb.Select("status").From("config").Where(statusSb.Equal("state", 1))
 
 sql, args := sb.Build()
 fmt.Println(sql)

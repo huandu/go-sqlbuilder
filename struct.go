@@ -228,13 +228,13 @@ func (s *Struct) DeleteFrom(table string) *DeleteBuilder {
 	return db
 }
 
-// Addr take address of all exported fields of the s from the value.
+// Addr takes address of all exported fields of the s from the value.
 // The returned result can be used in `Row#Scan` directly.
 func (s *Struct) Addr(value interface{}) []interface{} {
 	return s.AddrForTag("", value)
 }
 
-// AddrForTag take address of all fields of the s tagged with tag from the value.
+// AddrForTag takes address of all fields of the s tagged with tag from the value.
 // The returned result can be used in `Row#Scan` directly.
 //
 // If tag is not defined in s in advance,
@@ -248,7 +248,7 @@ func (s *Struct) AddrForTag(tag string, value interface{}) []interface{} {
 	return s.AddrWithCols(fields, value)
 }
 
-// AddrWithCols take address of all columns defined in cols from the value.
+// AddrWithCols takes address of all columns defined in cols from the value.
 // The returned result can be used in `Row#Scan` directly.
 func (s *Struct) AddrWithCols(cols []string, value interface{}) []interface{} {
 	v := dereferencedValue(value)
