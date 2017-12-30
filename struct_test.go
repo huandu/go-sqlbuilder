@@ -269,17 +269,17 @@ func ExampleStruct_useStructAsORM() {
 func ExampleStruct_useTag() {
 	// Suppose we defined following type and global variable.
 	//
-	// type Order struct {
-	//     ID          int64  `db:"id" fieldtag:"update,paid"`
-	//     State       int    `db:"state" fieldtag:"paid"`
-	//     SkuID       int64  `db:"sku_id"`
-	//     UserID      int64  `db:"user_id"`
-	//     Price       int64  `db:"price" fieldtag:"update"`
-	//     Discount    int64  `db:"discount" fieldtag:"update"`
-	//     Description string `db:"description" fieldtag:"update"`
-	//     CreatedAt   int64  `db:"created_at"`
-	//     ModifiedAt  int64  `db:"modified_at" fieldtag:"update,paid"`
-	// }
+	//     type Order struct {
+	//         ID          int64  `db:"id" fieldtag:"update,paid"`
+	//         State       int    `db:"state" fieldtag:"paid"`
+	//         SkuID       int64  `db:"sku_id"`
+	//         UserID      int64  `db:"user_id"`
+	//         Price       int64  `db:"price" fieldtag:"update"`
+	//         Discount    int64  `db:"discount" fieldtag:"update"`
+	//         Description string `db:"description" fieldtag:"update"`
+	//         CreatedAt   int64  `db:"created_at"`
+	//         ModifiedAt  int64  `db:"modified_at" fieldtag:"update,paid"`
+	//     }
 	//
 	//     var orderStruct = NewStruct(new(Order))
 
