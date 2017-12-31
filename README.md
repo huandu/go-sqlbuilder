@@ -119,7 +119,7 @@ fromSb := sqlbuilder.NewSelectBuilder()
 statusSb := sqlbuilder.NewSelectBuilder()
 
 sb.Select("id")
-sb.From(sb.As(fmt.Sprintf("(%v)", sb.Var(fromSb), "user")))
+sb.From(sb.BuilderAs(fromSb, "user")))
 sb.Where(sb.In("status", statusSb))
 
 fromSb.Select("id").From("user").Where(fromSb.GreaterThan("level", 4))

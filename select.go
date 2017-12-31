@@ -112,6 +112,12 @@ func (sb *SelectBuilder) As(col, alias string) string {
 	return fmt.Sprintf("%v AS %v", col, Escape(alias))
 }
 
+// BuilderAs returns an AS expression wrapping a complex SQL.
+// According to SQL syntax, SQL built by builder is surrounded by parens.
+func (sb *SelectBuilder) BuilderAs(builder Builder, alias string) string {
+	return fmt.Sprintf("(%v) AS %v", sb.Var(builder), Escape(alias))
+}
+
 // String returns the compiled SELECT string.
 func (sb *SelectBuilder) String() string {
 	s, _ := sb.Build()

@@ -44,7 +44,7 @@ func ExampleSelectBuilder_advancedUsage() {
 
 	sb.Select("id", "name")
 	sb.From(
-		sb.As(fmt.Sprintf("(%v)", sb.Var(innerSb)), "user"),
+		sb.BuilderAs(innerSb, "user"),
 	)
 	sb.Where(
 		sb.In("status", Flatten([]int{1, 2, 3})...),
