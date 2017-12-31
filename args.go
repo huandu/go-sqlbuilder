@@ -17,6 +17,7 @@ type Args struct {
 	args         []interface{}
 	namedArgs    map[string]int
 	sqlNamedArgs map[string]int
+	onlyNamed    bool
 }
 
 // Add adds an arg to Args and returns a placeholder.
@@ -89,9 +90,9 @@ func (args *Args) Compile(format string) (query string, values []interface{}) {
 			format = format[1:]
 		} else if format[0] == '{' {
 			format, values = args.compileNamed(buf, format, values)
-		} else if '0' <= format[0] && format[0] <= '9' {
+		} else if !args.onlyNamed && '0' <= format[0] && format[0] <= '9' {
 			format, values, offset = args.compileDigits(buf, format, values, offset)
-		} else if format[0] == '?' {
+		} else if !args.onlyNamed && format[0] == '?' {
 			format, values, offset = args.compileSuccessive(buf, format[1:], values, offset)
 		}
 

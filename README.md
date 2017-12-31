@@ -44,6 +44,7 @@ Following builders are implemented right now. API document and examples are prov
 * [DeleteBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#DeleteBuilder): Builder for DELETE.
 * [Buildf](https://godoc.org/github.com/huandu/go-sqlbuilder#Buildf): Freestyle builder using `fmt.Sprintf`-like syntax.
 * [Build](https://godoc.org/github.com/huandu/go-sqlbuilder#Build): Advanced freestyle builder using special syntax defined in [Args#Compile](https://godoc.org/github.com/huandu/go-sqlbuilder#Args.Compile).
+* [BuildNamed](https://godoc.org/github.com/huandu/go-sqlbuilder#BuildNamed): Advanced freestyle builder using `${key}` to refer the value of a map by key.
 
 ### Using `Struct` as a light weight ORM ###
 

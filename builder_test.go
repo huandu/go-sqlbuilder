@@ -4,6 +4,7 @@
 package sqlbuilder
 
 import (
+	"database/sql"
 	"fmt"
 )
 
@@ -35,4 +36,22 @@ func ExampleBuild() {
 	// Output:
 	// EXPLAIN SELECT id FROM user WHERE status IN (?, ?) LEFT JOIN SELECT * FROM banned WHERE created_at > ? AND state IN (?, ?, ?) AND modified_at BETWEEN ? AND ?
 	// [1 2 1514458225 3 4 5 1514458225 1514544625]
+}
+
+func ExampleBuildNamed() {
+	b := BuildNamed("SELECT * FROM ${table} WHERE status IN (${status}) AND name LIKE ${name} AND created_at > ${time} AND modified_at < ${time} + 86400",
+		map[string]interface{}{
+			"time":   sql.Named("start", 1234567890),
+			"status": List([]int{1, 2, 5}),
+			"name":   "Huan%",
+			"table":  Raw("user"),
+		})
+	sql, args := b.Build()
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT * FROM user WHERE status IN (?, ?, ?) AND name LIKE ? AND created_at > @start AND modified_at < @start + 86400
+	// [1 2 5 Huan% {{} start 1234567890}]
 }

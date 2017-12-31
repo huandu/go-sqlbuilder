@@ -44,13 +44,31 @@ func Buildf(format string, arg ...interface{}) Builder {
 }
 
 // Build creates a Builder from a format string.
-// The format string uses a special syntax to represent arguments.
+// The format string uses special syntax to represent arguments.
 // See doc in `Args#Compile` for syntax details.
 func Build(format string, arg ...interface{}) Builder {
 	args := &Args{}
 
 	for _, a := range arg {
 		args.Add(a)
+	}
+
+	sql, values := args.Compile(format)
+	return &compiledBuilder{
+		sql:  sql,
+		args: values,
+	}
+}
+
+// BuildNamed creates a Builder from a format string.
+// The format string uses `${key}` to refer the value of named by key.
+func BuildNamed(format string, named map[string]interface{}) Builder {
+	args := &Args{
+		onlyNamed: true,
+	}
+
+	for n, v := range named {
+		args.Add(Named(n, v))
 	}
 
 	sql, values := args.Compile(format)
