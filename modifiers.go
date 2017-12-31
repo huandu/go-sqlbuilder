@@ -88,7 +88,7 @@ type namedArgs struct {
 }
 
 // Named creates a named argument.
-// Unlike `sql.Named`, this named argument works only with `Build` for convenience
+// Unlike `sql.Named`, this named argument works only with `Build` or `BuildNamed` for convenience
 // and will be replaced to a `?` after `Compile`.
 func Named(name string, arg interface{}) interface{} {
 	return namedArgs{

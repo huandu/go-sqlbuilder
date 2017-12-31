@@ -48,9 +48,9 @@ Following builders are implemented right now. API document and examples are prov
 
 ### Using `Struct` as a light weight ORM ###
 
-`Struct` stores information of type and struct fields of a struct. It works like a factory of builders. We can use `Struct` methods to create initialized SELECT/INSERT/UPDATE/DELETE builders. It can help us to save time and avoid human-error when writing column names in query for a table.
+`Struct` stores type information and struct fields of a struct. It's a factory of builders. We can use `Struct` methods to create initialized SELECT/INSERT/UPDATE/DELETE builders to work with the struct. It can help us to save time and avoid human-error on writing column names.
 
-We can define a struct type and set some field tags to let `Struct` know how to use each field.
+We can define a struct type and use field tags to let `Struct` know how to create right builders for us.
 
 ```go
 type ATable struct {
@@ -63,9 +63,11 @@ type ATable struct {
 }
 ```
 
-Read [examples](https://godoc.org/github.com/huandu/go-sqlbuilder#Struct) for `Struct` to learn how to use it.
+Read [examples](https://godoc.org/github.com/huandu/go-sqlbuilder#Struct) for `Struct` to learn details of how to use it.
 
-What's more, we can use `Struct` as a kind of ORM. It's quite light weight and clean without any magic comparing with other ORM package. It just creates necessary SQL to query rows and takes address of all selected fields of a struct to let it work well with `Rows#Scan` or `Row#Scan` defined in `database/sql`.
+What's more, we can use `Struct` as a kind of zero-config ORM. While most ORM implementations requires several prerequisite configs to work with database connections, `Struct` doesn't require any config and work well with any SQL driver which works with `database/sql`. `Struct` doesn't call any `database/sql` API; It just creates right SQL with arguments for `DB#Query`/`DB#Exec` or a slice of address of struct fields for `Rows#Scan`/`Row#Scan`.
+
+Here is a sample to use `Struct` as ORM. It should be quite straight forward for developers who are familiar with `database/sql` APIs.
 
 ```go
 type User struct {
@@ -74,13 +76,15 @@ type User struct {
     Status int    `db:"status"`
 }
 
+// A global variable to create SQL builders.
+// All methods of userStruct are thread-safe.
 var userStruct = NewStruct(new(User))
 
 func ExampleStruct() {
     // Prepare SELECT query.
     //     SELECT id, name, status FROM user WHERE id = 1234 LIMIT 1
     sb := userStruct.SelectFrom("user")
-    sb.Where(sb.E("id", 1234))
+    sb.Where(sb.Equal("id", 1234))
 
     // Execute the query.
     sql, args := sb.Build()
@@ -111,7 +115,7 @@ func ExampleStruct() {
 
 It's quite straight forward to create a nested SQL: use a builder as an argument to nest it.
 
-Here is a simple sample.
+Here is a sample.
 
 ```go
 sb := sqlbuilder.NewSelectBuilder()
@@ -162,13 +166,13 @@ fmt.Println(args)
 // [{{} start 1514458225} {{} end 1514544625}]
 ```
 
-### Special argument types ###
+### Argument modifiers ###
 
-There are several special argument types.
+There are several modifiers for arguments.
 
 * `List(arg)` represents a list of arguments. If `arg` is a slice or array, e.g. a slice with 3 ints, it will be compiled to `?, ?, ?` and flattened in the final arguments as 3 ints. It's a tool for convenience. We can use it in the `IN` expression or `VALUES` of `INSERT INTO`.
-* `Named(name, arg)` represents a named argument. It only works with `Build` to define a named placeholder using syntax `${name}`.
-* `Raw(expr)` marks an `expr` as a plain string rather than an argument. The `expr` will not be included in the final arguments after `Compile`.
+* `Named(name, arg)` represents a named argument. It only works with `Build` or `BuildNamed` to define a named placeholder using syntax `${name}`.
+* `Raw(expr)` marks an `expr` as a plain string in SQL rather than an argument. When we build a builder, the value of raw expressions are copied in SQL string directly without leaving any `?` in SQL.
 
 ### Freestyle builder ###
 
@@ -214,6 +218,8 @@ fmt.Println(args)
 // EXPLAIN SELECT id FROM user WHERE status IN (?, ?) LEFT JOIN SELECT * FROM banned WHERE created_at > ? AND state IN (?, ?, ?) AND modified_at BETWEEN ? AND ?
 // [1 2 1514458225 3 4 5 1514458225 1514544625]
 ```
+
+If we just want to use `${name}` syntax to refer named arguments, use `BuildNamed` instead. It disables all special syntax but `${name}` and `$$`.
 
 ## License ##
 
