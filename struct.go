@@ -200,22 +200,42 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value interface{}) *
 
 	v := dereferencedValue(value)
 
-	if v.Type() != s.structType {
-		return ib
+	var vs []reflect.Value
+
+	if v.Kind() != reflect.Slice {
+		if v.Type() != s.structType {
+			return ib
+		}
+		vs = append(vs, v)
+	} else {
+		l := v.Len()
+		for i := 0; i < l; i++ {
+			e := dereferencedValue(v.Index(i).Interface())
+			if e.Type() == s.structType {
+				vs = append(vs, e)
+			}
+		}
+		if len(vs) == 0 {
+			return ib
+		}
 	}
 
 	cols := make([]string, 0, len(fields))
-	values := make([]interface{}, 0, len(fields))
+	values := make([][]interface{}, len(vs))
 
 	for _, f := range fields {
-		name := s.fieldAlias[f]
-		data := v.FieldByName(name).Interface()
 		cols = append(cols, f)
-		values = append(values, data)
+		name := s.fieldAlias[f]
+		for i, v := range vs {
+			data := v.FieldByName(name).Interface()
+			values[i] = append(values[i], data)
+		}
 	}
 
 	ib.Cols(cols...)
-	ib.Values(values...)
+	for _, value := range values {
+		ib.Values(value...)
+	}
 	return ib
 }
 
