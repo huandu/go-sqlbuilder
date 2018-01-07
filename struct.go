@@ -139,7 +139,7 @@ func (s *Struct) Update(table string, value interface{}) *UpdateBuilder {
 
 // UpdateForTag creates a new `UpdateBuilder` with table name.
 // By default, all fields of the s tagged with tag is assigned in UPDATE with the field values from value.
-// If value's type is not the same as that of s, Update returns a dummy `UpdateBuilder` with table name.
+// If value's type is not the same as that of s, UpdateForTag returns a dummy `UpdateBuilder` with table name.
 //
 // Caller is responsible to set WHERE condition to match right record.
 func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *UpdateBuilder {
@@ -176,14 +176,18 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 
 // InsertInto creates a new `InsertBuilder` with table name.
 // By default, all exported fields of the s is inserted in INSERT with the field values from value.
-// If value's type is not the same as that of s, Update returns a dummy `InsertBuilder` with table name.
+// Bulk insert is supported.
+// If value is a slice, item in value that is not the same as that of s will be skipped.
+// If value is not a slice and is not valid, InsertInto returns a dummy `InsertBuilder` with table name.
 func (s *Struct) InsertInto(table string, value interface{}) *InsertBuilder {
 	return s.InsertIntoForTag(table, "", value)
 }
 
 // InsertIntoForTag creates a new `InsertBuilder` with table name.
 // By default, all fields of the s tagged with tag is inserted in INSERT with the field values from value.
-// If value's type is not the same as that of s, Update returns a dummy `InsertBuilder` with table name.
+// Bulk insert is supported.
+// If value is a slice, item in value that is not the same as that of s will be skipped.
+// If value is not a slice and is not valid, InsertIntoForTag returns a dummy `InsertBuilder` with table name.
 func (s *Struct) InsertIntoForTag(table string, tag string, value interface{}) *InsertBuilder {
 	ib := NewInsertBuilder()
 	ib.InsertInto(table)
