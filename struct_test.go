@@ -100,6 +100,18 @@ func TestStructInsertInto(t *testing.T) {
 	if expected := []interface{}{123, "Huan Du", 2, 1234567890}; !reflect.DeepEqual(expected, args) {
 		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
 	}
+
+	fakeUser := struct {
+		ID int
+	}{456}
+
+	users := []interface{}{user, user, &fakeUser}
+	ib = userForTest.InsertInto("user", users)
+	sql, args = ib.Build()
+
+	if expected := []interface{}{123, "Huan Du", 2, 1234567890, 123, "Huan Du", 2, 1234567890}; !reflect.DeepEqual(expected, args) {
+		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
+	}
 }
 
 func TestStructInsertIntoForTag(t *testing.T) {
@@ -119,6 +131,19 @@ func TestStructInsertIntoForTag(t *testing.T) {
 	if expected := []interface{}{123, "Huan Du", 2}; !reflect.DeepEqual(expected, args) {
 		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
 	}
+
+	fakeUser := struct {
+		ID int
+	}{456}
+
+	users := []interface{}{user, user, &fakeUser}
+	ib = userForTest.InsertIntoForTag("user", "important", users)
+	sql, args = ib.Build()
+
+	if expected := []interface{}{123, "Huan Du", 2, 123, "Huan Du", 2}; !reflect.DeepEqual(expected, args) {
+		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
+	}
+
 }
 
 func TestStructDeleteFrom(t *testing.T) {
