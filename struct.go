@@ -200,7 +200,7 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}
 		return ib
 	}
 
-	var vs []reflect.Value
+	vs := make([]reflect.Value, 0, len(value))
 
 	for _, item := range value {
 		v := dereferencedValue(item)
@@ -213,7 +213,7 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}
 	}
 
 	cols := make([]string, 0, len(fields))
-	values := make([][]interface{}, len(vs), len(vs))
+	values := make([][]interface{}, len(vs))
 
 	for _, f := range fields {
 		cols = append(cols, f)
