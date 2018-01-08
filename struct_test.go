@@ -101,15 +101,26 @@ func TestStructInsertInto(t *testing.T) {
 		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
 	}
 
+	user2 := &structUserForTest{
+		ID:        456,
+		Name:      "Du Huan",
+		Status:    2,
+		CreatedAt: 1234567890,
+	}
+
 	fakeUser := struct {
 		ID int
-	}{456}
+	}{789}
 
-	users := []interface{}{user, user, &fakeUser}
-	ib = userForTest.InsertInto("user", users)
+	users := []interface{}{user, user2, &fakeUser}
+	ib = userForTest.InsertInto("user", users...)
 	sql, args = ib.Build()
 
-	if expected := []interface{}{123, "Huan Du", 2, 1234567890, 123, "Huan Du", 2, 1234567890}; !reflect.DeepEqual(expected, args) {
+	if expected := "INSERT INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?), (?, ?, ?, ?)"; expected != sql {
+		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
+	}
+
+	if expected := []interface{}{123, "Huan Du", 2, 1234567890, 456, "Du Huan", 2, 1234567890}; !reflect.DeepEqual(expected, args) {
 		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
 	}
 }
@@ -132,15 +143,26 @@ func TestStructInsertIntoForTag(t *testing.T) {
 		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
 	}
 
+	user2 := &structUserForTest{
+		ID:        456,
+		Name:      "Du Huan",
+		Status:    2,
+		CreatedAt: 1234567890,
+	}
+
 	fakeUser := struct {
 		ID int
-	}{456}
+	}{789}
 
-	users := []interface{}{user, user, &fakeUser}
-	ib = userForTest.InsertIntoForTag("user", "important", users)
+	users := []interface{}{user, user2, &fakeUser}
+	ib = userForTest.InsertIntoForTag("user", "important", users...)
 	sql, args = ib.Build()
 
-	if expected := []interface{}{123, "Huan Du", 2, 123, "Huan Du", 2}; !reflect.DeepEqual(expected, args) {
+	if expected := "INSERT INTO user (id, Name, status) VALUES (?, ?, ?), (?, ?, ?)"; expected != sql {
+		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
+	}
+
+	if expected := []interface{}{123, "Huan Du", 2, 456, "Du Huan", 2}; !reflect.DeepEqual(expected, args) {
 		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
 	}
 

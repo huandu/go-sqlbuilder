@@ -176,19 +176,17 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 
 // InsertInto creates a new `InsertBuilder` with table name.
 // By default, all exported fields of the s is inserted in INSERT with the field values from value.
-// Bulk insert is supported.
-// If value is a slice, item in value that is not the same as that of s will be skipped.
-// If value is not a slice and is not valid, InsertInto returns a dummy `InsertBuilder` with table name.
-func (s *Struct) InsertInto(table string, value interface{}) *InsertBuilder {
-	return s.InsertIntoForTag(table, "", value)
+// Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
+// If no item in value is valid, InsertInto returns a dummy `InsertBuilder` with table name.
+func (s *Struct) InsertInto(table string, value ...interface{}) *InsertBuilder {
+	return s.InsertIntoForTag(table, "", value...)
 }
 
 // InsertIntoForTag creates a new `InsertBuilder` with table name.
 // By default, all fields of the s tagged with tag is inserted in INSERT with the field values from value.
-// Bulk insert is supported.
-// If value is a slice, item in value that is not the same as that of s will be skipped.
-// If value is not a slice and is not valid, InsertIntoForTag returns a dummy `InsertBuilder` with table name.
-func (s *Struct) InsertIntoForTag(table string, tag string, value interface{}) *InsertBuilder {
+// Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
+// If no item in value is valid, InsertIntoForTag returns a dummy `InsertBuilder` with table name.
+func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
 	ib := NewInsertBuilder()
 	ib.InsertInto(table)
 
@@ -202,30 +200,20 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value interface{}) *
 		return ib
 	}
 
-	v := dereferencedValue(value)
-
 	var vs []reflect.Value
 
-	if v.Kind() != reflect.Slice {
-		if v.Type() != s.structType {
-			return ib
+	for _, item := range value {
+		v := dereferencedValue(item)
+		if v.Type() == s.structType {
+			vs = append(vs, v)
 		}
-		vs = append(vs, v)
-	} else {
-		l := v.Len()
-		for i := 0; i < l; i++ {
-			e := dereferencedValue(v.Index(i).Interface())
-			if e.Type() == s.structType {
-				vs = append(vs, e)
-			}
-		}
-		if len(vs) == 0 {
-			return ib
-		}
+	}
+	if len(vs) == 0 {
+		return ib
 	}
 
 	cols := make([]string, 0, len(fields))
-	values := make([][]interface{}, len(vs))
+	values := make([][]interface{}, len(vs), len(vs))
 
 	for _, f := range fields {
 		cols = append(cols, f)
