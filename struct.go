@@ -139,7 +139,7 @@ func (s *Struct) Update(table string, value interface{}) *UpdateBuilder {
 
 // UpdateForTag creates a new `UpdateBuilder` with table name.
 // By default, all fields of the s tagged with tag is assigned in UPDATE with the field values from value.
-// If value's type is not the same as that of s, Update returns a dummy `UpdateBuilder` with table name.
+// If value's type is not the same as that of s, UpdateForTag returns a dummy `UpdateBuilder` with table name.
 //
 // Caller is responsible to set WHERE condition to match right record.
 func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *UpdateBuilder {
@@ -176,15 +176,17 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 
 // InsertInto creates a new `InsertBuilder` with table name.
 // By default, all exported fields of the s is inserted in INSERT with the field values from value.
-// If value's type is not the same as that of s, Update returns a dummy `InsertBuilder` with table name.
-func (s *Struct) InsertInto(table string, value interface{}) *InsertBuilder {
-	return s.InsertIntoForTag(table, "", value)
+// Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
+// If no item in value is valid, InsertInto returns a dummy `InsertBuilder` with table name.
+func (s *Struct) InsertInto(table string, value ...interface{}) *InsertBuilder {
+	return s.InsertIntoForTag(table, "", value...)
 }
 
 // InsertIntoForTag creates a new `InsertBuilder` with table name.
 // By default, all fields of the s tagged with tag is inserted in INSERT with the field values from value.
-// If value's type is not the same as that of s, Update returns a dummy `InsertBuilder` with table name.
-func (s *Struct) InsertIntoForTag(table string, tag string, value interface{}) *InsertBuilder {
+// Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
+// If no item in value is valid, InsertIntoForTag returns a dummy `InsertBuilder` with table name.
+func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
 	ib := NewInsertBuilder()
 	ib.InsertInto(table)
 
@@ -198,24 +200,34 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value interface{}) *
 		return ib
 	}
 
-	v := dereferencedValue(value)
+	vs := make([]reflect.Value, 0, len(value))
 
-	if v.Type() != s.structType {
+	for _, item := range value {
+		v := dereferencedValue(item)
+		if v.Type() == s.structType {
+			vs = append(vs, v)
+		}
+	}
+	if len(vs) == 0 {
 		return ib
 	}
 
 	cols := make([]string, 0, len(fields))
-	values := make([]interface{}, 0, len(fields))
+	values := make([][]interface{}, len(vs))
 
 	for _, f := range fields {
-		name := s.fieldAlias[f]
-		data := v.FieldByName(name).Interface()
 		cols = append(cols, f)
-		values = append(values, data)
+		name := s.fieldAlias[f]
+		for i, v := range vs {
+			data := v.FieldByName(name).Interface()
+			values[i] = append(values[i], data)
+		}
 	}
 
 	ib.Cols(cols...)
-	ib.Values(values...)
+	for _, value := range values {
+		ib.Values(value...)
+	}
 	return ib
 }
 
