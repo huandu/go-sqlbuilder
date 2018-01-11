@@ -34,6 +34,7 @@ func Buildf(format string, arg ...interface{}) Builder {
 		vars = append(vars, args.Add(a))
 	}
 
+	format = Escape(format)
 	str := fmt.Sprintf(format, vars...)
 	sql, values := args.Compile(str)
 
