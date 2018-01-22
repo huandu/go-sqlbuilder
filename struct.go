@@ -32,7 +32,7 @@ type Struct struct {
 // If structValue is not a struct, NewStruct returns a dummy Sturct.
 func NewStruct(structValue interface{}) *Struct {
 	t := reflect.TypeOf(structValue)
-	t = deferencedType(t)
+	t = dereferencedType(t)
 	s := new(Struct)
 
 	if t.Kind() != reflect.Struct {
@@ -53,7 +53,7 @@ func (s *Struct) parse(t reflect.Type) {
 		field := t.Field(i)
 
 		if field.Anonymous {
-			ft := deferencedType(field.Type)
+			ft := dereferencedType(field.Type)
 			s.parse(ft)
 			continue
 		}
@@ -286,7 +286,7 @@ func (s *Struct) AddrWithCols(cols []string, value interface{}) []interface{} {
 	return addrs
 }
 
-func deferencedType(t reflect.Type) reflect.Type {
+func dereferencedType(t reflect.Type) reflect.Type {
 	for k := t.Kind(); k == reflect.Ptr || k == reflect.Interface; k = t.Kind() {
 		t = t.Elem()
 	}
