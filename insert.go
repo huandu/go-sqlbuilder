@@ -19,9 +19,10 @@ func NewInsertBuilder() *InsertBuilder {
 
 // InsertBuilder is a builder to build INSERT.
 type InsertBuilder struct {
-	table  string
-	cols   []string
-	values [][]string
+	table                     string
+	cols                      []string
+	values                    [][]string
+	onDuplicateKeyUpdateExprs []string
 
 	args *Args
 }
@@ -48,6 +49,17 @@ func (ib *InsertBuilder) Values(value ...interface{}) *InsertBuilder {
 
 	ib.values = append(ib.values, placeholders)
 	return ib
+}
+
+// OnDuplicateKeyUpdate sets expressions of ON DUPLICATE KEY UPDATE in INSERT.
+func (ib *InsertBuilder) OnDuplicateKeyUpdate(updateExpr ...string) *InsertBuilder {
+	ib.onDuplicateKeyUpdateExprs = append(ib.onDuplicateKeyUpdateExprs, updateExpr...)
+	return ib
+}
+
+// Assign represents SET "field = value" when ON DUPLICATE KEY UPDATE in INSERT.
+func (ib *InsertBuilder) Assign(field string, value interface{}) string {
+	return fmt.Sprintf("%v = %v", Escape(field), ib.args.Add(value))
 }
 
 // String returns the compiled DELETE string.
@@ -77,5 +89,11 @@ func (ib *InsertBuilder) Build() (sql string, args []interface{}) {
 	}
 
 	buf.WriteString(strings.Join(values, ", "))
+
+	if len(ib.onDuplicateKeyUpdateExprs) > 0 {
+		buf.WriteString(" ON DUPLICATE KEY UPDATE ")
+		buf.WriteString(strings.Join(ib.onDuplicateKeyUpdateExprs, " , "))
+	}
+
 	return ib.args.Compile(buf.String())
 }
