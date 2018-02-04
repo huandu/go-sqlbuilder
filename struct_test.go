@@ -502,3 +502,18 @@ func ExampleStruct_buildDELETE() {
 	// DELETE FROM user WHERE id = ?
 	// [1234]
 }
+
+func ExampleStruct_forPostgreSQL() {
+	userStruct := NewStruct(new(User)).For(PostgreSQL)
+
+	sb := userStruct.SelectFrom("user")
+	sb.Where(sb.E("id", 1234))
+	sql, args := sb.Build()
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT id, name, status FROM user WHERE id = $1 LIMIT 1
+	// [1234]
+}

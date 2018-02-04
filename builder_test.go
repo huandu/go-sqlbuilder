@@ -55,3 +55,14 @@ func ExampleBuildNamed() {
 	// SELECT * FROM user WHERE status IN (?, ?, ?) AND name LIKE ? AND created_at > @start AND modified_at < @start + 86400
 	// [1 2 5 Huan% {{} start 1234567890}]
 }
+
+func ExampleWithFlavor() {
+	sql, args := WithFlavor(Buildf("SELECT * FROM foo WHERE id = %v", 1234), PostgreSQL).Build()
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT * FROM foo WHERE id = $1
+	// [1234]
+}

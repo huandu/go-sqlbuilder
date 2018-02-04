@@ -12,6 +12,10 @@ import (
 
 // NewSelectBuilder creates a new SELECT builder.
 func NewSelectBuilder() *SelectBuilder {
+	return DefaultFlavor.NewSelectBuilder()
+}
+
+func newSelectBuilder() *SelectBuilder {
 	args := &Args{}
 	return &SelectBuilder{
 		Cond: Cond{
@@ -127,6 +131,12 @@ func (sb *SelectBuilder) String() string {
 // Build returns compiled SELECT string and args.
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (sb *SelectBuilder) Build() (sql string, args []interface{}) {
+	return sb.BuildWithFlavor(sb.args.Flavor)
+}
+
+// BuildWithFlavor returns compiled SELECT string and args.
+// They can be used in `DB#Query` of package `database/sql` directly.
+func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
 	buf.WriteString("SELECT ")
 
@@ -173,5 +183,12 @@ func (sb *SelectBuilder) Build() (sql string, args []interface{}) {
 		}
 	}
 
-	return sb.Args.Compile(buf.String())
+	return sb.Args.CompileWithFlavor(buf.String(), flavor)
+}
+
+// SetFlavor sets the flavor of compiled sql.
+func (sb *SelectBuilder) SetFlavor(flavor Flavor) (old Flavor) {
+	old = sb.args.Flavor
+	sb.args.Flavor = flavor
+	return
 }

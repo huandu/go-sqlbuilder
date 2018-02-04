@@ -46,6 +46,20 @@ Following builders are implemented right now. API document and examples are prov
 * [Build](https://godoc.org/github.com/huandu/go-sqlbuilder#Build): Advanced freestyle builder using special syntax defined in [Args#Compile](https://godoc.org/github.com/huandu/go-sqlbuilder#Args.Compile).
 * [BuildNamed](https://godoc.org/github.com/huandu/go-sqlbuilder#BuildNamed): Advanced freestyle builder using `${key}` to refer the value of a map by key.
 
+### Build SQL for MySQL or PostgreSQL ###
+
+Parameter markers are different in MySQL and PostgreSQL. This package provides some methods to set the type of markers (we call it "flavor") in all builders.
+
+By default, all builders uses `DefaultFlavor` to build SQL. The default value is `MySQL`.
+
+There is a `BuildWithFlavor` method in `Builder` interface. We can use it to build a SQL with provided flavor.
+
+We can wrap any `Builder` with a default flavor through `WithFlavor`.
+
+To be more verbose, we can use `PostgreSQL.NewSelectBuilder()` to create a `SelectBuilder` with the `PostgreSQL` flavor. All builders can be created in this way.
+
+Right now, there are only two flavors, `MySQL` and `PostgreSQL`. Open new issue to me to ask for a new flavor if you find it necessary.
+
 ### Using `Struct` as a light weight ORM ###
 
 `Struct` stores type information and struct fields of a struct. It's a factory of builders. We can use `Struct` methods to create initialized SELECT/INSERT/UPDATE/DELETE builders to work with the struct. It can help us to save time and avoid human-error on writing column names.

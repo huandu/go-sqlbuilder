@@ -11,6 +11,10 @@ import (
 
 // NewInsertBuilder creates a new INSERT builder.
 func NewInsertBuilder() *InsertBuilder {
+	return DefaultFlavor.NewInsertBuilder()
+}
+
+func newInsertBuilder() *InsertBuilder {
 	args := &Args{}
 	return &InsertBuilder{
 		args: args,
@@ -59,6 +63,12 @@ func (ib *InsertBuilder) String() string {
 // Build returns compiled INSERT string and args.
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (ib *InsertBuilder) Build() (sql string, args []interface{}) {
+	return ib.BuildWithFlavor(ib.args.Flavor)
+}
+
+// BuildWithFlavor returns compiled INSERT string and args.
+// They can be used in `DB#Query` of package `database/sql` directly.
+func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
 	buf.WriteString("INSERT INTO ")
 	buf.WriteString(ib.table)
@@ -77,5 +87,12 @@ func (ib *InsertBuilder) Build() (sql string, args []interface{}) {
 	}
 
 	buf.WriteString(strings.Join(values, ", "))
-	return ib.args.Compile(buf.String())
+	return ib.args.CompileWithFlavor(buf.String(), flavor)
+}
+
+// SetFlavor sets the flavor of compiled sql.
+func (ib *InsertBuilder) SetFlavor(flavor Flavor) (old Flavor) {
+	old = ib.args.Flavor
+	ib.args.Flavor = flavor
+	return
 }

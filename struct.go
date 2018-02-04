@@ -22,6 +22,8 @@ var (
 // All methods in Struct are thread-safe.
 // We can define a global variable to hold a Struct and use it in any goroutine.
 type Struct struct {
+	Flavor Flavor
+
 	structType   reflect.Type
 	fieldAlias   map[string]string
 	taggedFields map[string][]string
@@ -43,6 +45,12 @@ func NewStruct(structValue interface{}) *Struct {
 	s.fieldAlias = map[string]string{}
 	s.taggedFields = map[string][]string{}
 	s.parse(t)
+	return s
+}
+
+// For sets the default flavor of s.
+func (s *Struct) For(flavor Flavor) *Struct {
+	s.Flavor = flavor
 	return s
 }
 
@@ -109,7 +117,7 @@ func (s *Struct) SelectFrom(table string) *SelectBuilder {
 //
 // Caller is responsible to set WHERE condition to find right record.
 func (s *Struct) SelectFromForTag(table string, tag string) *SelectBuilder {
-	sb := NewSelectBuilder()
+	sb := s.Flavor.NewSelectBuilder()
 	sb.From(table)
 	sb.Limit(1)
 
@@ -143,7 +151,7 @@ func (s *Struct) Update(table string, value interface{}) *UpdateBuilder {
 //
 // Caller is responsible to set WHERE condition to match right record.
 func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *UpdateBuilder {
-	ub := NewUpdateBuilder()
+	ub := s.Flavor.NewUpdateBuilder()
 	ub.Update(table)
 
 	if s.taggedFields == nil {
@@ -187,7 +195,7 @@ func (s *Struct) InsertInto(table string, value ...interface{}) *InsertBuilder {
 // Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
 // If no item in value is valid, InsertIntoForTag returns a dummy `InsertBuilder` with table name.
 func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
-	ib := NewInsertBuilder()
+	ib := s.Flavor.NewInsertBuilder()
 	ib.InsertInto(table)
 
 	if s.taggedFields == nil {
@@ -235,7 +243,7 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}
 //
 // Caller is responsible to set WHERE condition to match right record.
 func (s *Struct) DeleteFrom(table string) *DeleteBuilder {
-	db := NewDeleteBuilder()
+	db := s.Flavor.NewDeleteBuilder()
 	db.DeleteFrom(table)
 	return db
 }

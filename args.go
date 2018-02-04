@@ -14,6 +14,9 @@ import (
 
 // Args stores arguments associated with a SQL.
 type Args struct {
+	// The default flavor used by `Args#Compile`
+	Flavor Flavor
+
 	args         []interface{}
 	namedArgs    map[string]int
 	sqlNamedArgs map[string]int
@@ -60,7 +63,7 @@ func (args *Args) add(arg interface{}) int {
 	return idx
 }
 
-// Compile analyzes builder's format to standard sql and returns associated args.
+// Compile compiles builder's format to standard sql and returns associated args.
 //
 // The format string uses a special syntax to represent arguments.
 //
@@ -69,9 +72,20 @@ func (args *Args) add(arg interface{}) int {
 //     ${name} refers a named argument created by `Named` with `name`.
 //     $$ is a "$" string.
 func (args *Args) Compile(format string) (query string, values []interface{}) {
+	return args.CompileWithFlavor(format, args.Flavor)
+}
+
+// CompileWithFlavor compiles builder's format to standard sql with flavor and returns associated args.
+//
+// See doc for `Compile` to learn details.
+func (args *Args) CompileWithFlavor(format string, flavor Flavor) (query string, values []interface{}) {
 	buf := &bytes.Buffer{}
 	idx := strings.IndexRune(format, '$')
 	offset := 0
+
+	if flavor == invalidFlavor {
+		flavor = DefaultFlavor
+	}
 
 	for idx >= 0 && len(format) > 0 {
 		if idx > 0 {
@@ -89,11 +103,11 @@ func (args *Args) Compile(format string) (query string, values []interface{}) {
 			buf.WriteRune('$')
 			format = format[1:]
 		} else if format[0] == '{' {
-			format, values = args.compileNamed(buf, format, values)
+			format, values = args.compileNamed(buf, flavor, format, values)
 		} else if !args.onlyNamed && '0' <= format[0] && format[0] <= '9' {
-			format, values, offset = args.compileDigits(buf, format, values, offset)
+			format, values, offset = args.compileDigits(buf, flavor, format, values, offset)
 		} else if !args.onlyNamed && format[0] == '?' {
-			format, values, offset = args.compileSuccessive(buf, format[1:], values, offset)
+			format, values, offset = args.compileSuccessive(buf, flavor, format[1:], values, offset)
 		}
 
 		idx = strings.IndexRune(format, '$')
@@ -123,7 +137,7 @@ func (args *Args) Compile(format string) (query string, values []interface{}) {
 	return
 }
 
-func (args *Args) compileNamed(buf *bytes.Buffer, format string, values []interface{}) (string, []interface{}) {
+func (args *Args) compileNamed(buf *bytes.Buffer, flavor Flavor, format string, values []interface{}) (string, []interface{}) {
 	i := 1
 
 	for ; i < len(format) && format[i] != '}'; i++ {
@@ -139,13 +153,13 @@ func (args *Args) compileNamed(buf *bytes.Buffer, format string, values []interf
 	format = format[i+1:]
 
 	if p, ok := args.namedArgs[name]; ok {
-		format, values, _ = args.compileSuccessive(buf, format, values, p)
+		format, values, _ = args.compileSuccessive(buf, flavor, format, values, p)
 	}
 
 	return format, values
 }
 
-func (args *Args) compileDigits(buf *bytes.Buffer, format string, values []interface{}, offset int) (string, []interface{}, int) {
+func (args *Args) compileDigits(buf *bytes.Buffer, flavor Flavor, format string, values []interface{}, offset int) (string, []interface{}, int) {
 	i := 1
 
 	for ; i < len(format) && '0' <= format[i] && format[i] <= '9'; i++ {
@@ -156,27 +170,27 @@ func (args *Args) compileDigits(buf *bytes.Buffer, format string, values []inter
 	format = format[i:]
 
 	if pointer, err := strconv.Atoi(digits); err == nil {
-		return args.compileSuccessive(buf, format, values, pointer)
+		return args.compileSuccessive(buf, flavor, format, values, pointer)
 	}
 
 	return format, values, offset
 }
 
-func (args *Args) compileSuccessive(buf *bytes.Buffer, format string, values []interface{}, offset int) (string, []interface{}, int) {
+func (args *Args) compileSuccessive(buf *bytes.Buffer, flavor Flavor, format string, values []interface{}, offset int) (string, []interface{}, int) {
 	if offset >= len(args.args) {
 		return format, values, offset
 	}
 
 	arg := args.args[offset]
-	values = args.compileArg(buf, values, arg)
+	values = args.compileArg(buf, flavor, values, arg)
 
 	return format, values, offset + 1
 }
 
-func (args *Args) compileArg(buf *bytes.Buffer, values []interface{}, arg interface{}) []interface{} {
+func (args *Args) compileArg(buf *bytes.Buffer, flavor Flavor, values []interface{}, arg interface{}) []interface{} {
 	switch a := arg.(type) {
 	case Builder:
-		s, nestedArgs := a.Build()
+		s, nestedArgs := a.BuildWithFlavor(flavor)
 		buf.WriteString(s)
 		values = append(values, nestedArgs...)
 	case sql.NamedArg:
@@ -186,15 +200,23 @@ func (args *Args) compileArg(buf *bytes.Buffer, values []interface{}, arg interf
 		buf.WriteString(a.expr)
 	case listArgs:
 		if len(a.args) > 0 {
-			values = args.compileArg(buf, values, a.args[0])
+			values = args.compileArg(buf, flavor, values, a.args[0])
 		}
 
 		for i := 1; i < len(a.args); i++ {
 			buf.WriteString(", ")
-			values = args.compileArg(buf, values, a.args[i])
+			values = args.compileArg(buf, flavor, values, a.args[i])
 		}
 	default:
-		buf.WriteRune('?')
+		switch flavor {
+		case MySQL:
+			buf.WriteRune('?')
+		case PostgreSQL:
+			fmt.Fprintf(buf, "$%v", len(values)+1)
+		default:
+			panic(fmt.Errorf("Args.CompileWithFlavor: invalid flavor %v (%v)", flavor, int(flavor)))
+		}
+
 		values = append(values, arg)
 	}
 
