@@ -57,9 +57,9 @@ func (db *DeleteBuilder) Build() (sql string, args []interface{}) {
 	return db.BuildWithFlavor(db.args.Flavor)
 }
 
-// BuildWithFlavor returns compiled DELETE string and args with flavor.
+// BuildWithFlavor returns compiled DELETE string and args with flavor and initial args.
 // They can be used in `DB#Query` of package `database/sql` directly.
-func (db *DeleteBuilder) BuildWithFlavor(flavor Flavor) (sql string, args []interface{}) {
+func (db *DeleteBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
 	buf.WriteString("DELETE FROM ")
 	buf.WriteString(db.table)
@@ -69,7 +69,7 @@ func (db *DeleteBuilder) BuildWithFlavor(flavor Flavor) (sql string, args []inte
 		buf.WriteString(strings.Join(db.whereExprs, " AND "))
 	}
 
-	return db.args.CompileWithFlavor(buf.String(), flavor)
+	return db.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
 }
 
 // SetFlavor sets the flavor of compiled sql.

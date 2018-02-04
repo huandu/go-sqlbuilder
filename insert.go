@@ -66,9 +66,9 @@ func (ib *InsertBuilder) Build() (sql string, args []interface{}) {
 	return ib.BuildWithFlavor(ib.args.Flavor)
 }
 
-// BuildWithFlavor returns compiled INSERT string and args.
+// BuildWithFlavor returns compiled INSERT string and args with flavor and initial args.
 // They can be used in `DB#Query` of package `database/sql` directly.
-func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor) (sql string, args []interface{}) {
+func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
 	buf.WriteString("INSERT INTO ")
 	buf.WriteString(ib.table)
@@ -87,7 +87,7 @@ func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor) (sql string, args []inte
 	}
 
 	buf.WriteString(strings.Join(values, ", "))
-	return ib.args.CompileWithFlavor(buf.String(), flavor)
+	return ib.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
 }
 
 // SetFlavor sets the flavor of compiled sql.

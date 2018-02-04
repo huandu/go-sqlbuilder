@@ -71,17 +71,18 @@ func (args *Args) add(arg interface{}) int {
 //     $0 $1 ... $n refers nth-argument passed in the call. Next $? will use arguments n+1.
 //     ${name} refers a named argument created by `Named` with `name`.
 //     $$ is a "$" string.
-func (args *Args) Compile(format string) (query string, values []interface{}) {
-	return args.CompileWithFlavor(format, args.Flavor)
+func (args *Args) Compile(format string, intialValue ...interface{}) (query string, values []interface{}) {
+	return args.CompileWithFlavor(format, args.Flavor, intialValue...)
 }
 
 // CompileWithFlavor compiles builder's format to standard sql with flavor and returns associated args.
 //
 // See doc for `Compile` to learn details.
-func (args *Args) CompileWithFlavor(format string, flavor Flavor) (query string, values []interface{}) {
+func (args *Args) CompileWithFlavor(format string, flavor Flavor, intialValue ...interface{}) (query string, values []interface{}) {
 	buf := &bytes.Buffer{}
 	idx := strings.IndexRune(format, '$')
 	offset := 0
+	values = intialValue
 
 	if flavor == invalidFlavor {
 		flavor = DefaultFlavor
@@ -190,9 +191,9 @@ func (args *Args) compileSuccessive(buf *bytes.Buffer, flavor Flavor, format str
 func (args *Args) compileArg(buf *bytes.Buffer, flavor Flavor, values []interface{}, arg interface{}) []interface{} {
 	switch a := arg.(type) {
 	case Builder:
-		s, nestedArgs := a.BuildWithFlavor(flavor)
+		var s string
+		s, values = a.BuildWithFlavor(flavor, values...)
 		buf.WriteString(s)
-		values = append(values, nestedArgs...)
 	case sql.NamedArg:
 		buf.WriteRune('@')
 		buf.WriteString(a.Name)

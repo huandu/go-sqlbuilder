@@ -134,9 +134,9 @@ func (sb *SelectBuilder) Build() (sql string, args []interface{}) {
 	return sb.BuildWithFlavor(sb.args.Flavor)
 }
 
-// BuildWithFlavor returns compiled SELECT string and args.
+// BuildWithFlavor returns compiled SELECT string and args with flavor and initial args.
 // They can be used in `DB#Query` of package `database/sql` directly.
-func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor) (sql string, args []interface{}) {
+func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
 	buf.WriteString("SELECT ")
 
@@ -183,7 +183,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor) (sql string, args []inte
 		}
 	}
 
-	return sb.Args.CompileWithFlavor(buf.String(), flavor)
+	return sb.Args.CompileWithFlavor(buf.String(), flavor, initialArg...)
 }
 
 // SetFlavor sets the flavor of compiled sql.

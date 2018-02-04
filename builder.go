@@ -12,7 +12,7 @@ import (
 // `SELECT * FROM t1 WHERE id IN (SELECT id FROM t2)`.
 type Builder interface {
 	Build() (sql string, args []interface{})
-	BuildWithFlavor(flavor Flavor) (sql string, args []interface{})
+	BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{})
 }
 
 type compiledBuilder struct {
@@ -24,8 +24,8 @@ func (cb *compiledBuilder) Build() (sql string, args []interface{}) {
 	return cb.args.Compile(cb.format)
 }
 
-func (cb *compiledBuilder) BuildWithFlavor(flavor Flavor) (sql string, args []interface{}) {
-	return cb.args.CompileWithFlavor(cb.format, flavor)
+func (cb *compiledBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
+	return cb.args.CompileWithFlavor(cb.format, flavor, initialArg...)
 }
 
 type flavoredBuilder struct {
@@ -37,8 +37,8 @@ func (fb *flavoredBuilder) Build() (sql string, args []interface{}) {
 	return fb.builder.BuildWithFlavor(fb.flavor)
 }
 
-func (fb *flavoredBuilder) BuildWithFlavor(flavor Flavor) (sql string, args []interface{}) {
-	return fb.builder.BuildWithFlavor(flavor)
+func (fb *flavoredBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
+	return fb.builder.BuildWithFlavor(flavor, initialArg...)
 }
 
 // WithFlavor creates a new Builder based on builder with a default flavor.
