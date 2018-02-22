@@ -44,7 +44,9 @@ type Struct struct {
 func NewStruct(structValue interface{}) *Struct {
 	t := reflect.TypeOf(structValue)
 	t = dereferencedType(t)
-	s := new(Struct)
+	s := &Struct{
+		Flavor: DefaultFlavor,
+	}
 
 	if t.Kind() != reflect.Struct {
 		return s
