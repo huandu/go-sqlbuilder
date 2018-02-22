@@ -68,12 +68,13 @@ We can define a struct type and use field tags to let `Struct` know how to creat
 
 ```go
 type ATable struct {
-    Field1     string                                  // If a field doesn't has a tag, use "Field1" as column name in SQL.
-    Field2     int    `db:"field2"`                    // Use "db" in field tag to set column name used in SQL.
-    Field3     int64  `db:"field3" fieldtag:"foo,bar"` // Set fieldtag to a field. We can use methods like `Struct#SelectForTag` to use it.
-    Field4     int64  `db:"field4" fieldtag:"foo"`     // If we use `s.SelectForTag(table, "foo")`, columnes of SELECT are field3 and field3.
-    Ignored    int32  `db:"-"`                         // If we set field name as "-", Struct will ignore it.
-    unexported int                                     // Unexported field is not visible to Struct.
+    Field1     string                                    // If a field doesn't has a tag, use "Field1" as column name in SQL.
+    Field2     int    `db:"field2"`                      // Use "db" in field tag to set column name used in SQL.
+    Field3     int64  `db:"field3" fieldtag:"foo,bar"`   // Set fieldtag to a field. We can use methods like `Struct#SelectForTag` to use it.
+    Field4     int64  `db:"field4" fieldtag:"foo"`       // If we use `s.SelectForTag(table, "foo")`, columnes of SELECT are field3 and field3.
+    Ignored    int32  `db:"-"`                           // If we set field name as "-", Struct will ignore it.
+    unexported int                                       // Unexported field is not visible to Struct.
+    Quoted     string `db:"quoted" fieldopt:"withquote"` // Add quote to the field using back quote or double quote. See `Flavor#Quote`.
 }
 ```
 

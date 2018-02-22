@@ -3,6 +3,8 @@
 
 package sqlbuilder
 
+import "fmt"
+
 // Supported flavors.
 const (
 	invalidFlavor Flavor = iota
@@ -57,4 +59,20 @@ func (f Flavor) NewUpdateBuilder() *UpdateBuilder {
 	b := newUpdateBuilder()
 	b.SetFlavor(f)
 	return b
+}
+
+// Quote adds quote for name to make sure the name can be used safely
+// as table name or field name.
+//
+// * For MySQL, use back quote (`) to quote name;
+// * For PostgreSQL, use double quote (") to quote name.
+func (f Flavor) Quote(name string) string {
+	switch f {
+	case MySQL:
+		return fmt.Sprintf("`%v`", name)
+	case PostgreSQL:
+		return fmt.Sprintf(`"%v"`, name)
+	}
+
+	return name
 }
