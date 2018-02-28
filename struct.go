@@ -15,6 +15,14 @@ var (
 	// FieldTag is the struct tag to describe the tag name for a field in struct.
 	// Use "," to separate different tags.
 	FieldTag = "fieldtag"
+
+	// FieldOpt is the options for a struct field.
+	// As db column can contain "," in theory, field options should be provided in a separated tag.
+	FieldOpt = "fieldopt"
+)
+
+const (
+	fieldOptWithQuote = "withquote"
 )
 
 // Struct represents a struct type.
@@ -22,9 +30,12 @@ var (
 // All methods in Struct are thread-safe.
 // We can define a global variable to hold a Struct and use it in any goroutine.
 type Struct struct {
+	Flavor Flavor
+
 	structType   reflect.Type
 	fieldAlias   map[string]string
 	taggedFields map[string][]string
+	quotedFields map[string]struct{}
 }
 
 // NewStruct analyzes type information in structValue
@@ -33,7 +44,9 @@ type Struct struct {
 func NewStruct(structValue interface{}) *Struct {
 	t := reflect.TypeOf(structValue)
 	t = dereferencedType(t)
-	s := new(Struct)
+	s := &Struct{
+		Flavor: DefaultFlavor,
+	}
 
 	if t.Kind() != reflect.Struct {
 		return s
@@ -42,7 +55,14 @@ func NewStruct(structValue interface{}) *Struct {
 	s.structType = t
 	s.fieldAlias = map[string]string{}
 	s.taggedFields = map[string][]string{}
+	s.quotedFields = map[string]struct{}{}
 	s.parse(t)
+	return s
+}
+
+// For sets the default flavor of s.
+func (s *Struct) For(flavor Flavor) *Struct {
+	s.Flavor = flavor
 	return s
 }
 
@@ -60,24 +80,17 @@ func (s *Struct) parse(t reflect.Type) {
 
 		// Parse DBTag.
 		dbtag := field.Tag.Get(DBTag)
-		aliasIdx := strings.Index(dbtag, ",")
-		alias := field.Name
+		alias := dbtag
 
-		if aliasIdx == 0 || dbtag == "" {
+		if dbtag == "-" {
+			continue
+		}
+
+		if dbtag == "" {
+			alias = field.Name
 			s.fieldAlias[field.Name] = field.Name
 		} else {
-			if aliasIdx > 0 {
-				alias = dbtag[:aliasIdx]
-			} else {
-				alias = dbtag
-			}
-
-			// Skip the field if DBTag is "-".
-			if alias == "-" {
-				continue
-			}
-
-			s.fieldAlias[alias] = field.Name
+			s.fieldAlias[dbtag] = field.Name
 		}
 
 		// Parse FieldTag.
@@ -91,6 +104,17 @@ func (s *Struct) parse(t reflect.Type) {
 		}
 
 		s.taggedFields[""] = append(s.taggedFields[""], alias)
+
+		// Parse FieldOpt.
+		fieldopt := field.Tag.Get(FieldOpt)
+		opts := strings.Split(fieldopt, ",")
+
+		for _, opt := range opts {
+			switch opt {
+			case fieldOptWithQuote:
+				s.quotedFields[alias] = struct{}{}
+			}
+		}
 	}
 }
 
@@ -109,7 +133,7 @@ func (s *Struct) SelectFrom(table string) *SelectBuilder {
 //
 // Caller is responsible to set WHERE condition to find right record.
 func (s *Struct) SelectFromForTag(table string, tag string) *SelectBuilder {
-	sb := NewSelectBuilder()
+	sb := s.Flavor.NewSelectBuilder()
 	sb.From(table)
 	sb.Limit(1)
 
@@ -120,6 +144,7 @@ func (s *Struct) SelectFromForTag(table string, tag string) *SelectBuilder {
 	fields, ok := s.taggedFields[tag]
 
 	if ok {
+		fields = s.quoteFields(fields)
 		sb.Select(EscapeAll(fields...)...)
 	} else {
 		sb.Select("*")
@@ -143,7 +168,7 @@ func (s *Struct) Update(table string, value interface{}) *UpdateBuilder {
 //
 // Caller is responsible to set WHERE condition to match right record.
 func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *UpdateBuilder {
-	ub := NewUpdateBuilder()
+	ub := s.Flavor.NewUpdateBuilder()
 	ub.Update(table)
 
 	if s.taggedFields == nil {
@@ -156,6 +181,7 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 		return ub
 	}
 
+	quoted := s.quoteFields(fields)
 	v := dereferencedValue(value)
 
 	if v.Type() != s.structType {
@@ -164,10 +190,10 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 
 	assignments := make([]string, 0, len(fields))
 
-	for _, f := range fields {
+	for i, f := range fields {
 		name := s.fieldAlias[f]
 		data := v.FieldByName(name).Interface()
-		assignments = append(assignments, ub.Assign(f, data))
+		assignments = append(assignments, ub.Assign(quoted[i], data))
 	}
 
 	ub.Set(assignments...)
@@ -187,7 +213,7 @@ func (s *Struct) InsertInto(table string, value ...interface{}) *InsertBuilder {
 // Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
 // If no item in value is valid, InsertIntoForTag returns a dummy `InsertBuilder` with table name.
 func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
-	ib := NewInsertBuilder()
+	ib := s.Flavor.NewInsertBuilder()
 	ib.InsertInto(table)
 
 	if s.taggedFields == nil {
@@ -224,10 +250,13 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}
 		}
 	}
 
+	cols = s.quoteFields(cols)
 	ib.Cols(cols...)
+
 	for _, value := range values {
 		ib.Values(value...)
 	}
+
 	return ib
 }
 
@@ -235,7 +264,7 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}
 //
 // Caller is responsible to set WHERE condition to match right record.
 func (s *Struct) DeleteFrom(table string) *DeleteBuilder {
-	db := NewDeleteBuilder()
+	db := s.Flavor.NewDeleteBuilder()
 	db.DeleteFrom(table)
 	return db
 }
@@ -284,6 +313,38 @@ func (s *Struct) AddrWithCols(cols []string, value interface{}) []interface{} {
 	}
 
 	return addrs
+}
+
+func (s *Struct) quoteFields(fields []string) []string {
+	// Try best not to allocate new slice.
+	if len(s.quotedFields) == 0 {
+		return fields
+	}
+
+	needQuote := false
+
+	for _, field := range fields {
+		if _, ok := s.quotedFields[field]; ok {
+			needQuote = true
+			break
+		}
+	}
+
+	if !needQuote {
+		return fields
+	}
+
+	quoted := make([]string, 0, len(fields))
+
+	for _, field := range fields {
+		if _, ok := s.quotedFields[field]; ok {
+			quoted = append(quoted, s.Flavor.Quote(field))
+		} else {
+			quoted = append(quoted, field)
+		}
+	}
+
+	return quoted
 }
 
 func dereferencedType(t reflect.Type) reflect.Type {

@@ -11,6 +11,10 @@ import (
 
 // NewUpdateBuilder creates a new UPDATE builder.
 func NewUpdateBuilder() *UpdateBuilder {
+	return DefaultFlavor.NewUpdateBuilder()
+}
+
+func newUpdateBuilder() *UpdateBuilder {
 	args := &Args{}
 	return &UpdateBuilder{
 		Cond: Cond{
@@ -99,6 +103,12 @@ func (ub *UpdateBuilder) String() string {
 // Build returns compiled UPDATE string and args.
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (ub *UpdateBuilder) Build() (sql string, args []interface{}) {
+	return ub.BuildWithFlavor(ub.args.Flavor)
+}
+
+// BuildWithFlavor returns compiled UPDATE string and args with flavor and initial args.
+// They can be used in `DB#Query` of package `database/sql` directly.
+func (ub *UpdateBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
 	buf.WriteString("UPDATE ")
 	buf.WriteString(ub.table)
@@ -110,5 +120,12 @@ func (ub *UpdateBuilder) Build() (sql string, args []interface{}) {
 		buf.WriteString(strings.Join(ub.whereExprs, " AND "))
 	}
 
-	return ub.args.Compile(buf.String())
+	return ub.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
+}
+
+// SetFlavor sets the flavor of compiled sql.
+func (ub *UpdateBuilder) SetFlavor(flavor Flavor) (old Flavor) {
+	old = ub.args.Flavor
+	ub.args.Flavor = flavor
+	return
 }

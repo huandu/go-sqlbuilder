@@ -502,3 +502,68 @@ func ExampleStruct_buildDELETE() {
 	// DELETE FROM user WHERE id = ?
 	// [1234]
 }
+
+func ExampleStruct_forPostgreSQL() {
+	userStruct := NewStruct(new(User)).For(PostgreSQL)
+
+	sb := userStruct.SelectFrom("user")
+	sb.Where(sb.E("id", 1234))
+	sql, args := sb.Build()
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT id, name, status FROM user WHERE id = $1 LIMIT 1
+	// [1234]
+}
+
+type structWithQuote struct {
+	A string  `db:"aa" fieldopt:"withquote"`
+	B int     `db:"-" fieldopt:"withquote"` // fieldopt is ignored as db is "-".
+	C float64 `db:"ccc"`
+}
+
+func TestStructWithQuote(t *testing.T) {
+	sb := NewStruct(new(structWithQuote)).For(MySQL).SelectFrom("foo")
+	sql, _ := sb.Build()
+
+	if expected := "SELECT `aa`, ccc FROM foo LIMIT 1"; sql != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
+	}
+
+	sb = NewStruct(new(structWithQuote)).For(PostgreSQL).SelectFrom("foo")
+	sql, _ = sb.Build()
+
+	if expected := `SELECT "aa", ccc FROM foo LIMIT 1`; sql != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
+	}
+
+	ub := NewStruct(new(structWithQuote)).For(MySQL).Update("foo", structWithQuote{A: "aaa"})
+	sql, _ = ub.Build()
+
+	if expected := "UPDATE foo SET `aa` = ?, ccc = ?"; sql != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
+	}
+
+	ub = NewStruct(new(structWithQuote)).For(PostgreSQL).Update("foo", structWithQuote{A: "aaa"})
+	sql, _ = ub.Build()
+
+	if expected := `UPDATE foo SET "aa" = $1, ccc = $2`; sql != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
+	}
+
+	ib := NewStruct(new(structWithQuote)).For(MySQL).InsertInto("foo", structWithQuote{A: "aaa"})
+	sql, _ = ib.Build()
+
+	if expected := "INSERT INTO foo (`aa`, ccc) VALUES (?, ?)"; sql != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
+	}
+
+	ib = NewStruct(new(structWithQuote)).For(PostgreSQL).InsertInto("foo", structWithQuote{A: "aaa"})
+	sql, _ = ib.Build()
+
+	if expected := `INSERT INTO foo ("aa", ccc) VALUES ($1, $2)`; sql != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
+	}
+}

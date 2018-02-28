@@ -4,7 +4,9 @@
 package sqlbuilder
 
 import (
+	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -35,4 +37,40 @@ func TestArgs(t *testing.T) {
 			t.Fatalf("invalid compile result. [expected:%v] [actual:%v]", expected, actual)
 		}
 	}
+
+	old := DefaultFlavor
+	DefaultFlavor = PostgreSQL
+	defer func() {
+		DefaultFlavor = old
+	}()
+
+	// PostgreSQL flavor compiled sql.
+	for expected, c := range cases {
+		args := new(Args)
+
+		for i := 1; i < len(c); i++ {
+			args.Add(c[i])
+		}
+
+		sql, values := args.Compile(c[0].(string))
+		actual := fmt.Sprintf("%v\n%v", sql, values)
+		expected = toPostgreSQL(expected)
+
+		if actual != expected {
+			t.Fatalf("invalid compile result. [expected:%v] [actual:%v]", expected, actual)
+		}
+	}
+}
+
+func toPostgreSQL(sql string) string {
+	parts := strings.Split(sql, "?")
+	buf := &bytes.Buffer{}
+	buf.WriteString(parts[0])
+
+	for i, p := range parts[1:] {
+		fmt.Fprintf(buf, "$%v", i+1)
+		buf.WriteString(p)
+	}
+
+	return buf.String()
 }
