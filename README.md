@@ -236,6 +236,64 @@ fmt.Println(args)
 
 If we just want to use `${name}` syntax to refer named arguments, use `BuildNamed` instead. It disables all special syntax but `${name}` and `$$`.
 
+### Using composite to build SQL WHERE clause ###
+
+Sometimes a query service may have methods which involve so many optional fields in WHERE clause that the methods could be ugly.  
+This is time you could use composite to represent WHERE clause.
+
+Here is a example. In query service
+```go
+var (
+    FooEClause = sqlbuilder.NewEqualClause("foo")
+    BarGEClause = sqlbuilder.NewGreaterEqualThanClause("bar")
+    FoobarInClause = sqlbuilder.NewInClause("foobar")
+)
+
+func query(clause sqlbuilder.Clause) {
+    sb := sqlbuilder.NewSelectBuilder()
+    sb.Select("*").From("table").Where(
+        sqlbuilder.Interpret(clause, sb),
+    )
+    sql, args := sb.Build()
+	
+    fmt.Println(sql)
+    fmt.Println(args)
+}
+```
+
+In client
+```go
+c1 := FooEClause.SetOperand(1)
+query(c1)
+  
+// Output:
+// SELECT * FROM table WHERE (foo = ?)
+// [1]
+  
+c2 := FooEClause.SetOperand(2).And(BarGEClause.SetOperand(3))
+query(c2)
+  
+// Output:
+// SELECT * FROM table WHERE (foo = ? AND bar >= ?)
+// [2 3]
+  
+c3 := FooEClause.SetOperand(4).Or(BarGEClause.SetOperand(5), FoobarInClause.SetOperand(6,7,8))
+query(c3)
+  
+// Output:
+// SELECT * FROM table WHERE (foo = ? OR bar >= ? OR foobar in (6,7,8))
+// [4 5]
+  
+c4 := FooEClause.SetOperand(4).Or(BarGEClause.SetOperand(5)).Not()
+query(c4)
+  
+// Output:
+// SELECT * FROM table WHERE NOT (foo = ? OR bar >= ?)
+// [4 5]
+```
+
+With the usage of And(), Or() and Not(), composite can represent any complex clause.
+
 ## License ##
 
 This package is licensed under MIT license. See LICENSE for details.
