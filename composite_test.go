@@ -59,7 +59,7 @@ func ExampleComposite() {
 }
 
 var (
-	fooEClause = NewEqualClause("foo")
+	fooEClause  = NewEqualClause("foo")
 	barGEClause = NewGreaterEqualThanClause("bar")
 )
 

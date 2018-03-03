@@ -75,7 +75,6 @@ func (o *orClause) interpret(sb *SelectBuilder) string {
 	return fmt.Sprintf("(%v)", strings.Join(orExpr, " OR "))
 }
 
-
 func (o *orClause) Not() *notClause {
 	return newNotClause(o)
 }
@@ -117,7 +116,7 @@ func (n *notClause) Or(clause ...Clause) *orClause {
 }
 
 // operate interprets basicClause into string
-type operate func(b *basicClause) string
+type operate func(sb *SelectBuilder, field string, operand []interface{}) string
 
 // newBasicClause creates a *basicClause
 func newBasicClause(field string, operate operate) *basicClause {
@@ -132,12 +131,10 @@ type basicClause struct {
 	field   string
 	operate operate
 	operand []interface{}
-	sb      *SelectBuilder
 }
 
 func (b *basicClause) interpret(sb *SelectBuilder) string {
-	b.sb = sb
-	return b.operate(b)
+	return b.operate(sb, b.field, b.operand)
 }
 
 func (b *basicClause) Not() *notClause {
@@ -191,33 +188,61 @@ func (t *twoOperandSpec) SetOperand(v1, v2 interface{}) *twoOperandSpec {
 }
 
 var (
-	isNull operate = func(b *basicClause) string { return b.sb.IsNull(b.field) }
+	isNull operate = func(sb *SelectBuilder, field string, operand []interface{}) string {
+		return sb.IsNull(field)
+	}
 
-	notNull operate = func(b *basicClause) string { return b.sb.IsNotNull(b.field) }
+	notNull operate = func(sb *SelectBuilder, field string, operand []interface{}) string {
+		return sb.IsNotNull(field)
+	}
 
-	e operate = func(b *basicClause) string { return b.sb.E(b.field, b.operand[0]) }
+	e operate = func(sb *SelectBuilder, field string, operand []interface{}) string {
+		return sb.E(field, operand[0])
+	}
 
-	ne operate = func(b *basicClause) string { return b.sb.NE(b.field, b.operand[0]) }
+	ne operate = func(sb *SelectBuilder, field string, operand []interface{}) string {
+		return sb.NE(field, operand[0])
+	}
 
-	g operate = func(b *basicClause) string { return b.sb.G(b.field, b.operand[0]) }
+	g operate = func(sb *SelectBuilder, field string, operand []interface{}) string {
+		return sb.G(field, operand[0])
+	}
 
-	ge operate = func(b *basicClause) string { return b.sb.GE(b.field, b.operand[0]) }
+	ge operate = func(sb *SelectBuilder, field string, operand []interface{}) string {
+		return sb.GE(field, operand[0])
+	}
 
-	l operate = func(b *basicClause) string { return b.sb.L(b.field, b.operand[0]) }
+	l operate = func(sb *SelectBuilder, field string, operand []interface{}) string {
+		return sb.L(field, operand[0])
+	}
 
-	le operate = func(b *basicClause) string { return b.sb.LE(b.field, b.operand[0]) }
+	le operate = func(sb *SelectBuilder, field string, operand []interface{}) string {
+		return sb.LE(field, operand[0])
+	}
 
-	like operate = func(b *basicClause) string { return b.sb.Like(b.field, b.operand[0]) }
+	like operate = func(sb *SelectBuilder, field string, operand []interface{}) string {
+		return sb.Like(field, operand[0])
+	}
 
-	notLike operate = func(b *basicClause) string { return b.sb.NotLike(b.field, b.operand[0]) }
+	notLike operate = func(sb *SelectBuilder, field string, operand []interface{}) string {
+		return sb.NotLike(field, operand[0])
+	}
 
-	between operate = func(b *basicClause) string { return b.sb.Between(b.field, b.operand[0], b.operand[1]) }
+	between operate = func(sb *SelectBuilder, field string, operand []interface{}) string {
+		return sb.Between(field, operand[0], operand[1])
+	}
 
-	notBetween operate = func(b *basicClause) string { return b.sb.NotBetween(b.field, b.operand[0], b.operand[1]) }
+	notBetween operate = func(sb *SelectBuilder, field string, operand []interface{}) string {
+		return sb.NotBetween(field, operand[0], operand[1])
+	}
 
-	in operate = func(b *basicClause) string { return b.sb.In(b.field, b.operand...) }
+	in operate = func(sb *SelectBuilder, field string, operand []interface{}) string {
+		return sb.In(field, operand...)
+	}
 
-	notIn operate = func(b *basicClause) string { return b.sb.NotIn(b.field, b.operand...) }
+	notIn operate = func(sb *SelectBuilder, field string, operand []interface{}) string {
+		return sb.NotIn(field, operand...)
+	}
 )
 
 // NewIsNullClause creates a Clause which represents "field IS NULL"
