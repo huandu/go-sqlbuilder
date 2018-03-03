@@ -115,21 +115,9 @@ func (n *notClause) Or(clause ...Clause) *orClause {
 	return newOrClause(n, clause...)
 }
 
-// operate interprets basicClause into string
-type operate func(sb *SelectBuilder, field string, operand []interface{}) string
-
-// newBasicClause creates a *basicClause
-func newBasicClause(field string, operate operate) *basicClause {
-	return &basicClause{
-		field:   field,
-		operate: operate,
-	}
-}
-
 // basicClause represents a specific basic SQL where Clause
 type basicClause struct {
-	field   string
-	operate operate
+	*operation
 	operand []interface{}
 }
 
@@ -149,42 +137,80 @@ func (b *basicClause) Or(clause ...Clause) *orClause {
 	return newOrClause(b, clause...)
 }
 
-// SetOperand set basicClause operand
-func (b *basicClause) SetOperand(value ...interface{}) *basicClause {
-	b.operand = value
-	return b
+// operate interprets basicClause into string
+type operate func(sb *SelectBuilder, field string, operand []interface{}) string
+
+// newOperation creates an *operation
+func newOperation(field string, operate operate) *operation {
+	return &operation{
+		field,
+		operate,
+	}
 }
 
-// zeroOperandClause is a basicClause which has zero operand
-type zeroOperandClause struct {
-	*basicClause
+// operation stores field and operate of clause
+type operation struct {
+	field   string
+	operate operate
 }
 
-// SetOperand accepts zero operand
-func (z *zeroOperandClause) SetOperand() *zeroOperandClause {
-	return z
+// NewClause creates *basicClause with operand value
+func (o *operation) NewClause(value ...interface{}) *basicClause {
+	return &basicClause{
+		o,
+		value,
+	}
 }
 
-// oneOperandClause is a basicClause which has one operand
-type oneOperandClause struct {
-	*basicClause
+// newZeroOperation creates a *zeroOperandOperation
+func newZeroOperation(field string, operate operate) *zeroOperandOperation {
+	return &zeroOperandOperation{
+		newOperation(field, operate),
+	}
 }
 
-// SetOperand accepts one operand
-func (o *oneOperandClause) SetOperand(v interface{}) *oneOperandClause {
-	o.basicClause.SetOperand(v)
-	return o
+// zeroOperandOperation can create *basicClause with zero operand
+type zeroOperandOperation struct {
+	*operation
 }
 
-// twoOperandSpec is a basicClause which has two operands
-type twoOperandSpec struct {
-	*basicClause
+// NewClause creates *basicClause with zero operand
+func (z *zeroOperandOperation) NewClause() *basicClause {
+	return z.operation.NewClause()
 }
 
-// SetOperand accepts two operands
-func (t *twoOperandSpec) SetOperand(v1, v2 interface{}) *twoOperandSpec {
-	t.basicClause.SetOperand(v1, v2)
-	return t
+// newOneOperandOperation creates a *oneOperandOperation
+func newOneOperandOperation(field string, operate operate) *oneOperandOperation {
+	return &oneOperandOperation{
+		newOperation(field, operate),
+	}
+}
+
+// oneOperandOperation can create *basicClause with one operand
+type oneOperandOperation struct {
+	*operation
+}
+
+// NewClause creates *basicClause with one operand v
+func (o *oneOperandOperation) NewClause(v interface{}) *basicClause {
+	return o.operation.NewClause(v)
+}
+
+// newTwoOperandOperation creates a *twoOperandOperation
+func newTwoOperandOperation(field string, operate operate) *twoOperandOperation {
+	return &twoOperandOperation{
+		newOperation(field, operate),
+	}
+}
+
+// twoOperandOperation can create *basicClause with two operand
+type twoOperandOperation struct {
+	*operation
+}
+
+// NewClause creates *basicClause with operand v1, v2
+func (t *twoOperandOperation) NewClause(v1, v2 interface{}) *basicClause {
+	return t.operation.NewClause(v1, v2)
 }
 
 var (
@@ -245,98 +271,74 @@ var (
 	}
 )
 
-// NewIsNullClause creates a Clause which represents "field IS NULL"
-func NewIsNullClause(field string) *zeroOperandClause {
-	return &zeroOperandClause{
-		newBasicClause(field, isNull),
-	}
+// NewIsNullOperation creates a operation which can create Clause that represents "field IS NULL"
+func NewIsNullOperation(field string) *zeroOperandOperation {
+	return newZeroOperation(field, isNull)
 }
 
-// NewNotNullClause creates Clause which represents "field IS NOT NULL"
-func NewNotNullClause(field string) *zeroOperandClause {
-	return &zeroOperandClause{
-		newBasicClause(field, notNull),
-	}
+// NewNotNullOperation creates operation which can create Clause that represents "field IS NOT NULL"
+func NewNotNullOperation(field string) *zeroOperandOperation {
+	return newZeroOperation(field, notNull)
 }
 
-// NewEqualClause creates Clause which represents "field = value"
-func NewEqualClause(field string) *oneOperandClause {
-	return &oneOperandClause{
-		newBasicClause(field, e),
-	}
+// NewEqualOperation creates operation which can create Clause that represents "field = value"
+func NewEqualOperation(field string) *oneOperandOperation {
+	return newOneOperandOperation(field, e)
 }
 
-// NewNotEqualClause creates Clause which represents "field != value"
-func NewNotEqualClause(field string) *oneOperandClause {
-	return &oneOperandClause{
-		newBasicClause(field, ne),
-	}
+// NewNotEqualOperation creates operation which can create Clause that represents "field != value"
+func NewNotEqualOperation(field string) *oneOperandOperation {
+	return newOneOperandOperation(field, ne)
 }
 
-// NewGreaterThanClause creates Clause which represents "field > value"
-func NewGreaterThanClause(field string) *oneOperandClause {
-	return &oneOperandClause{
-		newBasicClause(field, g),
-	}
+// NewGreaterThanOperation creates operation which can create Clause that represents "field > value"
+func NewGreaterThanOperation(field string) *oneOperandOperation {
+	return newOneOperandOperation(field, g)
 }
 
-// NewGreaterEqualThanClause creates Clause which represents "field >= value"
-func NewGreaterEqualThanClause(field string) *oneOperandClause {
-	return &oneOperandClause{
-		newBasicClause(field, ge),
-	}
+// NewGreaterEqualThanOperation creates operation which can create Clause that represents "field >= value"
+func NewGreaterEqualThanOperation(field string) *oneOperandOperation {
+	return newOneOperandOperation(field, ge)
 }
 
-// NewLessThanClause creates Clause which represents "field < value"
-func NewLessThanClause(field string) *oneOperandClause {
-	return &oneOperandClause{
-		newBasicClause(field, l),
-	}
+// NewLessThanOperation creates operation which can create Clause that represents "field < value"
+func NewLessThanOperation(field string) *oneOperandOperation {
+	return newOneOperandOperation(field, l)
 }
 
-// NewLessEqualThanClause creates Clause which represents "field <= value"
-func NewLessEqualThanClause(field string) *oneOperandClause {
-	return &oneOperandClause{
-		newBasicClause(field, le),
-	}
+// NewLessEqualThanOperation creates operation which can create Clause that represents "field <= value"
+func NewLessEqualThanOperation(field string) *oneOperandOperation {
+	return newOneOperandOperation(field, le)
 }
 
-// NewLikeClause creates Clause which represents "field LIKE value"
-func NewLikeClause(field string) *oneOperandClause {
-	return &oneOperandClause{
-		newBasicClause(field, like),
-	}
+// NewLikeOperation creates operation which can create Clause that represents "field LIKE value"
+func NewLikeOperation(field string) *oneOperandOperation {
+	return newOneOperandOperation(field, like)
 }
 
-// NewNotLikeClause creates Clause which represents "field NOT LIKE value"
-func NewNotLikeClause(field string) *oneOperandClause {
-	return &oneOperandClause{
-		newBasicClause(field, notLike),
-	}
+// NewNotLikeOperation creates operation which can create Clause that represents "field NOT LIKE value"
+func NewNotLikeOperation(field string) *oneOperandOperation {
+	return newOneOperandOperation(field, notLike)
 }
 
-// NewBetweenClause creates Clause which represents "field BETWEEN lower AND upper"
-func NewBetweenClause(field string) *twoOperandSpec {
-	return &twoOperandSpec{
-		newBasicClause(field, between),
-	}
+// NewBetweenOperation creates operation which can create Clause that represents "field BETWEEN lower AND upper"
+func NewBetweenOperation(field string) *twoOperandOperation {
+	return newTwoOperandOperation(field, between)
 }
 
-// NewNotBetweenClause creates Clause which represents "field NOT BETWEEN lower AND upper"
-func NewNotBetweenClause(field string) *twoOperandSpec {
-	return &twoOperandSpec{
-		newBasicClause(field, notBetween),
-	}
+// NewNotBetweenOperation creates operation which can create Clause that represents "field NOT BETWEEN lower AND upper"
+func NewNotBetweenOperation(field string) *twoOperandOperation {
+	return newTwoOperandOperation(field, notBetween)
 }
 
-// NewInClause creates Clause which represents "field IN (value...)"
-func NewInClause(field string) *basicClause {
-	return newBasicClause(field, in)
+// NewInOperation creates operation which can create Clause that represents "field IN (value...)"
+func NewInOperation(field string) *operation {
+	return newOperation(field, in)
 }
 
-// NewNotInClause creates Clause which represents "field NOT IN (value...)"
-func NewNotInClause(field string) *basicClause {
-	return newBasicClause(field, notIn)
+// NewNotInOperation creates operation which can create Clause that represents "field NOT IN (value...)"
+func NewNotInOperation(field string) *operation {
+	return newOperation(field, notIn)
 }
 
 // Interpret interprets Clause into string

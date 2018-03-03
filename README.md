@@ -236,17 +236,17 @@ fmt.Println(args)
 
 If we just want to use `${name}` syntax to refer named arguments, use `BuildNamed` instead. It disables all special syntax but `${name}` and `$$`.
 
-### Using composite to build SQL WHERE clause ###
+### Using Clause to build SQL WHERE clause ###
 
 Sometimes a query service may have methods which involve so many optional fields in WHERE clause that the methods could be ugly.  
-This is time you could use composite to represent WHERE clause.
+This is time you could use Clause to represent WHERE clause.
 
 Here is a example. In query service
 ```go
 var (
-    FooEClause = sqlbuilder.NewEqualClause("foo")
-    BarGEClause = sqlbuilder.NewGreaterEqualThanClause("bar")
-    FoobarInClause = sqlbuilder.NewInClause("foobar")
+    FooEOperation = sqlbuilder.NewEqualOperation("foo")
+    BarGEOperation = sqlbuilder.NewGreaterEqualThanOperation("bar")
+    FoobarInOperation = sqlbuilder.NewInOperation("foobar")
 )
 
 func query(clause sqlbuilder.Clause) {
@@ -263,28 +263,28 @@ func query(clause sqlbuilder.Clause) {
 
 In client
 ```go
-c1 := FooEClause.SetOperand(1)
+c1 := FooEOperation.NewClause(1)
 query(c1)
   
 // Output:
 // SELECT * FROM table WHERE (foo = ?)
 // [1]
   
-c2 := FooEClause.SetOperand(2).And(BarGEClause.SetOperand(3))
+c2 := FooEOperation.NewClause(2).And(BarGEOperation.NewClause(3))
 query(c2)
   
 // Output:
 // SELECT * FROM table WHERE (foo = ? AND bar >= ?)
 // [2 3]
   
-c3 := FooEClause.SetOperand(4).Or(BarGEClause.SetOperand(5), FoobarInClause.SetOperand(6,7,8))
+c3 := FooEOperation.NewClause(4).Or(BarGEOperation.NewClause(5), FoobarInOperation.NewClause(6,7,8))
 query(c3)
   
 // Output:
 // SELECT * FROM table WHERE (foo = ? OR bar >= ? OR foobar in (6,7,8))
 // [4 5]
   
-c4 := FooEClause.SetOperand(4).Or(BarGEClause.SetOperand(5)).Not()
+c4 := FooEOperation.NewClause(4).Or(BarGEOperation.NewClause(5)).Not()
 query(c4)
   
 // Output:
@@ -292,7 +292,7 @@ query(c4)
 // [4 5]
 ```
 
-With the usage of And(), Or() and Not(), composite can represent any complex clause.
+With the usage of And(), Or() and Not(), Clause can represent any complex clause.
 
 ## License ##
 
