@@ -23,7 +23,7 @@ func TestStructSelectFrom(t *testing.T) {
 	sb := userForTest.SelectFrom("user")
 	sql, args := sb.Build()
 
-	if expected := "SELECT id, Name, status, created_at FROM user LIMIT 1"; expected != sql {
+	if expected := "SELECT id, Name, status, created_at FROM user"; expected != sql {
 		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
 	}
 
@@ -36,7 +36,7 @@ func TestStructSelectFromForTag(t *testing.T) {
 	sb := userForTest.SelectFromForTag("user", "important")
 	sql, args := sb.Build()
 
-	if expected := "SELECT id, Name, status FROM user LIMIT 1"; expected != sql {
+	if expected := "SELECT id, Name, status FROM user"; expected != sql {
 		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
 	}
 
@@ -309,7 +309,7 @@ func ExampleStruct_useStructAsORM() {
 	fmt.Printf("%#v", user)
 
 	// Output:
-	// SELECT id, name, status FROM user WHERE id = ? LIMIT 1
+	// SELECT id, name, status FROM user WHERE id = ?
 	// [1234]
 	// sqlbuilder.User{ID:1234, Name:"huandu", Status:1}
 }
@@ -514,7 +514,7 @@ func ExampleStruct_forPostgreSQL() {
 	fmt.Println(args)
 
 	// Output:
-	// SELECT id, name, status FROM user WHERE id = $1 LIMIT 1
+	// SELECT id, name, status FROM user WHERE id = $1
 	// [1234]
 }
 
@@ -528,14 +528,14 @@ func TestStructWithQuote(t *testing.T) {
 	sb := NewStruct(new(structWithQuote)).For(MySQL).SelectFrom("foo")
 	sql, _ := sb.Build()
 
-	if expected := "SELECT `aa`, ccc FROM foo LIMIT 1"; sql != expected {
+	if expected := "SELECT `aa`, ccc FROM foo"; sql != expected {
 		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
 	}
 
 	sb = NewStruct(new(structWithQuote)).For(PostgreSQL).SelectFrom("foo")
 	sql, _ = sb.Build()
 
-	if expected := `SELECT "aa", ccc FROM foo LIMIT 1`; sql != expected {
+	if expected := `SELECT "aa", ccc FROM foo`; sql != expected {
 		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
 	}
 

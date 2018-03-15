@@ -119,8 +119,7 @@ func (s *Struct) parse(t reflect.Type) {
 }
 
 // SelectFrom creates a new `SelectBuilder` with table name.
-// By default, all exported fields of the s are listed as columns in SELECT
-// and LIMIT is set to 1.
+// By default, all exported fields of the s are listed as columns in SELECT.
 //
 // Caller is responsible to set WHERE condition to find right record.
 func (s *Struct) SelectFrom(table string) *SelectBuilder {
@@ -128,14 +127,12 @@ func (s *Struct) SelectFrom(table string) *SelectBuilder {
 }
 
 // SelectFromForTag creates a new `SelectBuilder` with table name for a specified tag.
-// By default, all fields of the s tagged with tag are listed as columns in SELECT
-// and LIMIT is set to 1.
+// By default, all fields of the s tagged with tag are listed as columns in SELECT.
 //
 // Caller is responsible to set WHERE condition to find right record.
 func (s *Struct) SelectFromForTag(table string, tag string) *SelectBuilder {
 	sb := s.Flavor.NewSelectBuilder()
 	sb.From(table)
-	sb.Limit(1)
 
 	if s.taggedFields == nil {
 		return sb

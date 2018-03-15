@@ -97,7 +97,7 @@ var userStruct = NewStruct(new(User))
 
 func ExampleStruct() {
     // Prepare SELECT query.
-    //     SELECT id, name, status FROM user WHERE id = 1234 LIMIT 1
+    //     SELECT id, name, status FROM user WHERE id = 1234
     sb := userStruct.SelectFrom("user")
     sb.Where(sb.Equal("id", 1234))
 
@@ -120,7 +120,7 @@ func ExampleStruct() {
     fmt.Printf("%#v", user)
 
     // Output:
-    // SELECT id, name, status FROM user WHERE id = ? LIMIT 1
+    // SELECT id, name, status FROM user WHERE id = ?
     // [1234]
     // sqlbuilder.User{ID:1234, Name:"huandu", Status:1}
 }
