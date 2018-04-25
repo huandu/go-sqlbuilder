@@ -22,7 +22,7 @@ Here is a sample to demonstrate how to build a SELECT query.
 ```go
 sb := sqlbuilder.NewSelectBuilder()
 
-sb.Select("id", "name", sb.As("COUNT(*)", c))
+sb.Select("id", "name", sb.As("COUNT(*)", "c"))
 sb.From("user")
 sb.Where(sb.In("status", 1, 2, 5))
 
