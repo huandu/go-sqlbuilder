@@ -25,7 +25,7 @@ func (c *Cond) E(field string, value interface{}) string {
 
 // NotEqual represents "field != value".
 func (c *Cond) NotEqual(field string, value interface{}) string {
-	return fmt.Sprintf("%v != %v", Escape(field), c.Args.Add(value))
+	return fmt.Sprintf("%v <> %v", Escape(field), c.Args.Add(value))
 }
 
 // NE is an alias of NotEqual.

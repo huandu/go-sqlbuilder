@@ -11,8 +11,8 @@ func TestCond(t *testing.T) {
 	cases := map[string]func() string{
 		"$$a = $0":                  func() string { return newTestCond().Equal("$a", 123) },
 		"$$b = $0":                  func() string { return newTestCond().E("$b", 123) },
-		"$$a != $0":                 func() string { return newTestCond().NotEqual("$a", 123) },
-		"$$b != $0":                 func() string { return newTestCond().NE("$b", 123) },
+		"$$a <> $0":                 func() string { return newTestCond().NotEqual("$a", 123) },
+		"$$b <> $0":                 func() string { return newTestCond().NE("$b", 123) },
 		"$$a > $0":                  func() string { return newTestCond().GreaterThan("$a", 123) },
 		"$$b > $0":                  func() string { return newTestCond().G("$b", 123) },
 		"$$a >= $0":                 func() string { return newTestCond().GreaterEqualThan("$a", 123) },
