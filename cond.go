@@ -130,6 +130,11 @@ func (c *Cond) Or(orExpr ...string) string {
 	return fmt.Sprintf("(%v)", strings.Join(orExpr, " OR "))
 }
 
+// And represents AND logic like "expr1 AND expr2 AND expr3".
+func (c *Cond) And(andExpr ...string) string {
+	return fmt.Sprintf("(%v)", strings.Join(andExpr, " AND "))
+}
+
 // Var returns a placeholder for value.
 func (c *Cond) Var(value interface{}) string {
 	return c.Args.Add(value)
