@@ -50,6 +50,7 @@ func ExampleSelectBuilder_advancedUsage() {
 		sb.In("status", Flatten([]int{1, 2, 3})...),
 		sb.Between("created_at", sql.Named("start", 1234567890), sql.Named("end", 1234599999)),
 	)
+	sb.OrderBy("modified_at").Desc()
 
 	innerSb.Select("*")
 	innerSb.From("banned")
@@ -62,6 +63,31 @@ func ExampleSelectBuilder_advancedUsage() {
 	fmt.Println(args)
 
 	// Output:
-	// SELECT id, name FROM (SELECT * FROM banned WHERE name NOT IN (?, ?)) AS user WHERE status IN (?, ?, ?) AND created_at BETWEEN @start AND @end
+	// SELECT id, name FROM (SELECT * FROM banned WHERE name NOT IN (?, ?)) AS user WHERE status IN (?, ?, ?) AND created_at BETWEEN @start AND @end ORDER BY modified_at DESC
 	// [Huan Du Charmy Liu 1 2 3 {{} start 1234567890} {{} end 1234599999}]
+}
+
+func ExampleSelectBuilder_join() {
+	sb := NewSelectBuilder()
+	sb.Select("u.id", "u.name", "c.type", "p.nickname")
+	sb.From("user u")
+	sb.Join("contract c",
+		"u.id = c.user_id",
+		sb.In("c.status", 1, 2, 5),
+	)
+	sb.JoinWithOption(RightOuterJoin, "person p",
+		"u.id = p.user_id",
+		sb.Like("p.surname", "%Du"),
+	)
+	sb.Where(
+		"u.modified_at > u.created_at + " + sb.Var(86400), // It's allowed to write arbitrary SQL.
+	)
+
+	sql, args := sb.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT u.id, u.name, c.type, p.nickname FROM user u JOIN contract c ON u.id = c.user_id AND c.status IN (?, ?, ?) RIGHT OUTER JOIN person p ON u.id = p.user_id AND p.surname LIKE ? WHERE u.modified_at > u.created_at + ?
+	// [1 2 5 %Du 86400]
 }

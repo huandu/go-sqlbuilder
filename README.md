@@ -236,6 +236,19 @@ fmt.Println(args)
 
 If we just want to use `${name}` syntax to refer named arguments, use `BuildNamed` instead. It disables all special syntax but `${name}` and `$$`.
 
+## FAQ ##
+
+### What's the difference between this package and `squirrel` ###
+
+Package [squirrel](https://github.com/Masterminds/squirrel) is another SQL builder package with outstanding design and high code quality.
+Comparing with `squirrel`, `go-sqlbuilder` is much more extensible with more built-in features.
+
+Here are details.
+
+* API design: The core of `go-sqlbuilder` is `Builder` and `Args`. Nearly all featuers are built on top of them. If we want to extend this package, e.g. support `EXPLAIN`, we can use `Build("EXPLAIN $?", builder)` to add `EXPLAIN` in front of any SQL.
+* ORM: Package `squirrel` doesn't provide ORM directly. There is another package [structable](https://github.com/Masterminds/structable), which is based on `squirrel`, designed for ORM.
+* No design pitfalls: There is no design pitfalls like `squirrel.Eq{"mynumber": []uint8{1,2,3}}`. I'm proud of it. :)
+
 ## License ##
 
 This package is licensed under MIT license. See LICENSE for details.

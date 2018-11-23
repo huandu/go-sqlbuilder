@@ -10,6 +10,19 @@ import (
 	"strings"
 )
 
+// JoinOption is the option in JOIN.
+type JoinOption string
+
+// Join options.
+const (
+	LeftJoin       JoinOption = "LEFT"
+	LeftOuterJoin  JoinOption = "LEFT OUTER"
+	RightJoin      JoinOption = "RIGHT"
+	RightOuterJoin JoinOption = "RIGHT OUTER"
+	FullJoin       JoinOption = "FULL"
+	FullOuterJoin  JoinOption = "FULL OUTER"
+)
+
 // NewSelectBuilder creates a new SELECT builder.
 func NewSelectBuilder() *SelectBuilder {
 	return DefaultFlavor.NewSelectBuilder()
@@ -34,6 +47,9 @@ type SelectBuilder struct {
 	distinct    bool
 	tables      []string
 	selectCols  []string
+	joinOptions []JoinOption
+	joinTables  []string
+	joinExprs   [][]string
 	whereExprs  []string
 	havingExprs []string
 	groupByCols []string
@@ -60,6 +76,31 @@ func (sb *SelectBuilder) Select(col ...string) *SelectBuilder {
 // From sets table names in SELECT.
 func (sb *SelectBuilder) From(table ...string) *SelectBuilder {
 	sb.tables = table
+	return sb
+}
+
+// Join sets expressions of JOIN in SELECT.
+//
+// It builds a JOIN expression like
+//     JOIN table ON onExpr[0] AND onExpr[1] ...
+func (sb *SelectBuilder) Join(table string, onExpr ...string) *SelectBuilder {
+	return sb.JoinWithOption("", table, onExpr...)
+}
+
+// JoinWithOption sets expressions of JOIN with an option.
+//
+// It builds a JOIN expression like
+//     option JOIN table ON onExpr[0] AND onExpr[1] ...
+//
+// Here is a list of supported options.
+//     - LeftJoin: LEFT JOIN
+//     - LeftOuterJoin: LEFT OUTER JOIN
+//     - RightJoin: RIGHT JOIN
+//     - RightOuterJoin: RIGHT OUTER JOIN
+func (sb *SelectBuilder) JoinWithOption(option JoinOption, table string, onExpr ...string) *SelectBuilder {
+	sb.joinOptions = append(sb.joinOptions, option)
+	sb.joinTables = append(sb.joinTables, table)
+	sb.joinExprs = append(sb.joinExprs, onExpr)
 	return sb
 }
 
@@ -112,8 +153,8 @@ func (sb *SelectBuilder) Offset(offset int) *SelectBuilder {
 }
 
 // As returns an AS expression.
-func (sb *SelectBuilder) As(col, alias string) string {
-	return fmt.Sprintf("%v AS %v", col, Escape(alias))
+func (sb *SelectBuilder) As(name, alias string) string {
+	return fmt.Sprintf("%v AS %v", name, Escape(alias))
 }
 
 // BuilderAs returns an AS expression wrapping a complex SQL.
@@ -147,6 +188,21 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	buf.WriteString(strings.Join(sb.selectCols, ", "))
 	buf.WriteString(" FROM ")
 	buf.WriteString(strings.Join(sb.tables, ", "))
+
+	for i := range sb.joinTables {
+		if option := sb.joinOptions[i]; option != "" {
+			buf.WriteRune(' ')
+			buf.WriteString(string(option))
+		}
+
+		buf.WriteString(" JOIN ")
+		buf.WriteString(sb.joinTables[i])
+
+		if exprs := sb.joinExprs[i]; len(exprs) > 0 {
+			buf.WriteString(" ON ")
+			buf.WriteString(strings.Join(sb.joinExprs[i], " AND "))
+		}
+	}
 
 	if len(sb.whereExprs) > 0 {
 		buf.WriteString(" WHERE ")
