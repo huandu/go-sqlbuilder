@@ -75,6 +75,7 @@ type ATable struct {
     Ignored    int32  `db:"-"`                           // If we set field name as "-", Struct will ignore it.
     unexported int                                       // Unexported field is not visible to Struct.
     Quoted     string `db:"quoted" fieldopt:"withquote"` // Add quote to the field using back quote or double quote. See `Flavor#Quote`.
+    Empty      uint   `db:"empty" fieldopt:"omitempty"`  // Omit the field in UPDATE if it is a nil or zero value.
 }
 ```
 
