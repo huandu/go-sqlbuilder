@@ -23,6 +23,7 @@ var (
 
 const (
 	fieldOptWithQuote = "withquote"
+	fieldOptOmitEmpty = "omitempty"
 )
 
 // Struct represents a struct type.
@@ -32,10 +33,11 @@ const (
 type Struct struct {
 	Flavor Flavor
 
-	structType   reflect.Type
-	fieldAlias   map[string]string
-	taggedFields map[string][]string
-	quotedFields map[string]struct{}
+	structType      reflect.Type
+	fieldAlias      map[string]string
+	taggedFields    map[string][]string
+	quotedFields    map[string]struct{}
+	omitEmptyFields map[string]struct{}
 }
 
 // NewStruct analyzes type information in structValue
@@ -56,6 +58,7 @@ func NewStruct(structValue interface{}) *Struct {
 	s.fieldAlias = map[string]string{}
 	s.taggedFields = map[string][]string{}
 	s.quotedFields = map[string]struct{}{}
+	s.omitEmptyFields = map[string]struct{}{}
 	s.parse(t)
 	return s
 }
@@ -113,6 +116,8 @@ func (s *Struct) parse(t reflect.Type) {
 			switch opt {
 			case fieldOptWithQuote:
 				s.quotedFields[alias] = struct{}{}
+			case fieldOptOmitEmpty:
+				s.omitEmptyFields[alias] = struct{}{}
 			}
 		}
 	}
@@ -178,18 +183,26 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 		return ub
 	}
 
-	quoted := s.quoteFields(fields)
-	v := dereferencedValue(value)
+	v := reflect.ValueOf(value)
+	v = dereferencedValue(v)
 
 	if v.Type() != s.structType {
 		return ub
 	}
 
+	quoted := s.quoteFields(fields)
 	assignments := make([]string, 0, len(fields))
 
 	for i, f := range fields {
 		name := s.fieldAlias[f]
-		data := v.FieldByName(name).Interface()
+		val := v.FieldByName(name)
+
+		if _, ok := s.omitEmptyFields[f]; ok && isEmptyValue(val) {
+			continue
+		}
+
+		val = dereferencedValue(val)
+		data := val.Interface()
 		assignments = append(assignments, ub.Assign(quoted[i], data))
 	}
 
@@ -226,11 +239,14 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}
 	vs := make([]reflect.Value, 0, len(value))
 
 	for _, item := range value {
-		v := dereferencedValue(item)
+		v := reflect.ValueOf(item)
+		v = dereferencedValue(v)
+
 		if v.Type() == s.structType {
 			vs = append(vs, v)
 		}
 	}
+
 	if len(vs) == 0 {
 		return ib
 	}
@@ -241,6 +257,7 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}
 	for _, f := range fields {
 		cols = append(cols, f)
 		name := s.fieldAlias[f]
+
 		for i, v := range vs {
 			data := v.FieldByName(name).Interface()
 			values[i] = append(values[i], data)
@@ -289,7 +306,8 @@ func (s *Struct) AddrForTag(tag string, value interface{}) []interface{} {
 // AddrWithCols takes address of all columns defined in cols from the value.
 // The returned result can be used in `Row#Scan` directly.
 func (s *Struct) AddrWithCols(cols []string, value interface{}) []interface{} {
-	v := dereferencedValue(value)
+	v := reflect.ValueOf(value)
+	v = dereferencedValue(v)
 
 	if v.Type() != s.structType {
 		return nil
@@ -352,12 +370,29 @@ func dereferencedType(t reflect.Type) reflect.Type {
 	return t
 }
 
-func dereferencedValue(value interface{}) reflect.Value {
-	v := reflect.ValueOf(value)
-
+func dereferencedValue(v reflect.Value) reflect.Value {
 	for k := v.Kind(); k == reflect.Ptr || k == reflect.Interface; k = v.Kind() {
 		v = v.Elem()
 	}
 
 	return v
+}
+
+func isEmptyValue(value reflect.Value) bool {
+	switch value.Kind() {
+	case reflect.Interface, reflect.Ptr, reflect.Chan, reflect.Func, reflect.Map, reflect.Slice:
+		return value.IsNil()
+	case reflect.Bool:
+		return !value.Bool()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return value.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return value.Uint() == 0
+	case reflect.String:
+		return value.String() == ""
+	case reflect.Float32, reflect.Float64:
+		return value.Float() == 0
+	}
+
+	return false
 }
