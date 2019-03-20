@@ -246,7 +246,7 @@ Comparing with `squirrel`, `go-sqlbuilder` is much more extensible with more bui
 
 Here are details.
 
-* API design: The core of `go-sqlbuilder` is `Builder` and `Args`. Nearly all featuers are built on top of them. If we want to extend this package, e.g. support `EXPLAIN`, we can use `Build("EXPLAIN $?", builder)` to add `EXPLAIN` in front of any SQL.
+* API design: The core of `go-sqlbuilder` is `Builder` and `Args`. Nearly all features are built on top of them. If we want to extend this package, e.g. support `EXPLAIN`, we can use `Build("EXPLAIN $?", builder)` to add `EXPLAIN` in front of any SQL.
 * ORM: Package `squirrel` doesn't provide ORM directly. There is another package [structable](https://github.com/Masterminds/structable), which is based on `squirrel`, designed for ORM.
 * No design pitfalls: There is no design pitfalls like `squirrel.Eq{"mynumber": []uint8{1,2,3}}`. I'm proud of it. :)
 
