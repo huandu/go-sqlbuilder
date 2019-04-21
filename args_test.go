@@ -18,7 +18,7 @@ func TestArgs(t *testing.T) {
 		"abc ? def\n[789]":                   {"abc ${s} def", Named("s", 789)},
 		"abc  def \n[]":                      {"abc ${unknown} def ", 123},
 		"abc $ def\n[]":                      {"abc $$ def", 123},
-		"abcdef\n[]":                         {"abcdef$", 123},
+		"abcdef$\n[]":                        {"abcdef$", 123},
 		"abc ? ? ? ? def\n[123 456 123 456]": {"abc $? $? $0 $? def", 123, 456, 789},
 		"abc ? raw ? raw def\n[123 123]":     {"abc $? $? $0 $? def", 123, Raw("raw"), 789},
 	}
