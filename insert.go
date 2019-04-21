@@ -17,12 +17,14 @@ func NewInsertBuilder() *InsertBuilder {
 func newInsertBuilder() *InsertBuilder {
 	args := &Args{}
 	return &InsertBuilder{
+		verb: "INSERT",
 		args: args,
 	}
 }
 
 // InsertBuilder is a builder to build INSERT.
 type InsertBuilder struct {
+	verb   string
 	table  string
 	cols   []string
 	values [][]string
@@ -32,6 +34,14 @@ type InsertBuilder struct {
 
 // InsertInto sets table name in INSERT.
 func (ib *InsertBuilder) InsertInto(table string) *InsertBuilder {
+	ib.table = Escape(table)
+	return ib
+}
+
+// ReplaceInto sets table name and changes the verb of ib to REPLACE.
+// REPLACE INTO is a MySQL extension to the SQL standard.
+func (ib *InsertBuilder) ReplaceInto(table string) *InsertBuilder {
+	ib.verb = "REPLACE"
 	ib.table = Escape(table)
 	return ib
 }
@@ -54,7 +64,7 @@ func (ib *InsertBuilder) Values(value ...interface{}) *InsertBuilder {
 	return ib
 }
 
-// String returns the compiled DELETE string.
+// String returns the compiled INSERT string.
 func (ib *InsertBuilder) String() string {
 	s, _ := ib.Build()
 	return s
@@ -70,7 +80,8 @@ func (ib *InsertBuilder) Build() (sql string, args []interface{}) {
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
-	buf.WriteString("INSERT INTO ")
+	buf.WriteString(ib.verb)
+	buf.WriteString(" INTO ")
 	buf.WriteString(ib.table)
 
 	if len(ib.cols) > 0 {
