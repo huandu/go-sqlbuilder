@@ -95,20 +95,24 @@ func (args *Args) CompileWithFlavor(format string, flavor Flavor, intialValue ..
 
 		format = format[idx+1:]
 
-		// Should not happen.
+		// Treat the $ at the end of format is a normal $ rune.
 		if len(format) == 0 {
+			buf.WriteRune('$')
 			break
 		}
 
-		if format[0] == '$' {
+		if r := format[0]; r == '$' {
 			buf.WriteRune('$')
 			format = format[1:]
-		} else if format[0] == '{' {
+		} else if r == '{' {
 			format, values = args.compileNamed(buf, flavor, format, values)
-		} else if !args.onlyNamed && '0' <= format[0] && format[0] <= '9' {
+		} else if !args.onlyNamed && '0' <= r && r <= '9' {
 			format, values, offset = args.compileDigits(buf, flavor, format, values, offset)
-		} else if !args.onlyNamed && format[0] == '?' {
+		} else if !args.onlyNamed && r == '?' {
 			format, values, offset = args.compileSuccessive(buf, flavor, format[1:], values, offset)
+		} else {
+			// For unknown $ expression format, treat it as a normal $ rune.
+			buf.WriteRune('$')
 		}
 
 		idx = strings.IndexRune(format, '$')
