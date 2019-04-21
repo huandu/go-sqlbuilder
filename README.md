@@ -38,6 +38,7 @@ fmt.Println(args)
 Following builders are implemented right now. API document and examples are provided in the `godoc` document.
 
 * [Struct](https://godoc.org/github.com/huandu/go-sqlbuilder#Struct): Builder factory for a struct.
+* [CreateTableBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#CreateTableBuilder): Builder for CREATE TABLE.
 * [SelectBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#SelectBuilder): Builder for SELECT.
 * [InsertBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#InsertBuilder): Builder for INSERT.
 * [UpdateBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#UpdateBuilder): Builder for UPDATE.

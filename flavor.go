@@ -33,6 +33,13 @@ func (f Flavor) String() string {
 	return "<invalid>"
 }
 
+// NewCreateTableBuilder creates a new CREATE TABLE builder with flavor.
+func (f Flavor) NewCreateTableBuilder() *CreateTableBuilder {
+	b := newCreateTableBuilder()
+	b.SetFlavor(f)
+	return b
+}
+
 // NewDeleteBuilder creates a new DELETE builder with flavor.
 func (f Flavor) NewDeleteBuilder() *DeleteBuilder {
 	b := newDeleteBuilder()
