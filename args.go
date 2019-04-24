@@ -23,9 +23,28 @@ type Args struct {
 	onlyNamed    bool
 }
 
+func init() {
+	// Predefine some $n args to avoid additional memory allocation.
+	predefinedArgs = make([]string, 0, maxPredefinedArgs)
+
+	for i := 0; i < maxPredefinedArgs; i++ {
+		predefinedArgs = append(predefinedArgs, fmt.Sprintf("$%v", i))
+	}
+}
+
+const maxPredefinedArgs = 1024
+
+var predefinedArgs []string
+
 // Add adds an arg to Args and returns a placeholder.
 func (args *Args) Add(arg interface{}) string {
-	return fmt.Sprintf("$%v", args.add(arg))
+	idx := args.add(arg)
+
+	if idx < maxPredefinedArgs {
+		return predefinedArgs[idx]
+	}
+
+	return fmt.Sprintf("$%v", idx)
 }
 
 func (args *Args) add(arg interface{}) int {

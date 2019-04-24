@@ -238,6 +238,32 @@ fmt.Println(args)
 
 If we just want to use `${name}` syntax to refer named arguments, use `BuildNamed` instead. It disables all special syntax but `${name}` and `$$`.
 
+### Interpolate `args` in the `sql` ###
+
+Some SQL drivers doesn't actually implement `StmtExecContext#ExecContext`. They will fail when `len(args) > 0`. The only solution is to interpolate `args` in the `sql`, and execute the interpolated query with the driver.
+
+*Security warning*: I try my best to escape special characters in interpolate methods, but it's still less secure than `Stmt` implemented by SQL drivers. If `Stmt` is well supported, it's highly recommended to use `Stmt` instead of this feature.
+
+This feature is inspired by package `github.com/go-sql-driver/mysql`.
+
+```go
+sb := MySQL.NewSelectBuilder()
+sb.Select("name").From("user").Where(
+    sb.NE("id", 1234),
+    sb.E("name", "Charmy Liu"),
+    sb.Like("desc", "%mother's day%"),
+)
+sql, args := sb.Build()
+query, err := MySQL.Interpolate(sql, args)
+
+fmt.Println(query)
+fmt.Println(err)
+
+// Output:
+// SELECT name FROM user WHERE id <> 1234 AND name = 'Charmy Liu' AND desc LIKE '%mother\'s day%'
+// <nil>
+```
+
 ## FAQ ##
 
 ### What's the difference between this package and `squirrel` ###
