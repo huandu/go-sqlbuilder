@@ -74,3 +74,15 @@ func toPostgreSQL(sql string) string {
 
 	return buf.String()
 }
+
+func TestArgsAdd(t *testing.T) {
+	args := &Args{}
+
+	for i := 0; i < maxPredefinedArgs*2; i++ {
+		expected := fmt.Sprintf("$%v", i)
+
+		if actual := args.Add(i); actual != expected {
+			t.Fatalf("invalid args placeholder. [expected:%v] [actual:%v]", expected, actual)
+		}
+	}
+}

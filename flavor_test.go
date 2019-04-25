@@ -146,3 +146,26 @@ func ExampleFlavor_Interpolate() {
 	// SELECT name FROM user WHERE id <> 1234 AND name = 'Charmy Liu' AND desc LIKE '%mother\'s day%'
 	// <nil>
 }
+
+func ExampleFlavor_Interpolate_postgreSQL() {
+	query, err := PostgreSQL.Interpolate(`
+CREATE FUNCTION dup(in int, out f1 int, out f2 text) AS $$
+    SELECT $1, CAST($1 AS text) || ' is text'
+$$
+LANGUAGE SQL;
+
+SELECT * FROM dup(42);`, []interface{}{42, 64})
+
+	fmt.Println(query)
+	fmt.Println(err)
+
+	// Output:
+	//
+	// CREATE FUNCTION dup(in int, out f1 int, out f2 text) AS $$
+	//     SELECT $1, CAST($1 AS text) || ' is text'
+	// $$
+	// LANGUAGE SQL;
+	//
+	// SELECT * FROM dup(42);
+	// <nil>
+}

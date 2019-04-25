@@ -32,7 +32,7 @@ func init() {
 	}
 }
 
-const maxPredefinedArgs = 1024
+const maxPredefinedArgs = 64
 
 var predefinedArgs []string
 

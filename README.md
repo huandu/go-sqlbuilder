@@ -242,9 +242,11 @@ If we just want to use `${name}` syntax to refer named arguments, use `BuildName
 
 Some SQL drivers doesn't actually implement `StmtExecContext#ExecContext`. They will fail when `len(args) > 0`. The only solution is to interpolate `args` in the `sql`, and execute the interpolated query with the driver.
 
-*Security warning*: I try my best to escape special characters in interpolate methods, but it's still less secure than `Stmt` implemented by SQL drivers. If `Stmt` is well supported, it's highly recommended to use `Stmt` instead of this feature.
+*Security warning*: I try my best to escape special characters in interpolate methods, but it's still less secure than `Stmt` implemented by SQL servers.
 
-This feature is inspired by package `github.com/go-sql-driver/mysql`.
+This feature is inspired by interpolation feature in package `github.com/go-sql-driver/mysql`.
+
+Here is a sample for MySQL.
 
 ```go
 sb := MySQL.NewSelectBuilder()
@@ -261,6 +263,31 @@ fmt.Println(err)
 
 // Output:
 // SELECT name FROM user WHERE id <> 1234 AND name = 'Charmy Liu' AND desc LIKE '%mother\'s day%'
+// <nil>
+```
+
+And a sample for PostgreSQL. Note that the dollar quote is supported.
+
+```go
+query, err := PostgreSQL.Interpolate(`
+CREATE FUNCTION dup(in int, out f1 int, out f2 text) AS $$
+    SELECT $1, CAST($1 AS text) || ' is text'
+$$
+LANGUAGE SQL;
+
+SELECT * FROM dup(42);`, []interface{}{42, 64})
+
+fmt.Println(query)
+fmt.Println(err)
+
+// Output:
+//
+// CREATE FUNCTION dup(in int, out f1 int, out f2 text) AS $$
+//     SELECT $1, CAST($1 AS text) || ' is text'
+// $$
+// LANGUAGE SQL;
+//
+// SELECT * FROM dup(42);
 // <nil>
 ```
 
