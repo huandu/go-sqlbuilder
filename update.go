@@ -39,7 +39,10 @@ func (ub *UpdateBuilder) Update(table string) *UpdateBuilder {
 
 // Set sets the assignements in SET.
 func (ub *UpdateBuilder) Set(assignment ...string) *UpdateBuilder {
-	ub.assignments = assignment
+	for _, ass := range assignment {
+		ub.assignments = append(ub.assignments, ass)
+	}
+	//ub.assignments = assignment
 	return ub
 }
 
