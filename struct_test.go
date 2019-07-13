@@ -610,3 +610,33 @@ func TestStructOmitEmpty(t *testing.T) {
 		t.Fatalf("invalid args. [expected:%#v] [actual:%#v]", expected, args2)
 	}
 }
+
+type structWithPointers struct {
+	A int      `db:"aa" fieldopt:"omitempty"`
+	B *string  `db:"bb"`
+	C *float64 `db:"cc" fieldopt:"omitempty"`
+}
+
+func TestStructWithPointers(t *testing.T) {
+	st := NewStruct(new(structWithPointers)).For(MySQL)
+	sql1, _ := st.Update("foo", new(structWithPointers)).Build()
+
+	if expected := "UPDATE foo SET bb = ?"; sql1 != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql1)
+	}
+
+	a := 123
+	c := 123.45
+	sql2, args2 := st.Update("foo", &structWithPointers{
+		A: a,
+		C: &c,
+	}).Build()
+
+	if expected := "UPDATE foo SET aa = ?, bb = ?, cc = ?"; sql2 != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql2)
+	}
+
+	if expected := []interface{}{a, (*string)(nil), c}; !reflect.DeepEqual(expected, args2) {
+		t.Fatalf("invalid args. [expected:%#v] [actual:%#v]", expected, args2)
+	}
+}
