@@ -197,11 +197,13 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 		name := s.fieldAlias[f]
 		val := v.FieldByName(name)
 
-		if _, ok := s.omitEmptyFields[f]; ok && isEmptyValue(val) {
-			continue
+		if isEmptyValue(val) {
+			if _, ok := s.omitEmptyFields[f]; ok {
+				continue
+			}
+		} else {
+			val = dereferencedValue(val)
 		}
-
-		val = dereferencedValue(val)
 		data := val.Interface()
 		assignments = append(assignments, ub.Assign(quoted[i], data))
 	}
