@@ -232,7 +232,8 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	if sb.limit >= 0 {
 		buf.WriteString(" LIMIT ")
 		buf.WriteString(strconv.Itoa(sb.limit))
-
+	}
+	if MySQL == flavor && sb.limit >= 0 || PostgreSQL == flavor {
 		if sb.offset >= 0 {
 			buf.WriteString(" OFFSET ")
 			buf.WriteString(strconv.Itoa(sb.offset))
