@@ -57,3 +57,21 @@ func TestUpdateAssignments(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdateBuilder_SetAppend(t *testing.T) {
+	ub := NewUpdateBuilder()
+	ub.Set(
+		ub.Assign("a", 1),
+		ub.Assign("b", 2),
+	)
+	ub.SetAppend(
+		ub.Assign("c", 3),
+		ub.Incr("d"),
+	)
+	sql, args := ub.Build()
+	actual := fmt.Sprintf("%v|%v", sql, args)
+
+	if expected := "UPDATE  SET a = ?, b = ?, c = ?, d = d + 1|[1 2 3]"; actual != expected {
+		t.Fatalf("invalid assignment result. [expected:%v] [actual:%v]", expected, actual)
+	}
+}
