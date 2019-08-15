@@ -22,7 +22,7 @@ Here is a sample to demonstrate how to build a SELECT query.
 ```go
 sb := sqlbuilder.NewSelectBuilder()
 
-sb.Select("id", "name", sb.As("COUNT(*)", c))
+sb.Select("id", "name", sb.As("COUNT(*)", "c"))
 sb.From("user")
 sb.Where(sb.In("status", 1, 2, 5))
 
@@ -38,6 +38,7 @@ fmt.Println(args)
 Following builders are implemented right now. API document and examples are provided in the `godoc` document.
 
 * [Struct](https://godoc.org/github.com/huandu/go-sqlbuilder#Struct): Builder factory for a struct.
+* [CreateTableBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#CreateTableBuilder): Builder for CREATE TABLE.
 * [SelectBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#SelectBuilder): Builder for SELECT.
 * [InsertBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#InsertBuilder): Builder for INSERT.
 * [UpdateBuilder](https://godoc.org/github.com/huandu/go-sqlbuilder#UpdateBuilder): Builder for UPDATE.
@@ -71,10 +72,11 @@ type ATable struct {
     Field1     string                                    // If a field doesn't has a tag, use "Field1" as column name in SQL.
     Field2     int    `db:"field2"`                      // Use "db" in field tag to set column name used in SQL.
     Field3     int64  `db:"field3" fieldtag:"foo,bar"`   // Set fieldtag to a field. We can use methods like `Struct#SelectForTag` to use it.
-    Field4     int64  `db:"field4" fieldtag:"foo"`       // If we use `s.SelectForTag(table, "foo")`, columnes of SELECT are field3 and field3.
+    Field4     int64  `db:"field4" fieldtag:"foo"`       // If we use `s.SelectForTag(table, "foo")`, columnes of SELECT are field3 and field4.
     Ignored    int32  `db:"-"`                           // If we set field name as "-", Struct will ignore it.
     unexported int                                       // Unexported field is not visible to Struct.
     Quoted     string `db:"quoted" fieldopt:"withquote"` // Add quote to the field using back quote or double quote. See `Flavor#Quote`.
+    Empty      uint   `db:"empty" fieldopt:"omitempty"`  // Omit the field in UPDATE if it is a nil or zero value.
 }
 ```
 
@@ -97,7 +99,7 @@ var userStruct = NewStruct(new(User))
 
 func ExampleStruct() {
     // Prepare SELECT query.
-    //     SELECT id, name, status FROM user WHERE id = 1234 LIMIT 1
+    //     SELECT id, name, status FROM user WHERE id = 1234
     sb := userStruct.SelectFrom("user")
     sb.Where(sb.Equal("id", 1234))
 
@@ -120,7 +122,7 @@ func ExampleStruct() {
     fmt.Printf("%#v", user)
 
     // Output:
-    // SELECT id, name, status FROM user WHERE id = ? LIMIT 1
+    // SELECT id, name, status FROM user WHERE id = ?
     // [1234]
     // sqlbuilder.User{ID:1234, Name:"huandu", Status:1}
 }
@@ -235,6 +237,74 @@ fmt.Println(args)
 ```
 
 If we just want to use `${name}` syntax to refer named arguments, use `BuildNamed` instead. It disables all special syntax but `${name}` and `$$`.
+
+### Interpolate `args` in the `sql` ###
+
+Some SQL drivers doesn't actually implement `StmtExecContext#ExecContext`. They will fail when `len(args) > 0`. The only solution is to interpolate `args` in the `sql`, and execute the interpolated query with the driver.
+
+*Security warning*: I try my best to escape special characters in interpolate methods, but it's still less secure than `Stmt` implemented by SQL servers.
+
+This feature is inspired by interpolation feature in package `github.com/go-sql-driver/mysql`.
+
+Here is a sample for MySQL.
+
+```go
+sb := MySQL.NewSelectBuilder()
+sb.Select("name").From("user").Where(
+    sb.NE("id", 1234),
+    sb.E("name", "Charmy Liu"),
+    sb.Like("desc", "%mother's day%"),
+)
+sql, args := sb.Build()
+query, err := MySQL.Interpolate(sql, args)
+
+fmt.Println(query)
+fmt.Println(err)
+
+// Output:
+// SELECT name FROM user WHERE id <> 1234 AND name = 'Charmy Liu' AND desc LIKE '%mother\'s day%'
+// <nil>
+```
+
+And a sample for PostgreSQL. Note that the dollar quote is supported.
+
+```go
+// Only the last `$1` is interpolated.
+// Others are not interpolated as they are inside dollar quote (the `$$`).
+query, err := PostgreSQL.Interpolate(`
+CREATE FUNCTION dup(in int, out f1 int, out f2 text) AS $$
+    SELECT $1, CAST($1 AS text) || ' is text'
+$$
+LANGUAGE SQL;
+
+SELECT * FROM dup($1);`, []interface{}{42})
+
+fmt.Println(query)
+fmt.Println(err)
+
+// Output:
+//
+// CREATE FUNCTION dup(in int, out f1 int, out f2 text) AS $$
+//     SELECT $1, CAST($1 AS text) || ' is text'
+// $$
+// LANGUAGE SQL;
+//
+// SELECT * FROM dup(42);
+// <nil>
+```
+
+## FAQ ##
+
+### What's the difference between this package and `squirrel` ###
+
+Package [squirrel](https://github.com/Masterminds/squirrel) is another SQL builder package with outstanding design and high code quality.
+Comparing with `squirrel`, `go-sqlbuilder` is much more extensible with more built-in features.
+
+Here are details.
+
+* API design: The core of `go-sqlbuilder` is `Builder` and `Args`. Nearly all features are built on top of them. If we want to extend this package, e.g. support `EXPLAIN`, we can use `Build("EXPLAIN $?", builder)` to add `EXPLAIN` in front of any SQL.
+* ORM: Package `squirrel` doesn't provide ORM directly. There is another package [structable](https://github.com/Masterminds/structable), which is based on `squirrel`, designed for ORM.
+* No design pitfalls: There is no design pitfalls like `squirrel.Eq{"mynumber": []uint8{1,2,3}}`. I'm proud of it. :)
 
 ## License ##
 

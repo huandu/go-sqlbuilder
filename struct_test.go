@@ -23,7 +23,7 @@ func TestStructSelectFrom(t *testing.T) {
 	sb := userForTest.SelectFrom("user")
 	sql, args := sb.Build()
 
-	if expected := "SELECT id, Name, status, created_at FROM user LIMIT 1"; expected != sql {
+	if expected := "SELECT id, Name, status, created_at FROM user"; expected != sql {
 		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
 	}
 
@@ -36,7 +36,7 @@ func TestStructSelectFromForTag(t *testing.T) {
 	sb := userForTest.SelectFromForTag("user", "important")
 	sql, args := sb.Build()
 
-	if expected := "SELECT id, Name, status FROM user LIMIT 1"; expected != sql {
+	if expected := "SELECT id, Name, status FROM user"; expected != sql {
 		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
 	}
 
@@ -238,15 +238,15 @@ type User struct {
 }
 
 type Order struct {
-	ID          int64  `db:"id" fieldtag:"new"`
-	State       State  `db:"state" fieldtag:"new,paid,done"`
-	SkuID       int64  `db:"sku_id" fieldtag:"new"`
-	UserID      int64  `db:"user_id" fieldtag:"new"`
-	Price       int64  `db:"price" fieldtag:"new,update"`
-	Discount    int64  `db:"discount" fieldtag:"new,update"`
-	Description string `db:"description" fieldtag:"new,update"`
-	CreatedAt   int64  `db:"created_at" fieldtag:"new"`
-	ModifiedAt  int64  `db:"modified_at" fieldtag:"new,update,paid,done"`
+	ID         int64  `db:"id" fieldtag:"new"`
+	State      State  `db:"state" fieldtag:"new,paid,done"`
+	SkuID      int64  `db:"sku_id" fieldtag:"new"`
+	UserID     int64  `db:"user_id" fieldtag:"new"`
+	Price      int64  `db:"price" fieldtag:"new,update"`
+	Discount   int64  `db:"discount" fieldtag:"new,update"`
+	Desc       string `db:"desc" fieldtag:"new,update" fieldopt:"withquote"`
+	CreatedAt  int64  `db:"created_at" fieldtag:"new"`
+	ModifiedAt int64  `db:"modified_at" fieldtag:"new,update,paid,done"`
 }
 
 type State int
@@ -309,7 +309,7 @@ func ExampleStruct_useStructAsORM() {
 	fmt.Printf("%#v", user)
 
 	// Output:
-	// SELECT id, name, status FROM user WHERE id = ? LIMIT 1
+	// SELECT id, name, status FROM user WHERE id = ?
 	// [1234]
 	// sqlbuilder.User{ID:1234, Name:"huandu", Status:1}
 }
@@ -318,15 +318,15 @@ func ExampleStruct_useTag() {
 	// Suppose we defined following type and global variable.
 	//
 	//     type Order struct {
-	//         ID          int64  `db:"id" fieldtag:"update,paid"`
-	//         State       int    `db:"state" fieldtag:"paid"`
-	//         SkuID       int64  `db:"sku_id"`
-	//         UserID      int64  `db:"user_id"`
-	//         Price       int64  `db:"price" fieldtag:"update"`
-	//         Discount    int64  `db:"discount" fieldtag:"update"`
-	//         Description string `db:"description" fieldtag:"update"`
-	//         CreatedAt   int64  `db:"created_at"`
-	//         ModifiedAt  int64  `db:"modified_at" fieldtag:"update,paid"`
+	//         ID         int64  `db:"id" fieldtag:"update,paid"`
+	//         State      int    `db:"state" fieldtag:"paid"`
+	//         SkuID      int64  `db:"sku_id"`
+	//         UserID     int64  `db:"user_id"`
+	//         Price      int64  `db:"price" fieldtag:"update"`
+	//         Discount   int64  `db:"discount" fieldtag:"update"`
+	//         Desc       string `db:"desc" fieldtag:"update" fieldopt:"withquote"` // `desc` is a keyword.
+	//         CreatedAt  int64  `db:"created_at"`
+	//         ModifiedAt int64  `db:"modified_at" fieldtag:"update,paid"`
 	//     }
 	//
 	//     var orderStruct = NewStruct(new(Order))
@@ -334,19 +334,20 @@ func ExampleStruct_useTag() {
 	createOrder := func(table string) {
 		now := time.Now().Unix()
 		order := &Order{
-			ID:          1234,
-			State:       OrderStateCreated,
-			SkuID:       5678,
-			UserID:      7527,
-			Price:       1000,
-			Discount:    0,
-			Description: "Best goods",
-			CreatedAt:   now,
-			ModifiedAt:  now,
+			ID:         1234,
+			State:      OrderStateCreated,
+			SkuID:      5678,
+			UserID:     7527,
+			Price:      1000,
+			Discount:   0,
+			Desc:       "Best goods",
+			CreatedAt:  now,
+			ModifiedAt: now,
 		}
 		b := orderStruct.InsertInto(table, &order)
 		sql, args := b.Build()
 		db.Exec(sql, args)
+		fmt.Println(sql)
 	}
 	updatePrice := func(table string) {
 		tag := "update"
@@ -368,6 +369,7 @@ func ExampleStruct_useTag() {
 		b.Where(b.E("id", order.ID))
 		sql, args = b.Build()
 		db.Exec(sql, args...)
+		fmt.Println(sql)
 	}
 	updateState := func(table string) {
 		tag := "paid"
@@ -395,6 +397,7 @@ func ExampleStruct_useTag() {
 		b.Where(b.E("id", order.ID))
 		sql, args = b.Build()
 		db.Exec(sql, args...)
+		fmt.Println(sql)
 	}
 
 	table := "order"
@@ -405,6 +408,8 @@ func ExampleStruct_useTag() {
 	fmt.Println("done")
 
 	// Output:
+	// INSERT INTO order (id, state, sku_id, user_id, price, discount, `desc`, created_at, modified_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	// UPDATE order SET price = ?, discount = ?, `desc` = ?, modified_at = ? WHERE id = ?
 	// done
 }
 
@@ -514,7 +519,7 @@ func ExampleStruct_forPostgreSQL() {
 	fmt.Println(args)
 
 	// Output:
-	// SELECT id, name, status FROM user WHERE id = $1 LIMIT 1
+	// SELECT id, name, status FROM user WHERE id = $1
 	// [1234]
 }
 
@@ -528,14 +533,14 @@ func TestStructWithQuote(t *testing.T) {
 	sb := NewStruct(new(structWithQuote)).For(MySQL).SelectFrom("foo")
 	sql, _ := sb.Build()
 
-	if expected := "SELECT `aa`, ccc FROM foo LIMIT 1"; sql != expected {
+	if expected := "SELECT `aa`, ccc FROM foo"; sql != expected {
 		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
 	}
 
 	sb = NewStruct(new(structWithQuote)).For(PostgreSQL).SelectFrom("foo")
 	sql, _ = sb.Build()
 
-	if expected := `SELECT "aa", ccc FROM foo LIMIT 1`; sql != expected {
+	if expected := `SELECT "aa", ccc FROM foo`; sql != expected {
 		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
 	}
 
@@ -565,5 +570,73 @@ func TestStructWithQuote(t *testing.T) {
 
 	if expected := `INSERT INTO foo ("aa", ccc) VALUES ($1, $2)`; sql != expected {
 		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
+	}
+}
+
+type structOmitEmpty struct {
+	A int      `db:"aa" fieldopt:"omitempty,withquote"`
+	B *string  `db:"bb" fieldopt:"omitempty"`
+	C uint16   `db:"cc" fieldopt:",omitempty"`
+	D *float64 `fieldopt:"omitempty"`
+	E bool     `db:"ee"`
+}
+
+func TestStructOmitEmpty(t *testing.T) {
+	st := NewStruct(new(structOmitEmpty)).For(MySQL)
+	sql1, _ := st.Update("foo", new(structOmitEmpty)).Build()
+
+	if expected := "UPDATE foo SET ee = ?"; sql1 != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql1)
+	}
+
+	a := 123
+	b := "bbbb"
+	c := uint16(234)
+	d := 123.45
+	e := true
+	sql2, args2 := st.Update("foo", &structOmitEmpty{
+		A: a,
+		B: &b,
+		C: c,
+		D: &d,
+		E: e,
+	}).Build()
+
+	if expected := "UPDATE foo SET `aa` = ?, bb = ?, cc = ?, D = ?, ee = ?"; sql2 != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql2)
+	}
+
+	if expected := []interface{}{a, b, c, d, e}; !reflect.DeepEqual(expected, args2) {
+		t.Fatalf("invalid args. [expected:%#v] [actual:%#v]", expected, args2)
+	}
+}
+
+type structWithPointers struct {
+	A int      `db:"aa" fieldopt:"omitempty"`
+	B *string  `db:"bb"`
+	C *float64 `db:"cc" fieldopt:"omitempty"`
+}
+
+func TestStructWithPointers(t *testing.T) {
+	st := NewStruct(new(structWithPointers)).For(MySQL)
+	sql1, _ := st.Update("foo", new(structWithPointers)).Build()
+
+	if expected := "UPDATE foo SET bb = ?"; sql1 != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql1)
+	}
+
+	a := 123
+	c := 123.45
+	sql2, args2 := st.Update("foo", &structWithPointers{
+		A: a,
+		C: &c,
+	}).Build()
+
+	if expected := "UPDATE foo SET aa = ?, bb = ?, cc = ?"; sql2 != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql2)
+	}
+
+	if expected := []interface{}{a, (*string)(nil), c}; !reflect.DeepEqual(expected, args2) {
+		t.Fatalf("invalid args. [expected:%#v] [actual:%#v]", expected, args2)
 	}
 }
