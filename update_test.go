@@ -57,3 +57,21 @@ func TestUpdateAssignments(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdateBuilder_SetMore(t *testing.T) {
+	ub := NewUpdateBuilder()
+	ub.Update("demo.user")
+	ub.Set(
+		ub.Assign("type", "sys"),
+		ub.Incr("credit"),
+	)
+	ub.SetMore(
+		"modified_at = UNIX_TIMESTAMP(NOW())", // It's allowed to write arbitrary SQL.
+	)
+	sql, args := ub.Build()
+	actual := fmt.Sprintf("%v|%v", sql, args)
+
+	if expected := "UPDATE demo.user SET type = ?, credit = credit + 1, modified_at = UNIX_TIMESTAMP(NOW())|[sys]"; actual != expected {
+		t.Fatalf("invalid assignment result. [expected:%v] [actual:%v]", expected, actual)
+	}
+}

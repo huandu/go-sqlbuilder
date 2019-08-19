@@ -47,6 +47,12 @@ func (ub *UpdateBuilder) Set(assignment ...string) *UpdateBuilder {
 	return ub
 }
 
+// SetMore appends the assignements in SET.
+func (ub *UpdateBuilder) SetMore(assignment ...string) *UpdateBuilder {
+	ub.assignments = append(ub.assignments, assignment...)
+	return ub
+}
+
 // Where sets expressions of WHERE in UPDATE.
 func (ub *UpdateBuilder) Where(andExpr ...string) *UpdateBuilder {
 	ub.whereExprs = append(ub.whereExprs, andExpr...)
