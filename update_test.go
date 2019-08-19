@@ -64,7 +64,7 @@ func TestUpdateBuilder_SetAppend(t *testing.T) {
 		ub.Assign("a", 1),
 		ub.Assign("b", 2),
 	)
-	ub.SetAppend(
+	ub.SetMore(
 		ub.Assign("c", 3),
 		ub.Incr("d"),
 	)

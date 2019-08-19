@@ -47,8 +47,8 @@ func (ub *UpdateBuilder) Set(assignment ...string) *UpdateBuilder {
 	return ub
 }
 
-// SetAppend appends the assignements in SET.
-func (ub *UpdateBuilder) SetAppend(assignment ...string) *UpdateBuilder {
+// SetMore appends the assignements in SET.
+func (ub *UpdateBuilder) SetMore(assignment ...string) *UpdateBuilder {
 	ub.assignments = append(ub.assignments, assignment...)
 	return ub
 }
