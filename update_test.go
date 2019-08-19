@@ -58,7 +58,7 @@ func TestUpdateAssignments(t *testing.T) {
 	}
 }
 
-func TestUpdateBuilder_SetAppend(t *testing.T) {
+func TestUpdateBuilder_SetMore(t *testing.T) {
 	ub := NewUpdateBuilder()
 	ub.Set(
 		ub.Assign("a", 1),
