@@ -38,6 +38,13 @@ func (ib *InsertBuilder) InsertInto(table string) *InsertBuilder {
 	return ib
 }
 
+// InsertIgnoreInto sets table name in INSERT.
+func (ib *InsertBuilder) InsertIgnoreInto(table string) *InsertBuilder {
+	ib.verb = "INSERT IGNORE"
+	ib.table = Escape(table)
+	return ib
+}
+
 // ReplaceInto sets table name and changes the verb of ib to REPLACE.
 // REPLACE INTO is a MySQL extension to the SQL standard.
 func (ib *InsertBuilder) ReplaceInto(table string) *InsertBuilder {
