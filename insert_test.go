@@ -23,7 +23,7 @@ func ExampleInsertBuilder() {
 	// [1 Huan Du 1 2 Charmy Liu 1 1234567890]
 }
 
-func ExampleInsertIngoreBuilder() {
+func ExampleInsertBuilder_insertIgnore() {
 	ib := NewInsertBuilder()
 	ib.InsertIgnoreInto("demo.user")
 	ib.Cols("id", "name", "status", "created_at")
