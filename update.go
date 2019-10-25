@@ -61,43 +61,43 @@ func (ub *UpdateBuilder) Where(andExpr ...string) *UpdateBuilder {
 
 // Assign represents SET "field = value" in UPDATE.
 func (ub *UpdateBuilder) Assign(field string, value interface{}) string {
-	return fmt.Sprintf("%v = %v", Escape(field), ub.args.Add(value))
+	return fmt.Sprintf("%s = %s", Escape(field), ub.args.Add(value))
 }
 
 // Incr represents SET "field = field + 1" in UPDATE.
 func (ub *UpdateBuilder) Incr(field string) string {
 	f := Escape(field)
-	return fmt.Sprintf("%v = %v + 1", f, f)
+	return fmt.Sprintf("%s = %s + 1", f, f)
 }
 
 // Decr represents SET "field = field - 1" in UPDATE.
 func (ub *UpdateBuilder) Decr(field string) string {
 	f := Escape(field)
-	return fmt.Sprintf("%v = %v - 1", f, f)
+	return fmt.Sprintf("%s = %s - 1", f, f)
 }
 
 // Add represents SET "field = field + value" in UPDATE.
 func (ub *UpdateBuilder) Add(field string, value interface{}) string {
 	f := Escape(field)
-	return fmt.Sprintf("%v = %v + %v", f, f, ub.args.Add(value))
+	return fmt.Sprintf("%s = %s + %s", f, f, ub.args.Add(value))
 }
 
 // Sub represents SET "field = field - value" in UPDATE.
 func (ub *UpdateBuilder) Sub(field string, value interface{}) string {
 	f := Escape(field)
-	return fmt.Sprintf("%v = %v - %v", f, f, ub.args.Add(value))
+	return fmt.Sprintf("%s = %s - %s", f, f, ub.args.Add(value))
 }
 
 // Mul represents SET "field = field * value" in UPDATE.
 func (ub *UpdateBuilder) Mul(field string, value interface{}) string {
 	f := Escape(field)
-	return fmt.Sprintf("%v = %v * %v", f, f, ub.args.Add(value))
+	return fmt.Sprintf("%s = %s * %s", f, f, ub.args.Add(value))
 }
 
 // Div represents SET "field = field / value" in UPDATE.
 func (ub *UpdateBuilder) Div(field string, value interface{}) string {
 	f := Escape(field)
-	return fmt.Sprintf("%v = %v / %v", f, f, ub.args.Add(value))
+	return fmt.Sprintf("%s = %s / %s", f, f, ub.args.Add(value))
 }
 
 // String returns the compiled UPDATE string.
