@@ -69,7 +69,7 @@ func (sb *SelectBuilder) Distinct() *SelectBuilder {
 
 // Select sets columns in SELECT.
 func (sb *SelectBuilder) Select(col ...string) *SelectBuilder {
-	sb.selectCols = EscapeAll(col...)
+	sb.selectCols = col
 	return sb
 }
 
@@ -118,13 +118,13 @@ func (sb *SelectBuilder) Having(andExpr ...string) *SelectBuilder {
 
 // GroupBy sets columns of GROUP BY in SELECT.
 func (sb *SelectBuilder) GroupBy(col ...string) *SelectBuilder {
-	sb.groupByCols = EscapeAll(col...)
+	sb.groupByCols = col
 	return sb
 }
 
 // OrderBy sets columns of ORDER BY in SELECT.
 func (sb *SelectBuilder) OrderBy(col ...string) *SelectBuilder {
-	sb.orderByCols = EscapeAll(col...)
+	sb.orderByCols = col
 	return sb
 }
 
@@ -154,13 +154,13 @@ func (sb *SelectBuilder) Offset(offset int) *SelectBuilder {
 
 // As returns an AS expression.
 func (sb *SelectBuilder) As(name, alias string) string {
-	return fmt.Sprintf("%v AS %v", name, Escape(alias))
+	return fmt.Sprintf("%s AS %s", name, alias)
 }
 
 // BuilderAs returns an AS expression wrapping a complex SQL.
 // According to SQL syntax, SQL built by builder is surrounded by parens.
 func (sb *SelectBuilder) BuilderAs(builder Builder, alias string) string {
-	return fmt.Sprintf("(%v) AS %v", sb.Var(builder), Escape(alias))
+	return fmt.Sprintf("(%s) AS %s", sb.Var(builder), alias)
 }
 
 // String returns the compiled SELECT string.

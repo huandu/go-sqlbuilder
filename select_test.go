@@ -93,7 +93,6 @@ func ExampleSelectBuilder_join() {
 }
 
 func ExampleSelectBuilder_limit_offset() {
-
 	sb := NewSelectBuilder()
 	sb.Select("*")
 	sb.From("user")
@@ -152,4 +151,22 @@ func ExampleSelectBuilder_limit_offset() {
 	// SELECT * FROM user LIMIT 0 OFFSET 0
 	// SELECT * FROM user LIMIT 0
 	// SELECT * FROM user LIMIT 0
+}
+
+func ExampleSelectBuilder_varInCols() {
+	// Column name may contain some characters, e.g. the $ sign, which have special meanings in builders.
+	// It's recommended to call Escape() or EscapeAll() to escape the name.
+
+	sb := NewSelectBuilder()
+	v := sb.Var("foo")
+	sb.Select(Escape("colHasA$Sign"), v)
+	sb.From("table")
+
+	sql, args := sb.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT colHasA$Sign, ? FROM table
+	// [foo]
 }
