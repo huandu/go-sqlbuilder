@@ -225,6 +225,15 @@ func postgresqlInterpolate(query string, args ...interface{}) (string, error) {
 
 		case '\'':
 			if quote == '\'' {
+				// PostgreSQL uses two single quotes to represent one single quote.
+				r, sz = utf8.DecodeRuneInString(target)
+
+				if r == '\'' {
+					offset += sz
+					target = query[offset:]
+					continue
+				}
+
 				quote = 0
 				continue
 			}
@@ -338,14 +347,17 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 		// In SQL standard, the precision of fractional seconds in time literal is up to 6 digits.
 		// Round up v.
 		v = v.Add(500 * time.Nanosecond)
+		buf = append(buf, '\'')
 
 		switch flavor {
 		case MySQL:
-			buf = quoteStringValue(buf, v.Format("2006-01-02 15:04:05.999999"), flavor)
+			buf = append(buf, v.Format("2006-01-02 15:04:05.999999")...)
 
 		case PostgreSQL:
-			buf = quoteStringValue(buf, v.Format("2006-01-02 15:04:05.999999 MST"), flavor)
+			buf = append(buf, v.Format("2006-01-02 15:04:05.999999 MST")...)
 		}
+
+		buf = append(buf, '\'')
 
 	case fmt.Stringer:
 		buf = quoteStringValue(buf, v.String(), flavor)
@@ -358,6 +370,10 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 }
 
 func quoteStringValue(buf []byte, s string, flavor Flavor) []byte {
+	if flavor == PostgreSQL {
+		buf = append(buf, 'E')
+	}
+
 	buf = append(buf, '\'')
 	r, sz := utf8.DecodeRuneInString(s)
 
