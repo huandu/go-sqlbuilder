@@ -220,10 +220,16 @@ func (s *Struct) InsertInto(table string, value ...interface{}) *InsertBuilder {
 	return s.InsertIntoForTag(table, "", value...)
 }
 
-//Same with the `InsertInto` except for inserting with the existing primary key or unique key.
+//`InsertIgnoreInto` is the Same with `InsertInto`, except for inserting with the existing primary key or unique key.
 //When inserting with the existing primary key or unique key, the db would ignore this operation with no error.
 func (s *Struct) InsertIgnoreInto(table string, value ...interface{}) *InsertBuilder {
 	return s.InsertIgnoreIntoForTag(table, "", value...)
+}
+
+//`ReplaceInto` is the Same with `InsertInto`, except for replacing with the existing primary key or unique key.
+//When replacing with the existing primary key or unique key, the db would replace the item which is different from the existing record.
+func (s *Struct) ReplaceInto(table string, value ...interface{}) *InsertBuilder {
+	return s.ReplaceIntoForTag(table, "", value...)
 }
 
 // InsertIntoForTag creates a new `InsertBuilder` with table name.
@@ -282,11 +288,65 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}
 	return ib
 }
 
-//Same with the `InsertIntoForTag` except for inserting with the existing primary key or unique key.
+//`InsertIgnoreIntoForTag` is Same with `InsertIntoForTag`, except for inserting with the existing primary key or unique key.
 //When inserting with the existing primary key or unique key, the db would ignore this operation with no error.
 func (s *Struct) InsertIgnoreIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
 	ib := s.Flavor.NewInsertBuilder()
 	ib.InsertIgnoreInto(table)
+
+	if s.taggedFields == nil {
+		return ib
+	}
+
+	fields, ok := s.taggedFields[tag]
+
+	if !ok {
+		return ib
+	}
+
+	vs := make([]reflect.Value, 0, len(value))
+
+	for _, item := range value {
+		v := reflect.ValueOf(item)
+		v = dereferencedValue(v)
+
+		if v.Type() == s.structType {
+			vs = append(vs, v)
+		}
+	}
+
+	if len(vs) == 0 {
+		return ib
+	}
+
+	cols := make([]string, 0, len(fields))
+	values := make([][]interface{}, len(vs))
+
+	for _, f := range fields {
+		cols = append(cols, f)
+		name := s.fieldAlias[f]
+
+		for i, v := range vs {
+			data := v.FieldByName(name).Interface()
+			values[i] = append(values[i], data)
+		}
+	}
+
+	cols = s.quoteFields(cols)
+	ib.Cols(cols...)
+
+	for _, value := range values {
+		ib.Values(value...)
+	}
+
+	return ib
+}
+
+//`ReplaceIntoForTag` is the Same with `InsertIntoForTag`, except for replacing with the existing primary key or unique key.
+//When replacing with the existing primary key or unique key, the db would replace the item which is different from the existing record.
+func (s *Struct) ReplaceIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
+	ib := s.Flavor.NewInsertBuilder()
+	ib.ReplaceInto(table)
 
 	if s.taggedFields == nil {
 		return ib

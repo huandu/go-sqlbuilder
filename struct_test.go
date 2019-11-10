@@ -167,6 +167,48 @@ func TestStructInsertIgnoreInto(t *testing.T) {
 	}
 }
 
+func TestStructReplaceInto(t *testing.T) {
+	user := &structUserForTest{
+		ID:        123,
+		Name:      "Huan Du",
+		Status:    2,
+		CreatedAt: 1234567890,
+	}
+	ib := userForTest.ReplaceInto("user", user)
+	sql, args := ib.Build()
+
+	if expected := "REPLACE INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?)"; expected != sql {
+		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
+	}
+
+	if expected := []interface{}{123, "Huan Du", 2, 1234567890}; !reflect.DeepEqual(expected, args) {
+		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
+	}
+
+	user2 := &structUserForTest{
+		ID:        456,
+		Name:      "Du Huan",
+		Status:    2,
+		CreatedAt: 1234567890,
+	}
+
+	fakeUser := struct {
+		ID int
+	}{789}
+
+	users := []interface{}{user, user2, &fakeUser}
+	ib = userForTest.ReplaceInto("user", users...)
+	sql, args = ib.Build()
+
+	if expected := "REPLACE INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?), (?, ?, ?, ?)"; expected != sql {
+		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
+	}
+
+	if expected := []interface{}{123, "Huan Du", 2, 1234567890, 456, "Du Huan", 2, 1234567890}; !reflect.DeepEqual(expected, args) {
+		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
+	}
+}
+
 func TestStructInsertIntoForTag(t *testing.T) {
 	user := &structUserForTest{
 		ID:        123,
@@ -244,6 +286,49 @@ func TestStructInsertIgnoreIntoForTag(t *testing.T) {
 	sql, args = ib.Build()
 
 	if expected := "INSERT IGNORE INTO user (id, Name, status) VALUES (?, ?, ?), (?, ?, ?)"; expected != sql {
+		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
+	}
+
+	if expected := []interface{}{123, "Huan Du", 2, 456, "Du Huan", 2}; !reflect.DeepEqual(expected, args) {
+		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
+	}
+
+}
+
+func TestStructReplaceIntoForTag(t *testing.T) {
+	user := &structUserForTest{
+		ID:        123,
+		Name:      "Huan Du",
+		Status:    2,
+		CreatedAt: 1234567890,
+	}
+	ib := userForTest.ReplaceIntoForTag("user", "important", user)
+	sql, args := ib.Build()
+
+	if expected := "REPLACE INTO user (id, Name, status) VALUES (?, ?, ?)"; expected != sql {
+		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
+	}
+
+	if expected := []interface{}{123, "Huan Du", 2}; !reflect.DeepEqual(expected, args) {
+		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
+	}
+
+	user2 := &structUserForTest{
+		ID:        456,
+		Name:      "Du Huan",
+		Status:    2,
+		CreatedAt: 1234567890,
+	}
+
+	fakeUser := struct {
+		ID int
+	}{789}
+
+	users := []interface{}{user, user2, &fakeUser}
+	ib = userForTest.ReplaceIntoForTag("user", "important", users...)
+	sql, args = ib.Build()
+
+	if expected := "REPLACE INTO user (id, Name, status) VALUES (?, ?, ?), (?, ?, ?)"; expected != sql {
 		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
 	}
 
