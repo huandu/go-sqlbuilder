@@ -212,7 +212,7 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 	return ub
 }
 
-// InsertInto creates a new `InsertBuilder` with table name.
+// InsertInto creates a new `InsertBuilder` with table name using verb INSERT INTO.
 // By default, all exported fields of the s is inserted in INSERT with the field values from value.
 // Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
 // If no item in value is valid, InsertInto returns a dummy `InsertBuilder` with table name.
@@ -220,19 +220,72 @@ func (s *Struct) InsertInto(table string, value ...interface{}) *InsertBuilder {
 	return s.InsertIntoForTag(table, "", value...)
 }
 
-//`InsertIgnoreInto` is the Same with `InsertInto`, except for inserting with the existing primary key or unique key.
-//When inserting with the existing primary key or unique key, the db would ignore this operation with no error.
+// InsertIgnoreInto creates a new `InsertBuilder` with table name using verb INSERT IGNORE INTO.
+// By default, all exported fields of the s is inserted in INSERT IGNORE with the field values from value.
+// Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
+// If no item in value is valid, InsertIgnoreInto returns a dummy `InsertBuilder` with table name.
 func (s *Struct) InsertIgnoreInto(table string, value ...interface{}) *InsertBuilder {
 	return s.InsertIgnoreIntoForTag(table, "", value...)
 }
 
-//`ReplaceInto` is the Same with `InsertInto`, except for replacing with the existing primary key or unique key.
-//When replacing with the existing primary key or unique key, the db would replace the item which is different from the existing record.
+// ReplaceInto creates a new `InsertBuilder` with table name using verb REPLACE INTO.
+// By default, all exported fields of the s is inserted in REPLACE with the field values from value.
+// Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
+// If no item in value is valid, ReplaceInto returns a dummy `InsertBuilder` with table name.
 func (s *Struct) ReplaceInto(table string, value ...interface{}) *InsertBuilder {
 	return s.ReplaceIntoForTag(table, "", value...)
 }
 
-// InsertIntoForTag creates a new `InsertBuilder` with table name.
+// buildColsAndValuesForTag add columns and values into an existing `InsertBuilder`.
+// By default, all exported fields of the s is inserted in INSERT with the field values from value.
+// If no item in value is valid, buildColsAndValuesForTag returns original `InsertBuilder`.
+func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, tag string, value ...interface{}) {
+	if s.taggedFields == nil {
+		return
+	}
+
+	fields, ok := s.taggedFields[tag]
+
+	if !ok {
+		return
+	}
+
+	vs := make([]reflect.Value, 0, len(value))
+
+	for _, item := range value {
+		v := reflect.ValueOf(item)
+		v = dereferencedValue(v)
+
+		if v.Type() == s.structType {
+			vs = append(vs, v)
+		}
+	}
+
+	if len(vs) == 0 {
+		return
+	}
+	cols := make([]string, 0, len(fields))
+	values := make([][]interface{}, len(vs))
+
+	for _, f := range fields {
+		cols = append(cols, f)
+		name := s.fieldAlias[f]
+
+		for i, v := range vs {
+			data := v.FieldByName(name).Interface()
+			values[i] = append(values[i], data)
+		}
+	}
+
+	cols = s.quoteFields(cols)
+	ib.Cols(cols...)
+
+	for _, value := range values {
+		ib.Values(value...)
+	}
+}
+
+// InsertIntoForTag creates a new `InsertBuilder` with table name using verb INSERT INTO.
 // By default, all fields of the s tagged with tag is inserted in INSERT with the field values from value.
 // Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
 // If no item in value is valid, InsertIntoForTag returns a dummy `InsertBuilder` with table name.
@@ -240,158 +293,33 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}
 	ib := s.Flavor.NewInsertBuilder()
 	ib.InsertInto(table)
 
-	if s.taggedFields == nil {
-		return ib
-	}
-
-	fields, ok := s.taggedFields[tag]
-
-	if !ok {
-		return ib
-	}
-
-	vs := make([]reflect.Value, 0, len(value))
-
-	for _, item := range value {
-		v := reflect.ValueOf(item)
-		v = dereferencedValue(v)
-
-		if v.Type() == s.structType {
-			vs = append(vs, v)
-		}
-	}
-
-	if len(vs) == 0 {
-		return ib
-	}
-
-	cols := make([]string, 0, len(fields))
-	values := make([][]interface{}, len(vs))
-
-	for _, f := range fields {
-		cols = append(cols, f)
-		name := s.fieldAlias[f]
-
-		for i, v := range vs {
-			data := v.FieldByName(name).Interface()
-			values[i] = append(values[i], data)
-		}
-	}
-
-	cols = s.quoteFields(cols)
-	ib.Cols(cols...)
-
-	for _, value := range values {
-		ib.Values(value...)
-	}
+	s.buildColsAndValuesForTag(ib, tag, value...)
 
 	return ib
 }
 
-//`InsertIgnoreIntoForTag` is Same with `InsertIntoForTag`, except for inserting with the existing primary key or unique key.
-//When inserting with the existing primary key or unique key, the db would ignore this operation with no error.
+// InsertIgnoreIntoForTag creates a new `InsertBuilder` with table name using verb INSERT IGNORE INTO.
+// By default, all fields of the s tagged with tag is inserted in INSERT IGNORE with the field values from value.
+// Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
+// If no item in value is valid, InsertIgnoreIntoForTag returns a dummy `InsertBuilder` with table name.
 func (s *Struct) InsertIgnoreIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
 	ib := s.Flavor.NewInsertBuilder()
 	ib.InsertIgnoreInto(table)
 
-	if s.taggedFields == nil {
-		return ib
-	}
-
-	fields, ok := s.taggedFields[tag]
-
-	if !ok {
-		return ib
-	}
-
-	vs := make([]reflect.Value, 0, len(value))
-
-	for _, item := range value {
-		v := reflect.ValueOf(item)
-		v = dereferencedValue(v)
-
-		if v.Type() == s.structType {
-			vs = append(vs, v)
-		}
-	}
-
-	if len(vs) == 0 {
-		return ib
-	}
-
-	cols := make([]string, 0, len(fields))
-	values := make([][]interface{}, len(vs))
-
-	for _, f := range fields {
-		cols = append(cols, f)
-		name := s.fieldAlias[f]
-
-		for i, v := range vs {
-			data := v.FieldByName(name).Interface()
-			values[i] = append(values[i], data)
-		}
-	}
-
-	cols = s.quoteFields(cols)
-	ib.Cols(cols...)
-
-	for _, value := range values {
-		ib.Values(value...)
-	}
+	s.buildColsAndValuesForTag(ib, tag, value...)
 
 	return ib
 }
 
-//`ReplaceIntoForTag` is the Same with `InsertIntoForTag`, except for replacing with the existing primary key or unique key.
-//When replacing with the existing primary key or unique key, the db would replace the item which is different from the existing record.
+// InsertIgnoreIntoForTag creates a new `InsertBuilder` with table name using verb REPLACE INTO.
+// By default, all fields of the s tagged with tag is inserted in REPLACE with the field values from value.
+// Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
+// If no item in value is valid, ReplaceIntoForTag returns a dummy `InsertBuilder` with table name.
 func (s *Struct) ReplaceIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
 	ib := s.Flavor.NewInsertBuilder()
 	ib.ReplaceInto(table)
 
-	if s.taggedFields == nil {
-		return ib
-	}
-
-	fields, ok := s.taggedFields[tag]
-
-	if !ok {
-		return ib
-	}
-
-	vs := make([]reflect.Value, 0, len(value))
-
-	for _, item := range value {
-		v := reflect.ValueOf(item)
-		v = dereferencedValue(v)
-
-		if v.Type() == s.structType {
-			vs = append(vs, v)
-		}
-	}
-
-	if len(vs) == 0 {
-		return ib
-	}
-
-	cols := make([]string, 0, len(fields))
-	values := make([][]interface{}, len(vs))
-
-	for _, f := range fields {
-		cols = append(cols, f)
-		name := s.fieldAlias[f]
-
-		for i, v := range vs {
-			data := v.FieldByName(name).Interface()
-			values[i] = append(values[i], data)
-		}
-	}
-
-	cols = s.quoteFields(cols)
-	ib.Cols(cols...)
-
-	for _, value := range values {
-		ib.Values(value...)
-	}
+	s.buildColsAndValuesForTag(ib, tag, value...)
 
 	return ib
 }
