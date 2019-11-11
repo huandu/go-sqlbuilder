@@ -90,16 +90,6 @@ func TestStructInsertInto(t *testing.T) {
 		Status:    2,
 		CreatedAt: 1234567890,
 	}
-	ib := userForTest.InsertInto("user", user)
-	sql, args := ib.Build()
-
-	if expected := "INSERT INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?)"; expected != sql {
-		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
-	}
-
-	if expected := []interface{}{123, "Huan Du", 2, 1234567890}; !reflect.DeepEqual(expected, args) {
-		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
-	}
 
 	user2 := &structUserForTest{
 		ID:        456,
@@ -113,16 +103,43 @@ func TestStructInsertInto(t *testing.T) {
 	}{789}
 
 	users := []interface{}{user, user2, &fakeUser}
-	ib = userForTest.InsertInto("user", users...)
-	sql, args = ib.Build()
 
-	if expected := "INSERT INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?), (?, ?, ?, ?)"; expected != sql {
-		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
+	testInsert := map[*InsertBuilder]string{
+		userForTest.InsertInto("user", user): "INSERT ",
+		userForTest.InsertIgnoreInto("user", user): "INSERT IGNORE ",
+		userForTest.ReplaceInto("user", user): "REPLACE ",
 	}
 
-	if expected := []interface{}{123, "Huan Du", 2, 1234567890, 456, "Du Huan", 2, 1234567890}; !reflect.DeepEqual(expected, args) {
-		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
+	testMulitInsert := map[*InsertBuilder]string{
+		userForTest.InsertInto("user", users...): "INSERT ",
+		userForTest.InsertIgnoreInto("user", users...): "INSERT IGNORE ",
+		userForTest.ReplaceInto("user", users...): "REPLACE ",
 	}
+
+	for ib, exceptedVerb := range testInsert{
+		sql, args := ib.Build()
+
+		if expected := exceptedVerb + "INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?)"; expected != sql {
+			t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
+		}
+
+		if expected := []interface{}{123, "Huan Du", 2, 1234567890}; !reflect.DeepEqual(expected, args) {
+			t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
+		}
+	}
+
+	for ib, exceptedVerb := range testMulitInsert{
+		sql, args := ib.Build()
+
+		if expected := exceptedVerb + "INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?), (?, ?, ?, ?)"; expected != sql {
+			t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
+		}
+
+		if expected := []interface{}{123, "Huan Du", 2, 1234567890, 456, "Du Huan", 2, 1234567890}; !reflect.DeepEqual(expected, args) {
+			t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
+		}
+	}
+
 }
 
 func TestStructInsertIntoForTag(t *testing.T) {
@@ -132,16 +149,6 @@ func TestStructInsertIntoForTag(t *testing.T) {
 		Status:    2,
 		CreatedAt: 1234567890,
 	}
-	ib := userForTest.InsertIntoForTag("user", "important", user)
-	sql, args := ib.Build()
-
-	if expected := "INSERT INTO user (id, Name, status) VALUES (?, ?, ?)"; expected != sql {
-		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
-	}
-
-	if expected := []interface{}{123, "Huan Du", 2}; !reflect.DeepEqual(expected, args) {
-		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
-	}
 
 	user2 := &structUserForTest{
 		ID:        456,
@@ -155,15 +162,41 @@ func TestStructInsertIntoForTag(t *testing.T) {
 	}{789}
 
 	users := []interface{}{user, user2, &fakeUser}
-	ib = userForTest.InsertIntoForTag("user", "important", users...)
-	sql, args = ib.Build()
 
-	if expected := "INSERT INTO user (id, Name, status) VALUES (?, ?, ?), (?, ?, ?)"; expected != sql {
-		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
+	testInsertForTag := map[*InsertBuilder]string{
+		userForTest.InsertIntoForTag("user","important", user): "INSERT ",
+		userForTest.InsertIgnoreIntoForTag("user","important", user): "INSERT IGNORE ",
+		userForTest.ReplaceIntoForTag("user","important", user): "REPLACE ",
 	}
 
-	if expected := []interface{}{123, "Huan Du", 2, 456, "Du Huan", 2}; !reflect.DeepEqual(expected, args) {
-		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
+	testMulitInsertForTag := map[*InsertBuilder]string{
+		userForTest.InsertIntoForTag("user","important", users...): "INSERT ",
+		userForTest.InsertIgnoreIntoForTag("user","important", users...): "INSERT IGNORE ",
+		userForTest.ReplaceIntoForTag("user","important", users...): "REPLACE ",
+	}
+
+	for ib, exceptedVerb := range testInsertForTag{
+		sql, args := ib.Build()
+
+		if expected := exceptedVerb + "INTO user (id, Name, status) VALUES (?, ?, ?)"; expected != sql {
+			t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
+		}
+
+		if expected := []interface{}{123, "Huan Du", 2}; !reflect.DeepEqual(expected, args) {
+			t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
+		}
+	}
+
+	for ib, exceptedVerb := range testMulitInsertForTag{
+		sql, args := ib.Build()
+
+		if expected := exceptedVerb + "INTO user (id, Name, status) VALUES (?, ?, ?), (?, ?, ?)"; expected != sql {
+			t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
+		}
+
+		if expected := []interface{}{123, "Huan Du", 2, 456, "Du Huan", 2}; !reflect.DeepEqual(expected, args) {
+			t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
+		}
 	}
 
 }

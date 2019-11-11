@@ -212,7 +212,7 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 	return ub
 }
 
-// InsertInto creates a new `InsertBuilder` with table name.
+// InsertInto creates a new `InsertBuilder` with table name using verb INSERT INTO.
 // By default, all exported fields of the s is inserted in INSERT with the field values from value.
 // Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
 // If no item in value is valid, InsertInto returns a dummy `InsertBuilder` with table name.
@@ -220,22 +220,34 @@ func (s *Struct) InsertInto(table string, value ...interface{}) *InsertBuilder {
 	return s.InsertIntoForTag(table, "", value...)
 }
 
-// InsertIntoForTag creates a new `InsertBuilder` with table name.
-// By default, all fields of the s tagged with tag is inserted in INSERT with the field values from value.
+// InsertIgnoreInto creates a new `InsertBuilder` with table name using verb INSERT IGNORE INTO.
+// By default, all exported fields of the s is inserted in INSERT IGNORE with the field values from value.
 // Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
-// If no item in value is valid, InsertIntoForTag returns a dummy `InsertBuilder` with table name.
-func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
-	ib := s.Flavor.NewInsertBuilder()
-	ib.InsertInto(table)
+// If no item in value is valid, InsertIgnoreInto returns a dummy `InsertBuilder` with table name.
+func (s *Struct) InsertIgnoreInto(table string, value ...interface{}) *InsertBuilder {
+	return s.InsertIgnoreIntoForTag(table, "", value...)
+}
 
+// ReplaceInto creates a new `InsertBuilder` with table name using verb REPLACE INTO.
+// By default, all exported fields of the s is inserted in REPLACE with the field values from value.
+// Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
+// If no item in value is valid, ReplaceInto returns a dummy `InsertBuilder` with table name.
+func (s *Struct) ReplaceInto(table string, value ...interface{}) *InsertBuilder {
+	return s.ReplaceIntoForTag(table, "", value...)
+}
+
+// buildColsAndValuesForTag add columns and values into an existing `InsertBuilder`.
+// By default, all exported fields of the s is inserted in INSERT with the field values from value.
+// If no item in value is valid, buildColsAndValuesForTag returns original `InsertBuilder`.
+func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, tag string, value ...interface{}) {
 	if s.taggedFields == nil {
-		return ib
+		return
 	}
 
 	fields, ok := s.taggedFields[tag]
 
 	if !ok {
-		return ib
+		return
 	}
 
 	vs := make([]reflect.Value, 0, len(value))
@@ -250,9 +262,8 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}
 	}
 
 	if len(vs) == 0 {
-		return ib
+		return
 	}
-
 	cols := make([]string, 0, len(fields))
 	values := make([][]interface{}, len(vs))
 
@@ -272,6 +283,43 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}
 	for _, value := range values {
 		ib.Values(value...)
 	}
+}
+
+// InsertIntoForTag creates a new `InsertBuilder` with table name using verb INSERT INTO.
+// By default, all fields of the s tagged with tag is inserted in INSERT with the field values from value.
+// Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
+// If no item in value is valid, InsertIntoForTag returns a dummy `InsertBuilder` with table name.
+func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
+	ib := s.Flavor.NewInsertBuilder()
+	ib.InsertInto(table)
+
+	s.buildColsAndValuesForTag(ib, tag, value...)
+
+	return ib
+}
+
+// InsertIgnoreIntoForTag creates a new `InsertBuilder` with table name using verb INSERT IGNORE INTO.
+// By default, all fields of the s tagged with tag is inserted in INSERT IGNORE with the field values from value.
+// Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
+// If no item in value is valid, InsertIgnoreIntoForTag returns a dummy `InsertBuilder` with table name.
+func (s *Struct) InsertIgnoreIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
+	ib := s.Flavor.NewInsertBuilder()
+	ib.InsertIgnoreInto(table)
+
+	s.buildColsAndValuesForTag(ib, tag, value...)
+
+	return ib
+}
+
+// InsertIgnoreIntoForTag creates a new `InsertBuilder` with table name using verb REPLACE INTO.
+// By default, all fields of the s tagged with tag is inserted in REPLACE with the field values from value.
+// Bulk insert is supported. Item in value that is not the same as that of s will be skipped.
+// If no item in value is valid, ReplaceIntoForTag returns a dummy `InsertBuilder` with table name.
+func (s *Struct) ReplaceIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
+	ib := s.Flavor.NewInsertBuilder()
+	ib.ReplaceInto(table)
+
+	s.buildColsAndValuesForTag(ib, tag, value...)
 
 	return ib
 }
