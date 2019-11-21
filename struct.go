@@ -4,6 +4,7 @@
 package sqlbuilder
 
 import (
+	"bytes"
 	"reflect"
 	"strings"
 )
@@ -147,7 +148,19 @@ func (s *Struct) SelectFromForTag(table string, tag string) *SelectBuilder {
 
 	if ok {
 		fields = s.quoteFields(fields)
-		sb.Select(EscapeAll(fields...)...)
+
+		buf := &bytes.Buffer{}
+		cols := make([]string, 0, len(fields))
+
+		for _, field := range fields {
+			buf.WriteString(table)
+			buf.WriteRune('.')
+			buf.WriteString(field)
+			cols = append(cols, buf.String())
+			buf.Reset()
+		}
+
+		sb.Select(cols...)
 	} else {
 		sb.Select("*")
 	}
