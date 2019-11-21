@@ -23,7 +23,7 @@ func TestStructSelectFrom(t *testing.T) {
 	sb := userForTest.SelectFrom("user")
 	sql, args := sb.Build()
 
-	if expected := "SELECT id, Name, status, created_at FROM user"; expected != sql {
+	if expected := "SELECT user.id, user.Name, user.status, user.created_at FROM user"; expected != sql {
 		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
 	}
 
@@ -36,7 +36,7 @@ func TestStructSelectFromForTag(t *testing.T) {
 	sb := userForTest.SelectFromForTag("user", "important")
 	sql, args := sb.Build()
 
-	if expected := "SELECT id, Name, status FROM user"; expected != sql {
+	if expected := "SELECT user.id, user.Name, user.status FROM user"; expected != sql {
 		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
 	}
 
@@ -105,18 +105,18 @@ func TestStructInsertInto(t *testing.T) {
 	users := []interface{}{user, user2, &fakeUser}
 
 	testInsert := map[*InsertBuilder]string{
-		userForTest.InsertInto("user", user): "INSERT ",
+		userForTest.InsertInto("user", user):       "INSERT ",
 		userForTest.InsertIgnoreInto("user", user): "INSERT IGNORE ",
-		userForTest.ReplaceInto("user", user): "REPLACE ",
+		userForTest.ReplaceInto("user", user):      "REPLACE ",
 	}
 
 	testMulitInsert := map[*InsertBuilder]string{
-		userForTest.InsertInto("user", users...): "INSERT ",
+		userForTest.InsertInto("user", users...):       "INSERT ",
 		userForTest.InsertIgnoreInto("user", users...): "INSERT IGNORE ",
-		userForTest.ReplaceInto("user", users...): "REPLACE ",
+		userForTest.ReplaceInto("user", users...):      "REPLACE ",
 	}
 
-	for ib, exceptedVerb := range testInsert{
+	for ib, exceptedVerb := range testInsert {
 		sql, args := ib.Build()
 
 		if expected := exceptedVerb + "INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?)"; expected != sql {
@@ -128,7 +128,7 @@ func TestStructInsertInto(t *testing.T) {
 		}
 	}
 
-	for ib, exceptedVerb := range testMulitInsert{
+	for ib, exceptedVerb := range testMulitInsert {
 		sql, args := ib.Build()
 
 		if expected := exceptedVerb + "INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?), (?, ?, ?, ?)"; expected != sql {
@@ -164,18 +164,18 @@ func TestStructInsertIntoForTag(t *testing.T) {
 	users := []interface{}{user, user2, &fakeUser}
 
 	testInsertForTag := map[*InsertBuilder]string{
-		userForTest.InsertIntoForTag("user","important", user): "INSERT ",
-		userForTest.InsertIgnoreIntoForTag("user","important", user): "INSERT IGNORE ",
-		userForTest.ReplaceIntoForTag("user","important", user): "REPLACE ",
+		userForTest.InsertIntoForTag("user", "important", user):       "INSERT ",
+		userForTest.InsertIgnoreIntoForTag("user", "important", user): "INSERT IGNORE ",
+		userForTest.ReplaceIntoForTag("user", "important", user):      "REPLACE ",
 	}
 
 	testMulitInsertForTag := map[*InsertBuilder]string{
-		userForTest.InsertIntoForTag("user","important", users...): "INSERT ",
-		userForTest.InsertIgnoreIntoForTag("user","important", users...): "INSERT IGNORE ",
-		userForTest.ReplaceIntoForTag("user","important", users...): "REPLACE ",
+		userForTest.InsertIntoForTag("user", "important", users...):       "INSERT ",
+		userForTest.InsertIgnoreIntoForTag("user", "important", users...): "INSERT IGNORE ",
+		userForTest.ReplaceIntoForTag("user", "important", users...):      "REPLACE ",
 	}
 
-	for ib, exceptedVerb := range testInsertForTag{
+	for ib, exceptedVerb := range testInsertForTag {
 		sql, args := ib.Build()
 
 		if expected := exceptedVerb + "INTO user (id, Name, status) VALUES (?, ?, ?)"; expected != sql {
@@ -187,7 +187,7 @@ func TestStructInsertIntoForTag(t *testing.T) {
 		}
 	}
 
-	for ib, exceptedVerb := range testMulitInsertForTag{
+	for ib, exceptedVerb := range testMulitInsertForTag {
 		sql, args := ib.Build()
 
 		if expected := exceptedVerb + "INTO user (id, Name, status) VALUES (?, ?, ?), (?, ?, ?)"; expected != sql {
@@ -342,7 +342,7 @@ func ExampleStruct_useStructAsORM() {
 	fmt.Printf("%#v", user)
 
 	// Output:
-	// SELECT id, name, status FROM user WHERE id = ?
+	// SELECT user.id, user.name, user.status FROM user WHERE id = ?
 	// [1234]
 	// sqlbuilder.User{ID:1234, Name:"huandu", Status:1}
 }
@@ -552,7 +552,7 @@ func ExampleStruct_forPostgreSQL() {
 	fmt.Println(args)
 
 	// Output:
-	// SELECT id, name, status FROM user WHERE id = $1
+	// SELECT user.id, user.name, user.status FROM user WHERE id = $1
 	// [1234]
 }
 
@@ -566,14 +566,14 @@ func TestStructWithQuote(t *testing.T) {
 	sb := NewStruct(new(structWithQuote)).For(MySQL).SelectFrom("foo")
 	sql, _ := sb.Build()
 
-	if expected := "SELECT `aa`, ccc FROM foo"; sql != expected {
+	if expected := "SELECT foo.`aa`, foo.ccc FROM foo"; sql != expected {
 		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
 	}
 
 	sb = NewStruct(new(structWithQuote)).For(PostgreSQL).SelectFrom("foo")
 	sql, _ = sb.Build()
 
-	if expected := `SELECT "aa", ccc FROM foo`; sql != expected {
+	if expected := `SELECT foo."aa", foo.ccc FROM foo`; sql != expected {
 		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
 	}
 
