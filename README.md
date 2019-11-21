@@ -122,7 +122,7 @@ func ExampleStruct() {
     fmt.Printf("%#v", user)
 
     // Output:
-    // SELECT id, name, status FROM user WHERE id = ?
+    // SELECT user.id, user.name, user.status FROM user WHERE id = ?
     // [1234]
     // sqlbuilder.User{ID:1234, Name:"huandu", Status:1}
 }
