@@ -163,6 +163,22 @@ func (sb *SelectBuilder) BuilderAs(builder Builder, alias string) string {
 	return fmt.Sprintf("(%s) AS %s", sb.Var(builder), alias)
 }
 
+// Func returns a name of function expressions in database driver
+// It builds an expression like
+// 		FuncName(args[0], args[1]...)
+func (sb *SelectBuilder) Func(name string, args ...string) string {
+	return fmt.Sprintf("%s(%s)", name, strings.Join(args, ", "))
+}
+
+// BuilderAs returns a name of function expression wrapping a complex SQL.
+// According to SQL syntax, SQL built by builder is surrounded by parens.
+func (sb *SelectBuilder) BuilderFunc(builder Builder, name string, args ...string) string {
+	if len(args) > 0 {
+		return fmt.Sprintf("%s(%s, %s)", name, sb.Var(builder), strings.Join(args, ", "))
+	}
+	return  fmt.Sprintf("%s(%s)", name, sb.Var(builder))
+}
+
 // String returns the compiled SELECT string.
 func (sb *SelectBuilder) String() string {
 	s, _ := sb.Build()
@@ -179,14 +195,20 @@ func (sb *SelectBuilder) Build() (sql string, args []interface{}) {
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
-	buf.WriteString("SELECT ")
+
+	if len(sb.selectCols) > 0 {
+		buf.WriteString("SELECT ")
+	}
 
 	if sb.distinct {
 		buf.WriteString("DISTINCT ")
 	}
 
 	buf.WriteString(strings.Join(sb.selectCols, ", "))
-	buf.WriteString(" FROM ")
+
+	if len(sb.tables) > 0 {
+		buf.WriteString(" FROM ")
+	}
 	buf.WriteString(strings.Join(sb.tables, ", "))
 
 	for i := range sb.joinTables {

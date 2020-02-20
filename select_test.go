@@ -170,3 +170,26 @@ func ExampleSelectBuilder_varInCols() {
 	// SELECT colHasA$Sign, ? FROM table
 	// [foo]
 }
+
+func ExampleSelectBuilder_Exists_Function() {
+	// Column name may contain some characters, e.g. the $ sign, which have special meanings in builders.
+	// It's recommended to call Escape() or EscapeAll() to escape the name.
+
+	sb := NewSelectBuilder()
+	existSb := NewSelectBuilder()
+
+	sb.Select(sb.BuilderFunc(existSb,"EXISTS"))
+
+	existSb.Select("id", "name", sb.As(sb.Func("COUNT", "*"), "c"))
+	existSb.From("user")
+	existSb.Where(existSb.In("status", 1, 2, 5))
+
+
+	sql, args := sb.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT EXISTS(SELECT id, name, COUNT(*) AS c FROM user WHERE status IN (?, ?, ?))
+	// [1 2 5]
+}
