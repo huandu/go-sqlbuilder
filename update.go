@@ -116,10 +116,16 @@ func (ub *UpdateBuilder) Build() (sql string, args []interface{}) {
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (ub *UpdateBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
-	buf.WriteString("UPDATE ")
-	buf.WriteString(ub.table)
-	buf.WriteString(" SET ")
-	buf.WriteString(strings.Join(ub.assignments, ", "))
+
+	if ub.table != "" {
+		buf.WriteString("UPDATE ")
+		buf.WriteString(ub.table)
+	}
+
+	if len(ub.assignments) > 0 {
+		buf.WriteString(" SET ")
+		buf.WriteString(strings.Join(ub.assignments, ", "))
+	}
 
 	if len(ub.whereExprs) > 0 {
 		buf.WriteString(" WHERE ")

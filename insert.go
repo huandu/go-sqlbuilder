@@ -87,9 +87,12 @@ func (ib *InsertBuilder) Build() (sql string, args []interface{}) {
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
-	buf.WriteString(ib.verb)
-	buf.WriteString(" INTO ")
-	buf.WriteString(ib.table)
+
+	if ib.table != "" {
+		buf.WriteString(ib.verb)
+		buf.WriteString(" INTO ")
+		buf.WriteString(ib.table)
+	}
 
 	if len(ib.cols) > 0 {
 		buf.WriteString(" (")
@@ -97,14 +100,17 @@ func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		buf.WriteString(")")
 	}
 
-	buf.WriteString(" VALUES ")
-	values := make([]string, 0, len(ib.values))
+	if len(ib.values) > 0 {
+		buf.WriteString(" VALUES ")
+		values := make([]string, 0, len(ib.values))
 
-	for _, v := range ib.values {
-		values = append(values, fmt.Sprintf("(%v)", strings.Join(v, ", ")))
+		for _, v := range ib.values {
+			values = append(values, fmt.Sprintf("(%v)", strings.Join(v, ", ")))
+		}
+
+		buf.WriteString(strings.Join(values, ", "))
 	}
 
-	buf.WriteString(strings.Join(values, ", "))
 	return ib.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
 }
 

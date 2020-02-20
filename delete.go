@@ -61,8 +61,11 @@ func (db *DeleteBuilder) Build() (sql string, args []interface{}) {
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (db *DeleteBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
-	buf.WriteString("DELETE FROM ")
-	buf.WriteString(db.table)
+
+	if db.table != "" {
+		buf.WriteString("DELETE FROM ")
+		buf.WriteString(db.table)
+	}
 
 	if len(db.whereExprs) > 0 {
 		buf.WriteString(" WHERE ")
