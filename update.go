@@ -35,6 +35,8 @@ type UpdateBuilder struct {
 	args *Args
 }
 
+var _ Builder = new(UpdateBuilder)
+
 // Update sets table name in UPDATE.
 func (ub *UpdateBuilder) Update(table string) *UpdateBuilder {
 	ub.table = Escape(table)

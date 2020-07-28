@@ -99,6 +99,20 @@ func (f Flavor) NewUpdateBuilder() *UpdateBuilder {
 	return b
 }
 
+// Union unions all builders together using UNION operator with flavor.
+func (f Flavor) Union(builders ...Builder) *UnionBuilder {
+	b := newUnionBuilder(unionDistinct, builders...)
+	b.SetFlavor(f)
+	return b
+}
+
+// UnionAll unions all builders together using UNION ALL operator with flavor.
+func (f Flavor) UnionAll(builders ...Builder) *UnionBuilder {
+	b := newUnionBuilder(unionAll, builders...)
+	b.SetFlavor(f)
+	return b
+}
+
 // Quote adds quote for name to make sure the name can be used safely
 // as table name or field name.
 //

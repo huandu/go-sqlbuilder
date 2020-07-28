@@ -33,6 +33,8 @@ type DeleteBuilder struct {
 	args *Args
 }
 
+var _ Builder = new(DeleteBuilder)
+
 // DeleteFrom sets table name in DELETE.
 func (db *DeleteBuilder) DeleteFrom(table string) *DeleteBuilder {
 	db.table = Escape(table)

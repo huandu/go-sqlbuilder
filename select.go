@@ -61,6 +61,8 @@ type SelectBuilder struct {
 	args *Args
 }
 
+var _ Builder = new(SelectBuilder)
+
 // Distinct marks this SELECT as DISTINCT.
 func (sb *SelectBuilder) Distinct() *SelectBuilder {
 	sb.distinct = true
@@ -233,6 +235,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		buf.WriteString(" LIMIT ")
 		buf.WriteString(strconv.Itoa(sb.limit))
 	}
+
 	if MySQL == flavor && sb.limit >= 0 || PostgreSQL == flavor {
 		if sb.offset >= 0 {
 			buf.WriteString(" OFFSET ")
@@ -240,7 +243,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		}
 	}
 
-	return sb.Args.CompileWithFlavor(buf.String(), flavor, initialArg...)
+	return sb.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
 }
 
 // SetFlavor sets the flavor of compiled sql.

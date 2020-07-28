@@ -20,6 +20,8 @@ type compiledBuilder struct {
 	format string
 }
 
+var _ Builder = new(compiledBuilder)
+
 func (cb *compiledBuilder) Build() (sql string, args []interface{}) {
 	return cb.args.Compile(cb.format)
 }

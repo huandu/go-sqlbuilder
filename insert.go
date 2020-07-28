@@ -32,6 +32,8 @@ type InsertBuilder struct {
 	args *Args
 }
 
+var _ Builder = new(InsertBuilder)
+
 // InsertInto sets table name in INSERT.
 func (ib *InsertBuilder) InsertInto(table string) *InsertBuilder {
 	ib.table = Escape(table)
