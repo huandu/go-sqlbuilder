@@ -44,19 +44,20 @@ func newSelectBuilder() *SelectBuilder {
 type SelectBuilder struct {
 	Cond
 
-	distinct    bool
-	tables      []string
-	selectCols  []string
-	joinOptions []JoinOption
-	joinTables  []string
-	joinExprs   [][]string
-	whereExprs  []string
-	havingExprs []string
-	groupByCols []string
-	orderByCols []string
-	order       string
-	limit       int
-	offset      int
+	distinct       bool
+	tables         []string
+	distinctOnCols []string
+	selectCols     []string
+	joinOptions    []JoinOption
+	joinTables     []string
+	joinExprs      [][]string
+	whereExprs     []string
+	havingExprs    []string
+	groupByCols    []string
+	orderByCols    []string
+	order          string
+	limit          int
+	offset         int
 
 	args *Args
 }
@@ -66,6 +67,12 @@ var _ Builder = new(SelectBuilder)
 // Distinct marks this SELECT as DISTINCT.
 func (sb *SelectBuilder) Distinct() *SelectBuilder {
 	sb.distinct = true
+	return sb
+}
+
+// DistinctOn sets columns in DISTINCT ON.
+func (sb *SelectBuilder) DistinctOn(col ...string) *SelectBuilder {
+	sb.distinctOnCols = col
 	return sb
 }
 
@@ -185,6 +192,12 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 	if sb.distinct {
 		buf.WriteString("DISTINCT ")
+	}
+
+	if len(sb.distinctOnCols) > 0 {
+		buf.WriteString("DISTINCT ON (")
+		buf.WriteString(strings.Join(sb.distinctOnCols, ", "))
+		buf.WriteString(") ")
 	}
 
 	buf.WriteString(strings.Join(sb.selectCols, ", "))
