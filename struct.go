@@ -258,6 +258,18 @@ func (s *Struct) ReplaceInto(table string, value ...interface{}) *InsertBuilder 
 	return s.ReplaceIntoForTag(table, "", value...)
 }
 
+// UpsertForTag creates a new `InsertBuilder` with table name using verb INSERT INTO,
+// and adds an 'ON DUPLICATE KEY UPDATE' clause which actually updates existing records.
+// By default, exported fields tagged with tag are set as columns by calling `InsertBuilder#Cols`,
+// and value is added as a list of values by calling `InsertBuilder#Values`.
+//
+// UpsertIntoForTag never returns any error.
+// If the type of any item in value is not expected, it will be ignored.
+// If value is an empty slice, `UpsertBuilder#Values` will not be called.
+func (s *Struct) UpsertInto(table string, value ...interface{}) *InsertBuilder {
+	return s.UpsertIntoForTag(table, "", value...)
+}
+
 // buildColsAndValuesForTag uses ib to set exported fields tagged with tag as columns
 // and add value as a list of values.
 func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, tag string, value ...interface{}) {
@@ -346,6 +358,22 @@ func (s *Struct) InsertIgnoreIntoForTag(table string, tag string, value ...inter
 func (s *Struct) ReplaceIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
 	ib := s.Flavor.NewInsertBuilder()
 	ib.ReplaceInto(table)
+
+	s.buildColsAndValuesForTag(ib, tag, value...)
+	return ib
+}
+
+// UpsertForTag creates a new `InsertBuilder` with table name using verb INSERT INTO,
+// and adds an 'ON DUPLICATE KEY UPDATE' clause which actually updates existing records.
+// By default, exported fields tagged with tag are set as columns by calling `InsertBuilder#Cols`,
+// and value is added as a list of values by calling `InsertBuilder#Values`.
+//
+// UpsertIntoForTag never returns any error.
+// If the type of any item in value is not expected, it will be ignored.
+// If value is an empty slice, `UpsertBuilder#Values` will not be called.
+func (s *Struct) UpsertIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
+	ib := s.Flavor.NewInsertBuilder()
+	ib.UpsertInto(table)
 
 	s.buildColsAndValuesForTag(ib, tag, value...)
 	return ib

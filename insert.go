@@ -28,6 +28,7 @@ type InsertBuilder struct {
 	table  string
 	cols   []string
 	values [][]string
+	upsert bool
 
 	args *Args
 }
@@ -52,6 +53,12 @@ func (ib *InsertBuilder) InsertIgnoreInto(table string) *InsertBuilder {
 func (ib *InsertBuilder) ReplaceInto(table string) *InsertBuilder {
 	ib.verb = "REPLACE"
 	ib.table = Escape(table)
+	return ib
+}
+
+func (ib *InsertBuilder) UpsertInto(table string) *InsertBuilder {
+	ib.table = Escape(table)
+	ib.upsert = true
 	return ib
 }
 
@@ -104,6 +111,17 @@ func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 	for _, v := range ib.values {
 		values = append(values, fmt.Sprintf("(%v)", strings.Join(v, ", ")))
+	}
+
+	if ib.upsert {
+		buf.WriteString(strings.Join(values, ", "))
+		buf.WriteString(" ON DUPLICATE KEY UPDATE ")
+
+		values = make([]string, 0, len(ib.cols))
+		for _, col := range ib.cols {
+			// Use syntax as in MySQL 5.7: https://dev.mysql.com/doc/refman/5.7/en/insert-on-duplicate.html
+			values = append(values, fmt.Sprintf("%s = VALUES(%s)", col, col))
+		}
 	}
 
 	buf.WriteString(strings.Join(values, ", "))

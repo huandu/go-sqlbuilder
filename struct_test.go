@@ -104,22 +104,33 @@ func TestStructInsertInto(t *testing.T) {
 
 	users := []interface{}{user, user2, &fakeUser}
 
-	testInsert := map[*InsertBuilder]string{
-		userForTest.InsertInto("user", user):       "INSERT ",
-		userForTest.InsertIgnoreInto("user", user): "INSERT IGNORE ",
-		userForTest.ReplaceInto("user", user):      "REPLACE ",
+	type testCase struct {
+		verb   string
+		upsert bool
 	}
 
-	testMulitInsert := map[*InsertBuilder]string{
-		userForTest.InsertInto("user", users...):       "INSERT ",
-		userForTest.InsertIgnoreInto("user", users...): "INSERT IGNORE ",
-		userForTest.ReplaceInto("user", users...):      "REPLACE ",
+	testInsert := map[*InsertBuilder]testCase{
+		userForTest.InsertInto("user", user):       {verb: "INSERT "},
+		userForTest.InsertIgnoreInto("user", user): {verb: "INSERT IGNORE "},
+		userForTest.ReplaceInto("user", user):      {verb: "REPLACE "},
+		userForTest.UpsertInto("user", user):       {verb: "INSERT ", upsert: true},
 	}
 
-	for ib, exceptedVerb := range testInsert {
+	testMultiInsert := map[*InsertBuilder]testCase{
+		userForTest.InsertInto("user", users...):       {verb: "INSERT "},
+		userForTest.InsertIgnoreInto("user", users...): {verb: "INSERT IGNORE "},
+		userForTest.ReplaceInto("user", users...):      {verb: "REPLACE "},
+		userForTest.UpsertInto("user", users...):       {verb: "INSERT ", upsert: true},
+	}
+
+	for ib, tc := range testInsert {
 		sql, args := ib.Build()
 
-		if expected := exceptedVerb + "INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?)"; expected != sql {
+		expected := tc.verb + "INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?)"
+		if tc.upsert {
+			expected += " ON DUPLICATE KEY UPDATE id = VALUES(id), Name = VALUES(Name), status = VALUES(status), created_at = VALUES(created_at)"
+		}
+		if expected != sql {
 			t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
 		}
 
@@ -128,10 +139,14 @@ func TestStructInsertInto(t *testing.T) {
 		}
 	}
 
-	for ib, exceptedVerb := range testMulitInsert {
+	for ib, tc := range testMultiInsert {
 		sql, args := ib.Build()
 
-		if expected := exceptedVerb + "INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?), (?, ?, ?, ?)"; expected != sql {
+		expected := tc.verb + "INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?), (?, ?, ?, ?)"
+		if tc.upsert {
+			expected += " ON DUPLICATE KEY UPDATE id = VALUES(id), Name = VALUES(Name), status = VALUES(status), created_at = VALUES(created_at)"
+		}
+		if expected != sql {
 			t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
 		}
 
@@ -163,22 +178,33 @@ func TestStructInsertIntoForTag(t *testing.T) {
 
 	users := []interface{}{user, user2, &fakeUser}
 
-	testInsertForTag := map[*InsertBuilder]string{
-		userForTest.InsertIntoForTag("user", "important", user):       "INSERT ",
-		userForTest.InsertIgnoreIntoForTag("user", "important", user): "INSERT IGNORE ",
-		userForTest.ReplaceIntoForTag("user", "important", user):      "REPLACE ",
+	type testCase struct {
+		verb   string
+		upsert bool
 	}
 
-	testMulitInsertForTag := map[*InsertBuilder]string{
-		userForTest.InsertIntoForTag("user", "important", users...):       "INSERT ",
-		userForTest.InsertIgnoreIntoForTag("user", "important", users...): "INSERT IGNORE ",
-		userForTest.ReplaceIntoForTag("user", "important", users...):      "REPLACE ",
+	testInsertForTag := map[*InsertBuilder]testCase{
+		userForTest.InsertIntoForTag("user", "important", user):       {verb: "INSERT "},
+		userForTest.InsertIgnoreIntoForTag("user", "important", user): {verb: "INSERT IGNORE "},
+		userForTest.ReplaceIntoForTag("user", "important", user):      {verb: "REPLACE "},
+		userForTest.UpsertIntoForTag("user", "important", user):       {verb: "INSERT ", upsert: true},
 	}
 
-	for ib, exceptedVerb := range testInsertForTag {
+	testMulitInsertForTag := map[*InsertBuilder]testCase{
+		userForTest.InsertIntoForTag("user", "important", users...):       {verb: "INSERT "},
+		userForTest.InsertIgnoreIntoForTag("user", "important", users...): {verb: "INSERT IGNORE "},
+		userForTest.ReplaceIntoForTag("user", "important", users...):      {verb: "REPLACE "},
+		userForTest.UpsertIntoForTag("user", "important", users...):       {verb: "INSERT ", upsert: true},
+	}
+
+	for ib, tc := range testInsertForTag {
 		sql, args := ib.Build()
 
-		if expected := exceptedVerb + "INTO user (id, Name, status) VALUES (?, ?, ?)"; expected != sql {
+		expected := tc.verb + "INTO user (id, Name, status) VALUES (?, ?, ?)"
+		if tc.upsert {
+			expected += " ON DUPLICATE KEY UPDATE id = VALUES(id), Name = VALUES(Name), status = VALUES(status)"
+		}
+		if expected != sql {
 			t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
 		}
 
@@ -187,10 +213,14 @@ func TestStructInsertIntoForTag(t *testing.T) {
 		}
 	}
 
-	for ib, exceptedVerb := range testMulitInsertForTag {
+	for ib, tc := range testMulitInsertForTag {
 		sql, args := ib.Build()
 
-		if expected := exceptedVerb + "INTO user (id, Name, status) VALUES (?, ?, ?), (?, ?, ?)"; expected != sql {
+		expected := tc.verb + "INTO user (id, Name, status) VALUES (?, ?, ?), (?, ?, ?)"
+		if tc.upsert {
+			expected += " ON DUPLICATE KEY UPDATE id = VALUES(id), Name = VALUES(Name), status = VALUES(status)"
+		}
+		if expected != sql {
 			t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
 		}
 

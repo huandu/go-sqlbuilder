@@ -54,3 +54,19 @@ func ExampleInsertBuilder_replaceInto() {
 	// REPLACE INTO demo.user (id, name, status, created_at) VALUES (?, ?, ?, UNIX_TIMESTAMP(NOW())), (?, ?, ?, ?)
 	// [1 Huan Du 1 2 Charmy Liu 1 1234567890]
 }
+
+func ExampleInsertBuilder_upsertInto() {
+	ib := NewInsertBuilder()
+	ib.UpsertInto("demo.user")
+	ib.Cols("id", "name", "status", "created_at")
+	ib.Values(1, "Huan Du", 1, Raw("UNIX_TIMESTAMP(NOW())"))
+	ib.Values(2, "Charmy Liu", 1, 1234567890)
+
+	sql, args := ib.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// INSERT INTO demo.user (id, name, status, created_at) VALUES (?, ?, ?, UNIX_TIMESTAMP(NOW())), (?, ?, ?, ?) ON DUPLICATE KEY UPDATE id = VALUES(id), name = VALUES(name), status = VALUES(status), created_at = VALUES(created_at)
+	// [1 Huan Du 1 2 Charmy Liu 1 1234567890]
+}
