@@ -1,3 +1,3 @@
-module github.com/huandu/go-sqlbuilder
+module github.com/tolbier/go-sqlbuilder
 
 go 1.12
