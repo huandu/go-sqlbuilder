@@ -6,6 +6,7 @@ package sqlbuilder
 import (
 	"bytes"
 	"reflect"
+	"regexp"
 	"strings"
 )
 
@@ -23,8 +24,9 @@ var (
 )
 
 const (
-	fieldOptWithQuote = "withquote"
-	fieldOptOmitEmpty = "omitempty"
+	fieldOptWithQuote         = "withquote"
+	fieldOptOmitEmpty         = "omitempty"
+	fieldOptOmitEmptyForRegex = "omitempty_for_(.+)"
 )
 
 // Struct represents a struct type.
@@ -38,7 +40,17 @@ type Struct struct {
 	fieldAlias      map[string]string
 	taggedFields    map[string][]string
 	quotedFields    map[string]struct{}
-	omitEmptyFields map[string]struct{}
+	omitEmptyFields map[string]omitEmptyTagMap
+}
+type omitEmptyTagMap map[string]struct{}
+
+func (sm omitEmptyTagMap) containsAny(tags ...string) (res bool) {
+	for _, tag := range tags {
+		if _, res = sm[tag]; res {
+			return
+		}
+	}
+	return
 }
 
 // NewStruct analyzes type information in structValue
@@ -59,7 +71,7 @@ func NewStruct(structValue interface{}) *Struct {
 	s.fieldAlias = map[string]string{}
 	s.taggedFields = map[string][]string{}
 	s.quotedFields = map[string]struct{}{}
-	s.omitEmptyFields = map[string]struct{}{}
+	s.omitEmptyFields = map[string]omitEmptyTagMap{}
 	s.parse(t)
 	return s
 }
@@ -114,14 +126,23 @@ func (s *Struct) parse(t reflect.Type) {
 		opts := strings.Split(fieldopt, ",")
 
 		for _, opt := range opts {
-			switch opt {
-			case fieldOptWithQuote:
+			sm := regexp.MustCompile(fieldOptOmitEmptyForRegex).FindStringSubmatch(opt)
+			switch {
+			case sm != nil:
+				s.appendOmitEmptyFieldsTag(alias, sm[1])
+			case opt == fieldOptOmitEmpty:
+				s.appendOmitEmptyFieldsTag(alias, "")
+			case opt == fieldOptWithQuote:
 				s.quotedFields[alias] = struct{}{}
-			case fieldOptOmitEmpty:
-				s.omitEmptyFields[alias] = struct{}{}
 			}
 		}
 	}
+}
+func (s *Struct) appendOmitEmptyFieldsTag(alias, tag string) {
+	if s.omitEmptyFields[alias] == nil {
+		s.omitEmptyFields[alias] = omitEmptyTagMap{}
+	}
+	s.omitEmptyFields[alias][tag] = struct{}{}
 }
 
 // SelectFrom creates a new `SelectBuilder` with table name.
@@ -211,8 +232,10 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 		val := v.FieldByName(name)
 
 		if isEmptyValue(val) {
-			if _, ok := s.omitEmptyFields[f]; ok {
-				continue
+			if omitEmptyTagMap, ok := s.omitEmptyFields[f]; ok {
+				if omitEmptyTagMap.containsAny("", tag) {
+					continue
+				}
 			}
 		} else {
 			val = dereferencedValue(val)
