@@ -644,6 +644,79 @@ func TestStructOmitEmpty(t *testing.T) {
 	}
 }
 
+type structOmitEmptyForTag struct {
+	A int      `db:"aa" fieldopt:"omitempty,withquote" fieldtag:"patch"`
+	B *string  `db:"bb" fieldopt:"omitempty" fieldtag:"patch"`
+	C uint16   `db:"cc" fieldopt:"omitempty" fieldtag:"patch"`
+	D *float64 `fieldopt:"omitempty_for_patch" fieldtag:"patch"`
+	E bool     `db:"ee" fieldtag:"patch"`
+}
+
+func TestStructOmitEmptyForTag(t *testing.T) {
+	st := NewStruct(new(structOmitEmptyForTag)).For(MySQL)
+	sql1, _ := st.Update("foo", new(structOmitEmptyForTag)).Build()
+
+	if expected := "UPDATE foo SET D = ?, ee = ?"; sql1 != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql1)
+	}
+
+	a := 123
+	b := "bbbb"
+	c := uint16(234)
+	e := true
+	sql2, args2 := st.UpdateForTag("foo", "patch", &structOmitEmptyForTag{
+		A: a,
+		B: &b,
+		C: c,
+		D: nil,
+		E: e,
+	}).Build()
+
+	if expected := "UPDATE foo SET `aa` = ?, bb = ?, cc = ?, ee = ?"; sql2 != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql2)
+	}
+
+	if expected := []interface{}{a, b, c, e}; !reflect.DeepEqual(expected, args2) {
+		t.Fatalf("invalid args. [expected:%#v] [actual:%#v]", expected, args2)
+	}
+}
+
+type structOmitEmptyForMultipleTags struct {
+	A int      `db:"aa" fieldopt:"omitempty,withquote" fieldtag:"patch,patch2"`
+	B *string  `db:"bb" fieldopt:"omitempty" fieldtag:"patch"`
+	C uint16   `db:"cc" fieldopt:"omitempty, omitempty_for_patch2" fieldtag:"patch2"`
+	D *float64 `fieldopt:"omitempty_for_patch" fieldtag:"patch"`
+	E bool     `db:"ee" fieldtag:"patch"`
+}
+
+func TestStructOmitEmptyForMultipleTags(t *testing.T) {
+	st := NewStruct(new(structOmitEmptyForMultipleTags)).For(MySQL)
+	sql1, _ := st.Update("foo", new(structOmitEmptyForMultipleTags)).Build()
+
+	if expected := "UPDATE foo SET D = ?, ee = ?"; sql1 != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql1)
+	}
+
+	a := 123
+	b := "bbbb"
+	e := true
+	sql2, args2 := st.UpdateForTag("foo", "patch2", &structOmitEmptyForMultipleTags{
+		A: a,
+		B: &b,
+		C: 0,
+		D: nil,
+		E: e,
+	}).Build()
+
+	if expected := "UPDATE foo SET `aa` = ?"; sql2 != expected {
+		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql2)
+	}
+
+	if expected := []interface{}{a}; !reflect.DeepEqual(expected, args2) {
+		t.Fatalf("invalid args. [expected:%#v] [actual:%#v]", expected, args2)
+	}
+}
+
 type structWithPointers struct {
 	A int      `db:"aa" fieldopt:"omitempty"`
 	B *string  `db:"bb"`
