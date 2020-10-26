@@ -26,7 +26,7 @@ var (
 const (
 	fieldOptWithQuote         = "withquote"
 	fieldOptOmitEmpty         = "omitempty"
-	fieldOptOmitEmptyForRegex = "omitempty_for_(.+)"
+	fieldOptOmitEmptyForRegex = "^omitempty_for_(.+)$"
 )
 
 // Struct represents a struct type.
