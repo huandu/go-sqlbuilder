@@ -125,8 +125,9 @@ func (s *Struct) parse(t reflect.Type) {
 		fieldopt := field.Tag.Get(FieldOpt)
 		opts := strings.Split(fieldopt, ",")
 
+		r := regexp.MustCompile(fieldOptOmitEmptyForRegex)
 		for _, opt := range opts {
-			sm := regexp.MustCompile(fieldOptOmitEmptyForRegex).FindStringSubmatch(opt)
+			sm := r.FindStringSubmatch(opt)
 			switch {
 			case sm != nil:
 				s.appendOmitEmptyFieldsTag(alias, sm[1])
