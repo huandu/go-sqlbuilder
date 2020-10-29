@@ -647,8 +647,8 @@ func TestStructOmitEmpty(t *testing.T) {
 type structOmitEmptyForTag struct {
 	A int      `db:"aa" fieldopt:"omitempty,withquote" fieldtag:"patch"`
 	B *string  `db:"bb" fieldopt:"omitempty" fieldtag:"patch"`
-	C uint16   `db:"cc" fieldopt:"omitempty" fieldtag:"patch"`
-	D *float64 `fieldopt:"omitempty_for_patch" fieldtag:"patch"`
+	C uint16   `db:"cc" fieldopt:"omitempty()" fieldtag:"patch"`
+	D *float64 `fieldopt:"omitempty(patch)" fieldtag:"patch"`
 	E bool     `db:"ee" fieldtag:"patch"`
 }
 
@@ -682,10 +682,10 @@ func TestStructOmitEmptyForTag(t *testing.T) {
 }
 
 type structOmitEmptyForMultipleTags struct {
-	A int      `db:"aa" fieldopt:"omitempty,withquote" fieldtag:"patch,patch2"`
+	A int      `db:"aa" fieldopt:"omitempty, omitempty(patch,patch2),withquote" fieldtag:"patch,patch2"`
 	B *string  `db:"bb" fieldopt:"omitempty" fieldtag:"patch"`
-	C uint16   `db:"cc" fieldopt:"omitempty, omitempty_for_patch2" fieldtag:"patch2"`
-	D *float64 `fieldopt:"omitempty_for_patch" fieldtag:"patch"`
+	C uint16   `db:"cc" fieldopt:"omitempty, omitempty(patch2)" fieldtag:"patch2"`
+	D *float64 `fieldopt:"omitempty(patch)" fieldtag:"patch"`
 	E bool     `db:"ee" fieldtag:"patch"`
 }
 

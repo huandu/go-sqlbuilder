@@ -24,10 +24,11 @@ var (
 )
 
 const (
-	fieldOptWithQuote         = "withquote"
-	fieldOptOmitEmpty         = "omitempty"
-	fieldOptOmitEmptyForRegex = "^omitempty_for_(.+)$"
+	fieldOptWithQuote = "withquote"
+	fieldOptOmitEmpty = "omitempty"
 )
+
+var optRegex = regexp.MustCompile(`(\w+)(\((.*)\))?`)
 
 // Struct represents a struct type.
 //
@@ -123,27 +124,29 @@ func (s *Struct) parse(t reflect.Type) {
 
 		// Parse FieldOpt.
 		fieldopt := field.Tag.Get(FieldOpt)
-		opts := strings.Split(fieldopt, ",")
-
-		r := regexp.MustCompile(fieldOptOmitEmptyForRegex)
+		opts := optRegex.FindAllString(fieldopt, -1)
 		for _, opt := range opts {
-			sm := r.FindStringSubmatch(opt)
-			switch {
-			case sm != nil:
-				s.appendOmitEmptyFieldsTag(alias, sm[1])
-			case opt == fieldOptOmitEmpty:
-				s.appendOmitEmptyFieldsTag(alias, "")
-			case opt == fieldOptWithQuote:
+			sm := optRegex.FindStringSubmatch(opt)
+			switch sm[1] {
+			case fieldOptOmitEmpty:
+				tags := strings.Split(sm[3], ",")
+				if len(tags) == 0 {
+					tags = append(tags, "")
+				}
+				s.appendOmitEmptyFieldsTags(alias, tags...)
+			case fieldOptWithQuote:
 				s.quotedFields[alias] = struct{}{}
 			}
 		}
 	}
 }
-func (s *Struct) appendOmitEmptyFieldsTag(alias, tag string) {
+func (s *Struct) appendOmitEmptyFieldsTags(alias string, tags ...string) {
 	if s.omitEmptyFields[alias] == nil {
 		s.omitEmptyFields[alias] = omitEmptyTagMap{}
 	}
-	s.omitEmptyFields[alias][tag] = struct{}{}
+	for _, tag := range tags {
+		s.omitEmptyFields[alias][tag] = struct{}{}
+	}
 }
 
 // SelectFrom creates a new `SelectBuilder` with table name.
