@@ -489,7 +489,7 @@ func splitTokens(fieldtag string) (res []string) {
 	for i, v := range res {
 		res[i] = strings.TrimSpace(v)
 	}
-	return res
+	return
 }
 func dereferencedType(t reflect.Type) reflect.Type {
 	for k := t.Kind(); k == reflect.Ptr || k == reflect.Interface; k = t.Kind() {
