@@ -115,7 +115,7 @@ func (s *Struct) parse(t reflect.Type) {
 
 		// Parse FieldTag.
 		fieldtag := field.Tag.Get(FieldTag)
-		tags := strings.Split(fieldtag, ",")
+		tags := splitTokens(fieldtag)
 
 		for _, t := range tags {
 			if t != "" {
@@ -140,6 +140,7 @@ func (s *Struct) parse(t reflect.Type) {
 		}
 	}
 }
+
 func (s *Struct) appendOmitEmptyFieldsTags(alias string, tags ...string) {
 	if s.omitEmptyFields[alias] == nil {
 		s.omitEmptyFields[alias] = omitEmptyTagMap{}
@@ -477,11 +478,18 @@ func getOptMatchedMap(opt string) (res map[string]string) {
 	return
 }
 func getTagsFromOptParams(opts string) (tags []string) {
-	tags = strings.Split(opts, ",")
+	tags = splitTokens(opts)
 	if len(tags) == 0 {
 		tags = append(tags, "")
 	}
 	return
+}
+func splitTokens(fieldtag string) (res []string) {
+	res = strings.Split(fieldtag, ",")
+	for i, v := range res {
+		res[i] = strings.TrimSpace(v)
+	}
+	return res
 }
 func dereferencedType(t reflect.Type) reflect.Type {
 	for k := t.Kind(); k == reflect.Ptr || k == reflect.Interface; k = t.Kind() {
