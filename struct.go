@@ -26,9 +26,12 @@ var (
 const (
 	fieldOptWithQuote = "withquote"
 	fieldOptOmitEmpty = "omitempty"
+
+	optName   = "optName"
+	optParams = "optParams"
 )
 
-var optRegex = regexp.MustCompile(`(\w+)(\((.*)\))?`)
+var optRegex = regexp.MustCompile(`(?P<` + optName + `>\w+)(\((?P<` + optParams + `>.*)\))?`)
 
 // Struct represents a struct type.
 //
@@ -126,13 +129,10 @@ func (s *Struct) parse(t reflect.Type) {
 		fieldopt := field.Tag.Get(FieldOpt)
 		opts := optRegex.FindAllString(fieldopt, -1)
 		for _, opt := range opts {
-			sm := optRegex.FindStringSubmatch(opt)
-			switch sm[1] {
+			optMap := getOptMatchedMap(opt)
+			switch optMap[optName] {
 			case fieldOptOmitEmpty:
-				tags := strings.Split(sm[3], ",")
-				if len(tags) == 0 {
-					tags = append(tags, "")
-				}
+				tags := getTagsFromOptParams(optMap[optParams])
 				s.appendOmitEmptyFieldsTags(alias, tags...)
 			case fieldOptWithQuote:
 				s.quotedFields[alias] = struct{}{}
@@ -466,6 +466,23 @@ func (s *Struct) quoteFields(fields []string) []string {
 	return quoted
 }
 
+func getOptMatchedMap(opt string) (res map[string]string) {
+	res = map[string]string{}
+	sm := optRegex.FindStringSubmatch(opt)
+	for i, name := range optRegex.SubexpNames() {
+		if name != "" {
+			res[name] = sm[i]
+		}
+	}
+	return
+}
+func getTagsFromOptParams(opts string) (tags []string) {
+	tags = strings.Split(opts, ",")
+	if len(tags) == 0 {
+		tags = append(tags, "")
+	}
+	return
+}
 func dereferencedType(t reflect.Type) reflect.Type {
 	for k := t.Kind(); k == reflect.Ptr || k == reflect.Interface; k = t.Kind() {
 		t = t.Elem()
