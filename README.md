@@ -80,6 +80,10 @@ type ATable struct {
     unexported int                                       // Unexported field is not visible to Struct.
     Quoted     string `db:"quoted" fieldopt:"withquote"` // Add quote to the field using back quote or double quote. See `Flavor#Quote`.
     Empty      uint   `db:"empty" fieldopt:"omitempty"`  // Omit the field in UPDATE if it is a nil or zero value.
+
+    // The `omitempty` can be written as a function.
+    // In this case, omit empty field `Tagged` when UPDATE for tag `tag1` and `tag3` but not `tag2`.
+    Tagged     string `db:"tagged" fieldopt:"omitempty(tag1,tag3)" fieldtag:"tag1,tag2,tag3"`
 }
 ```
 
