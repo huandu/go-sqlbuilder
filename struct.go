@@ -6,6 +6,7 @@ package sqlbuilder
 import (
 	"bytes"
 	"reflect"
+	"regexp"
 	"strings"
 )
 
@@ -25,7 +26,12 @@ var (
 const (
 	fieldOptWithQuote = "withquote"
 	fieldOptOmitEmpty = "omitempty"
+
+	optName   = "optName"
+	optParams = "optParams"
 )
+
+var optRegex = regexp.MustCompile(`(?P<` + optName + `>\w+)(\((?P<` + optParams + `>.*)\))?`)
 
 // Struct represents a struct type.
 //
@@ -38,7 +44,17 @@ type Struct struct {
 	fieldAlias      map[string]string
 	taggedFields    map[string][]string
 	quotedFields    map[string]struct{}
-	omitEmptyFields map[string]struct{}
+	omitEmptyFields map[string]omitEmptyTagMap
+}
+type omitEmptyTagMap map[string]struct{}
+
+func (sm omitEmptyTagMap) containsAny(tags ...string) (res bool) {
+	for _, tag := range tags {
+		if _, res = sm[tag]; res {
+			return
+		}
+	}
+	return
 }
 
 // NewStruct analyzes type information in structValue
@@ -59,7 +75,7 @@ func NewStruct(structValue interface{}) *Struct {
 	s.fieldAlias = map[string]string{}
 	s.taggedFields = map[string][]string{}
 	s.quotedFields = map[string]struct{}{}
-	s.omitEmptyFields = map[string]struct{}{}
+	s.omitEmptyFields = map[string]omitEmptyTagMap{}
 	s.parse(t)
 	return s
 }
@@ -99,7 +115,7 @@ func (s *Struct) parse(t reflect.Type) {
 
 		// Parse FieldTag.
 		fieldtag := field.Tag.Get(FieldTag)
-		tags := strings.Split(fieldtag, ",")
+		tags := splitTokens(fieldtag)
 
 		for _, t := range tags {
 			if t != "" {
@@ -111,16 +127,26 @@ func (s *Struct) parse(t reflect.Type) {
 
 		// Parse FieldOpt.
 		fieldopt := field.Tag.Get(FieldOpt)
-		opts := strings.Split(fieldopt, ",")
-
+		opts := optRegex.FindAllString(fieldopt, -1)
 		for _, opt := range opts {
-			switch opt {
+			optMap := getOptMatchedMap(opt)
+			switch optMap[optName] {
+			case fieldOptOmitEmpty:
+				tags := getTagsFromOptParams(optMap[optParams])
+				s.appendOmitEmptyFieldsTags(alias, tags...)
 			case fieldOptWithQuote:
 				s.quotedFields[alias] = struct{}{}
-			case fieldOptOmitEmpty:
-				s.omitEmptyFields[alias] = struct{}{}
 			}
 		}
+	}
+}
+
+func (s *Struct) appendOmitEmptyFieldsTags(alias string, tags ...string) {
+	if s.omitEmptyFields[alias] == nil {
+		s.omitEmptyFields[alias] = omitEmptyTagMap{}
+	}
+	for _, tag := range tags {
+		s.omitEmptyFields[alias][tag] = struct{}{}
 	}
 }
 
@@ -211,8 +237,10 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 		val := v.FieldByName(name)
 
 		if isEmptyValue(val) {
-			if _, ok := s.omitEmptyFields[f]; ok {
-				continue
+			if omitEmptyTagMap, ok := s.omitEmptyFields[f]; ok {
+				if omitEmptyTagMap.containsAny("", tag) {
+					continue
+				}
 			}
 		} else {
 			val = dereferencedValue(val)
@@ -439,6 +467,30 @@ func (s *Struct) quoteFields(fields []string) []string {
 	return quoted
 }
 
+func getOptMatchedMap(opt string) (res map[string]string) {
+	res = map[string]string{}
+	sm := optRegex.FindStringSubmatch(opt)
+	for i, name := range optRegex.SubexpNames() {
+		if name != "" {
+			res[name] = sm[i]
+		}
+	}
+	return
+}
+func getTagsFromOptParams(opts string) (tags []string) {
+	tags = splitTokens(opts)
+	if len(tags) == 0 {
+		tags = append(tags, "")
+	}
+	return
+}
+func splitTokens(fieldtag string) (res []string) {
+	res = strings.Split(fieldtag, ",")
+	for i, v := range res {
+		res[i] = strings.TrimSpace(v)
+	}
+	return
+}
 func dereferencedType(t reflect.Type) reflect.Type {
 	for k := t.Kind(); k == reflect.Ptr || k == reflect.Interface; k = t.Kind() {
 		t = t.Elem()
