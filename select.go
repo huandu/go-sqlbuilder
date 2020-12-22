@@ -15,12 +15,13 @@ type JoinOption string
 
 // Join options.
 const (
+	FullJoin       JoinOption = "FULL"
+	FullOuterJoin  JoinOption = "FULL OUTER"
+	InnerJoin      JoinOption = "INNER"
 	LeftJoin       JoinOption = "LEFT"
 	LeftOuterJoin  JoinOption = "LEFT OUTER"
 	RightJoin      JoinOption = "RIGHT"
 	RightOuterJoin JoinOption = "RIGHT OUTER"
-	FullJoin       JoinOption = "FULL"
-	FullOuterJoin  JoinOption = "FULL OUTER"
 )
 
 // NewSelectBuilder creates a new SELECT builder.
@@ -95,6 +96,9 @@ func (sb *SelectBuilder) Join(table string, onExpr ...string) *SelectBuilder {
 //     option JOIN table ON onExpr[0] AND onExpr[1] ...
 //
 // Here is a list of supported options.
+//     - FullJoin: FULL JOIN
+//     - FullOuterJoin: FULL OUTER JOIN
+//     - InnerJoin: INNER JOIN
 //     - LeftJoin: LEFT JOIN
 //     - LeftOuterJoin: LEFT OUTER JOIN
 //     - RightJoin: RIGHT JOIN
