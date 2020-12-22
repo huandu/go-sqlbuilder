@@ -40,14 +40,24 @@ func UnionAll(builders ...Builder) *UnionBuilder {
 
 func newUnionBuilder(opt string, builders ...Builder) *UnionBuilder {
 	args := &Args{}
-	vars := make([]string, 0, len(builders))
+	buf := &bytes.Buffer{}
 
-	for _, b := range builders {
-		vars = append(vars, args.Add(b))
+	if len(builders) > 0 {
+		buf.Grow(len(builders) * (4 + len(opt)))
+		buf.WriteRune('(')
+		buf.WriteString(args.Add(builders[0]))
+		buf.WriteRune(')')
+
+		for _, b := range builders[1:] {
+			buf.WriteString(opt)
+			buf.WriteRune('(')
+			buf.WriteString(args.Add(b))
+			buf.WriteRune(')')
+		}
 	}
 
 	return &UnionBuilder{
-		format:   strings.Join(vars, opt),
+		format:   buf.String(),
 		builders: builders,
 		limit:    -1,
 		offset:   -1,
@@ -102,16 +112,7 @@ func (ub *UnionBuilder) Build() (sql string, args []interface{}) {
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
-
-	if len(ub.builders) > 1 {
-		buf.WriteRune('(')
-	}
-
 	buf.WriteString(ub.format)
-
-	if len(ub.builders) > 1 {
-		buf.WriteRune(')')
-	}
 
 	if len(ub.orderByCols) > 0 {
 		buf.WriteString(" ORDER BY ")

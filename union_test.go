@@ -28,7 +28,7 @@ func ExampleUnion() {
 	fmt.Println(args)
 
 	// Output:
-	// (SELECT id, name, created_at FROM demo.user WHERE id > ? UNION SELECT id, avatar FROM demo.user_profile WHERE status IN (?, ?, ?)) ORDER BY created_at DESC
+	// (SELECT id, name, created_at FROM demo.user WHERE id > ?) UNION (SELECT id, avatar FROM demo.user_profile WHERE status IN (?, ?, ?)) ORDER BY created_at DESC
 	// [1234 1 2 5]
 }
 
@@ -49,6 +49,6 @@ func ExampleUnionAll() {
 	fmt.Println(args)
 
 	// Output:
-	// (SELECT id, name, created_at FROM demo.user WHERE id > ? UNION ALL TABLE demo.user_profile) ORDER BY created_at ASC LIMIT 100 OFFSET 5
+	// (SELECT id, name, created_at FROM demo.user WHERE id > ?) UNION ALL (TABLE demo.user_profile) ORDER BY created_at ASC LIMIT 100 OFFSET 5
 	// [1234]
 }
