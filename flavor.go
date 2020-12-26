@@ -14,6 +14,7 @@ const (
 
 	MySQL
 	PostgreSQL
+	SQLite
 )
 
 var (
@@ -43,6 +44,8 @@ func (f Flavor) String() string {
 		return "MySQL"
 	case PostgreSQL:
 		return "PostgreSQL"
+	case SQLite:
+		return "SQLite"
 	}
 
 	return "<invalid>"
@@ -59,6 +62,8 @@ func (f Flavor) Interpolate(sql string, args []interface{}) (string, error) {
 		return mysqlInterpolate(sql, args...)
 	case PostgreSQL:
 		return postgresqlInterpolate(sql, args...)
+	case SQLite:
+		return sqliteInterpolate(sql, args...)
 	}
 
 	return "", ErrInterpolateNotImplemented
@@ -117,13 +122,13 @@ func (f Flavor) UnionAll(builders ...Builder) *UnionBuilder {
 // as table name or field name.
 //
 // * For MySQL, use back quote (`) to quote name;
-// * For PostgreSQL, use double quote (") to quote name.
+// * For PostgreSQL and SQLite, use double quote (") to quote name.
 func (f Flavor) Quote(name string) string {
 	switch f {
 	case MySQL:
-		return fmt.Sprintf("`%v`", name)
-	case PostgreSQL:
-		return fmt.Sprintf(`"%v"`, name)
+		return fmt.Sprintf("`%s`", name)
+	case PostgreSQL, SQLite:
+		return fmt.Sprintf(`"%s"`, name)
 	}
 
 	return name

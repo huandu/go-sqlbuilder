@@ -50,9 +50,9 @@ Following builders are implemented right now. API document and examples are prov
 - [Build](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Build): Advanced freestyle builder using special syntax defined in [Args#Compile](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Args.Compile).
 - [BuildNamed](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#BuildNamed): Advanced freestyle builder using `${key}` to refer the value of a map by key.
 
-### Build SQL for MySQL or PostgreSQL
+### Build SQL for MySQL, PostgreSQL or SQLite
 
-Parameter markers are different in MySQL and PostgreSQL. This package provides some methods to set the type of markers (we call it "flavor") in all builders.
+Parameter markers are different in MySQL, PostgreSQL and SQLite. This package provides some methods to set the type of markers (we call it "flavor") in all builders.
 
 By default, all builders uses `DefaultFlavor` to build SQL. The default value is `MySQL`.
 
@@ -62,7 +62,7 @@ We can wrap any `Builder` with a default flavor through `WithFlavor`.
 
 To be more verbose, we can use `PostgreSQL.NewSelectBuilder()` to create a `SelectBuilder` with the `PostgreSQL` flavor. All builders can be created in this way.
 
-Right now, there are only two flavors, `MySQL` and `PostgreSQL`. Open new issue to me to ask for a new flavor if you find it necessary.
+Right now, there are only three flavors, `MySQL`, `PostgreSQL` and `SQLite`. Open new issue to me to ask for a new flavor if you find it necessary.
 
 ### Using `Struct` as a light weight ORM
 
@@ -273,7 +273,7 @@ fmt.Println(err)
 // <nil>
 ```
 
-And a sample for PostgreSQL. Note that the dollar quote is supported.
+Here is a sample for PostgreSQL. Note that the dollar quote is supported.
 
 ```go
 // Only the last `$1` is interpolated.

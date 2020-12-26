@@ -15,6 +15,7 @@ func TestFlavor(t *testing.T) {
 		0:          "<invalid>",
 		MySQL:      "MySQL",
 		PostgreSQL: "PostgreSQL",
+		SQLite:     "SQLite",
 	}
 
 	for f, expected := range cases {
@@ -105,6 +106,27 @@ func TestFlavorInterpolate(t *testing.T) {
 			"SELECT $12345678901234567890", nil,
 			"", errOutOfRange,
 		},
+
+		{
+			SQLite,
+			"SELECT * FROM a WHERE name = ? AND state IN (?, ?, ?, ?, ?)", []interface{}{"I'm fine", 42, int8(8), int16(-16), int32(32), int64(64)},
+			"SELECT * FROM a WHERE name = 'I\\'m fine' AND state IN (42, 8, -16, 32, 64)", nil,
+		},
+		{
+			SQLite,
+			"SELECT * FROM `a?` WHERE name = \"?\" AND state IN (?, '?', ?, ?, ?, ?, ?)", []interface{}{"\r\n\b\t\x1a\x00\\\"'", uint(42), uint8(8), uint16(16), uint32(32), uint64(64), "useless"},
+			"SELECT * FROM `a?` WHERE name = \"?\" AND state IN ('\\r\\n\\b\\t\\Z\\0\\\\\\\"\\'', '?', 42, 8, 16, 32, 64)", nil,
+		},
+		{
+			SQLite,
+			"SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?", []interface{}{true, false, float32(1.234567), float64(9.87654321), []byte(nil), []byte("I'm bytes"), dt, time.Time{}, nil},
+			"SELECT TRUE, FALSE, 1.234567, 9.87654321, NULL, X'49276D206279746573', '2019-04-24 12:23:34.123', '0000-00-00', NULL", nil,
+		},
+		{
+			SQLite,
+			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\?", []interface{}{SQLite},
+			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\'SQLite'", nil,
+		},
 	}
 
 	for idx, c := range cases {
@@ -134,7 +156,7 @@ func ExampleFlavor() {
 	// [1234 3]
 }
 
-func ExampleFlavor_Interpolate() {
+func ExampleFlavor_Interpolate_mySQL() {
 	sb := MySQL.NewSelectBuilder()
 	sb.Select("name").From("user").Where(
 		sb.NE("id", 1234),
@@ -174,5 +196,23 @@ SELECT * FROM dup($1);`, []interface{}{42})
 	// LANGUAGE SQL;
 	//
 	// SELECT * FROM dup(42);
+	// <nil>
+}
+
+func ExampleFlavor_Interpolate_sqlite() {
+	sb := SQLite.NewSelectBuilder()
+	sb.Select("name").From("user").Where(
+		sb.NE("id", 1234),
+		sb.E("name", "Charmy Liu"),
+		sb.Like("desc", "%mother's day%"),
+	)
+	sql, args := sb.Build()
+	query, err := SQLite.Interpolate(sql, args)
+
+	fmt.Println(query)
+	fmt.Println(err)
+
+	// Output:
+	// SELECT name FROM user WHERE id <> 1234 AND name = 'Charmy Liu' AND desc LIKE '%mother\'s day%'
 	// <nil>
 }

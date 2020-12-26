@@ -16,6 +16,10 @@ import (
 // If there are more "?" than len(args), returns ErrMissingArgs.
 // Otherwise, if there are less "?" than len(args), the redundant args are omitted.
 func mysqlInterpolate(query string, args ...interface{}) (string, error) {
+	return mysqlLikeInterpolate(MySQL, query, args...)
+}
+
+func mysqlLikeInterpolate(flavor Flavor, query string, args ...interface{}) (string, error) {
 	// Roughly estimate the size to avoid useless memory allocation and copy.
 	buf := make([]byte, 0, len(query)+len(args)*20)
 
@@ -48,7 +52,7 @@ func mysqlInterpolate(query string, args ...interface{}) (string, error) {
 			}
 
 			buf = append(buf, query[:offset-sz]...)
-			buf, err = encodeValue(buf, args[cnt], MySQL)
+			buf, err = encodeValue(buf, args[cnt], flavor)
 
 			if err != nil {
 				return "", err
@@ -263,6 +267,11 @@ func postgresqlInterpolate(query string, args ...interface{}) (string, error) {
 	return *(*string)(unsafe.Pointer(&buf)), nil
 }
 
+// mysqlInterpolate works the same as MySQL interpolating.
+func sqliteInterpolate(query string, args ...interface{}) (string, error) {
+	return mysqlLikeInterpolate(SQLite, query, args...)
+}
+
 func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 	switch v := arg.(type) {
 	case nil:
@@ -323,16 +332,14 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 			buf = quoteStringValue(buf, *(*string)(unsafe.Pointer(&v)), flavor)
 
 		case PostgreSQL:
-			hex := make([]byte, 0, 2)
 			buf = append(buf, "E'\\\\x"...)
-
-			for _, b := range v {
-				runes := strconv.AppendInt(hex, int64(b), 16)
-				buf = append(buf, byte(unicode.ToUpper(rune(runes[0]))))
-				buf = append(buf, byte(unicode.ToUpper(rune(runes[1]))))
-			}
-
+			buf = appendHex(buf, v)
 			buf = append(buf, "'::bytea"...)
+
+		case SQLite:
+			buf = append(buf, "X'"...)
+			buf = appendHex(buf, v)
+			buf = append(buf, '\'')
 		}
 
 	case string:
@@ -355,6 +362,9 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 
 		case PostgreSQL:
 			buf = append(buf, v.Format("2006-01-02 15:04:05.999999 MST")...)
+
+		case SQLite:
+			buf = append(buf, v.Format("2006-01-02 15:04:05.000")...)
 		}
 
 		buf = append(buf, '\'')
@@ -367,6 +377,16 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 	}
 
 	return buf, nil
+}
+
+var hexDigits = [16]byte{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'}
+
+func appendHex(buf, v []byte) []byte {
+	for _, b := range v {
+		buf = append(buf, hexDigits[(b>>4)&0xF], hexDigits[b&0xF])
+	}
+
+	return buf
 }
 
 func quoteStringValue(buf []byte, s string, flavor Flavor) []byte {
