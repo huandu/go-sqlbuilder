@@ -6,7 +6,17 @@ package sqlbuilder
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
+)
+
+const (
+	updateMarkerInit injectionMarker = iota
+	updateMarkerAfterUpdate
+	updateMarkerAfterSet
+	updateMarkerAfterWhere
+	updateMarkerAfterOrderBy
+	updateMarkerAfterLimit
 )
 
 // NewUpdateBuilder creates a new UPDATE builder.
@@ -20,7 +30,9 @@ func newUpdateBuilder() *UpdateBuilder {
 		Cond: Cond{
 			Args: args,
 		},
-		args: args,
+		limit:     -1,
+		args:      args,
+		injection: newInjection(),
 	}
 }
 
@@ -31,33 +43,48 @@ type UpdateBuilder struct {
 	table       string
 	assignments []string
 	whereExprs  []string
+	orderByCols []string
+	order       string
+	limit       int
 
 	args *Args
+
+	injection *injection
+	marker    injectionMarker
 }
 
 var _ Builder = new(UpdateBuilder)
 
 // Update sets table name in UPDATE.
+func Update(table string) *UpdateBuilder {
+	return DefaultFlavor.NewUpdateBuilder().Update(table)
+}
+
+// Update sets table name in UPDATE.
 func (ub *UpdateBuilder) Update(table string) *UpdateBuilder {
 	ub.table = Escape(table)
+	ub.marker = updateMarkerAfterUpdate
 	return ub
 }
 
 // Set sets the assignements in SET.
 func (ub *UpdateBuilder) Set(assignment ...string) *UpdateBuilder {
 	ub.assignments = assignment
+	ub.marker = updateMarkerAfterSet
 	return ub
 }
 
 // SetMore appends the assignements in SET.
 func (ub *UpdateBuilder) SetMore(assignment ...string) *UpdateBuilder {
 	ub.assignments = append(ub.assignments, assignment...)
+	ub.marker = updateMarkerAfterSet
 	return ub
 }
 
 // Where sets expressions of WHERE in UPDATE.
 func (ub *UpdateBuilder) Where(andExpr ...string) *UpdateBuilder {
 	ub.whereExprs = append(ub.whereExprs, andExpr...)
+	ub.marker = updateMarkerAfterWhere
 	return ub
 }
 
@@ -102,6 +129,34 @@ func (ub *UpdateBuilder) Div(field string, value interface{}) string {
 	return fmt.Sprintf("%s = %s / %s", f, f, ub.args.Add(value))
 }
 
+// OrderBy sets columns of ORDER BY in UPDATE.
+func (ub *UpdateBuilder) OrderBy(col ...string) *UpdateBuilder {
+	ub.orderByCols = col
+	ub.marker = updateMarkerAfterOrderBy
+	return ub
+}
+
+// Asc sets order of ORDER BY to ASC.
+func (ub *UpdateBuilder) Asc() *UpdateBuilder {
+	ub.order = "ASC"
+	ub.marker = updateMarkerAfterOrderBy
+	return ub
+}
+
+// Desc sets order of ORDER BY to DESC.
+func (ub *UpdateBuilder) Desc() *UpdateBuilder {
+	ub.order = "DESC"
+	ub.marker = updateMarkerAfterOrderBy
+	return ub
+}
+
+// Limit sets the LIMIT in UPDATE.
+func (ub *UpdateBuilder) Limit(limit int) *UpdateBuilder {
+	ub.limit = limit
+	ub.marker = updateMarkerAfterLimit
+	return ub
+}
+
 // String returns the compiled UPDATE string.
 func (ub *UpdateBuilder) String() string {
 	s, _ := ub.Build()
@@ -118,14 +173,38 @@ func (ub *UpdateBuilder) Build() (sql string, args []interface{}) {
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (ub *UpdateBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
+	ub.injection.WriteTo(buf, updateMarkerInit)
 	buf.WriteString("UPDATE ")
 	buf.WriteString(ub.table)
+	ub.injection.WriteTo(buf, updateMarkerAfterUpdate)
+
 	buf.WriteString(" SET ")
 	buf.WriteString(strings.Join(ub.assignments, ", "))
+	ub.injection.WriteTo(buf, updateMarkerAfterSet)
 
 	if len(ub.whereExprs) > 0 {
 		buf.WriteString(" WHERE ")
 		buf.WriteString(strings.Join(ub.whereExprs, " AND "))
+		ub.injection.WriteTo(buf, updateMarkerAfterWhere)
+	}
+
+	if len(ub.orderByCols) > 0 {
+		buf.WriteString(" ORDER BY ")
+		buf.WriteString(strings.Join(ub.orderByCols, ", "))
+
+		if ub.order != "" {
+			buf.WriteRune(' ')
+			buf.WriteString(ub.order)
+		}
+
+		ub.injection.WriteTo(buf, updateMarkerAfterOrderBy)
+	}
+
+	if ub.limit >= 0 {
+		buf.WriteString(" LIMIT ")
+		buf.WriteString(strconv.Itoa(ub.limit))
+
+		ub.injection.WriteTo(buf, updateMarkerAfterLimit)
 	}
 
 	return ub.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
@@ -136,4 +215,10 @@ func (ub *UpdateBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	old = ub.args.Flavor
 	ub.args.Flavor = flavor
 	return
+}
+
+// SQL adds an arbitrary sql to current position.
+func (ub *UpdateBuilder) SQL(sql string) *UpdateBuilder {
+	ub.injection.SQL(ub.marker, sql)
+	return ub
 }

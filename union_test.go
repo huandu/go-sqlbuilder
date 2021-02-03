@@ -52,3 +52,28 @@ func ExampleUnionAll() {
 	// (SELECT id, name, created_at FROM demo.user WHERE id > ?) UNION ALL (TABLE demo.user_profile) ORDER BY created_at ASC LIMIT 100 OFFSET 5
 	// [1234]
 }
+
+func ExampleUnionBuilder_SQL() {
+	sb1 := NewSelectBuilder()
+	sb1.Select("id", "name", "created_at")
+	sb1.From("demo.user")
+
+	sb2 := newSelectBuilder()
+	sb2.Select("id", "avatar")
+	sb2.From("demo.user_profile")
+
+	ub := NewUnionBuilder()
+	ub.SQL("/* before */")
+	ub.Union(sb1, sb2)
+	ub.SQL("/* after union */")
+	ub.OrderBy("created_at").Desc()
+	ub.SQL("/* after order by */")
+	ub.Limit(100).Offset(5)
+	ub.SQL("/* after limit */")
+
+	sql := ub.String()
+	fmt.Println(sql)
+
+	// Output:
+	// /* before */ (SELECT id, name, created_at FROM demo.user) UNION (SELECT id, avatar FROM demo.user_profile) /* after union */ ORDER BY created_at DESC /* after order by */ LIMIT 100 OFFSET 5 /* after limit */
+}

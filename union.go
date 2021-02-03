@@ -14,6 +14,28 @@ const (
 	unionAll      = " UNION ALL "
 )
 
+const (
+	unionMarkerInit injectionMarker = iota
+	unionMarkerAfterUnion
+	unionMarkerAfterOrderBy
+	unionMarkerAfterLimit
+)
+
+// NewUnionBuilder creates a new UNION builder.
+func NewUnionBuilder() *UnionBuilder {
+	return DefaultFlavor.NewUnionBuilder()
+}
+
+func newUnionBuilder() *UnionBuilder {
+	return &UnionBuilder{
+		limit:  -1,
+		offset: -1,
+
+		args:      &Args{},
+		injection: newInjection(),
+	}
+}
+
 // UnionBuilder is a builder to build UNION.
 type UnionBuilder struct {
 	format      string
@@ -24,75 +46,88 @@ type UnionBuilder struct {
 	offset      int
 
 	args *Args
+
+	injection *injection
+	marker    injectionMarker
 }
 
 var _ Builder = new(UnionBuilder)
 
 // Union unions all builders together using UNION operator.
 func Union(builders ...Builder) *UnionBuilder {
-	return DefaultFlavor.Union(builders...)
+	return DefaultFlavor.NewUnionBuilder().Union(builders...)
+}
+
+// Union unions all builders together using UNION operator.
+func (ub *UnionBuilder) Union(builders ...Builder) *UnionBuilder {
+	return ub.union(unionDistinct, builders...)
 }
 
 // UnionAll unions all builders together using UNION ALL operator.
 func UnionAll(builders ...Builder) *UnionBuilder {
-	return DefaultFlavor.UnionAll(builders...)
+	return DefaultFlavor.NewUnionBuilder().UnionAll(builders...)
 }
 
-func newUnionBuilder(opt string, builders ...Builder) *UnionBuilder {
-	args := &Args{}
+// UnionAll unions all builders together using UNION ALL operator.
+func (ub *UnionBuilder) UnionAll(builders ...Builder) *UnionBuilder {
+	return ub.union(unionAll, builders...)
+}
+
+func (ub *UnionBuilder) union(opt string, builders ...Builder) *UnionBuilder {
 	buf := &bytes.Buffer{}
 
 	if len(builders) > 0 {
 		buf.Grow(len(builders) * (4 + len(opt)))
 		buf.WriteRune('(')
-		buf.WriteString(args.Add(builders[0]))
+		buf.WriteString(ub.Var(builders[0]))
 		buf.WriteRune(')')
 
 		for _, b := range builders[1:] {
 			buf.WriteString(opt)
 			buf.WriteRune('(')
-			buf.WriteString(args.Add(b))
+			buf.WriteString(ub.Var(b))
 			buf.WriteRune(')')
 		}
 	}
 
-	return &UnionBuilder{
-		format:   buf.String(),
-		builders: builders,
-		limit:    -1,
-		offset:   -1,
-
-		args: args,
-	}
+	ub.format = buf.String()
+	ub.builders = builders
+	ub.marker = unionMarkerAfterUnion
+	return ub
 }
 
 // OrderBy sets columns of ORDER BY in SELECT.
 func (ub *UnionBuilder) OrderBy(col ...string) *UnionBuilder {
 	ub.orderByCols = col
+	ub.marker = unionMarkerAfterOrderBy
 	return ub
 }
 
 // Asc sets order of ORDER BY to ASC.
 func (ub *UnionBuilder) Asc() *UnionBuilder {
 	ub.order = "ASC"
+	ub.marker = unionMarkerAfterOrderBy
 	return ub
 }
 
 // Desc sets order of ORDER BY to DESC.
 func (ub *UnionBuilder) Desc() *UnionBuilder {
 	ub.order = "DESC"
+	ub.marker = unionMarkerAfterOrderBy
 	return ub
 }
 
 // Limit sets the LIMIT in SELECT.
 func (ub *UnionBuilder) Limit(limit int) *UnionBuilder {
 	ub.limit = limit
+	ub.marker = unionMarkerAfterLimit
 	return ub
 }
 
 // Offset sets the LIMIT offset in SELECT.
 func (ub *UnionBuilder) Offset(offset int) *UnionBuilder {
 	ub.offset = offset
+	ub.marker = unionMarkerAfterLimit
 	return ub
 }
 
@@ -112,7 +147,9 @@ func (ub *UnionBuilder) Build() (sql string, args []interface{}) {
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
+	ub.injection.WriteTo(buf, unionMarkerInit)
 	buf.WriteString(ub.format)
+	ub.injection.WriteTo(buf, unionMarkerAfterUnion)
 
 	if len(ub.orderByCols) > 0 {
 		buf.WriteString(" ORDER BY ")
@@ -122,11 +159,14 @@ func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 			buf.WriteRune(' ')
 			buf.WriteString(ub.order)
 		}
+
+		ub.injection.WriteTo(buf, unionMarkerAfterOrderBy)
 	}
 
 	if ub.limit >= 0 {
 		buf.WriteString(" LIMIT ")
 		buf.WriteString(strconv.Itoa(ub.limit))
+
 	}
 
 	if MySQL == flavor && ub.limit >= 0 || PostgreSQL == flavor {
@@ -134,6 +174,10 @@ func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 			buf.WriteString(" OFFSET ")
 			buf.WriteString(strconv.Itoa(ub.offset))
 		}
+	}
+
+	if ub.limit >= 0 {
+		ub.injection.WriteTo(buf, unionMarkerAfterLimit)
 	}
 
 	return ub.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
@@ -144,4 +188,15 @@ func (ub *UnionBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	old = ub.args.Flavor
 	ub.args.Flavor = flavor
 	return
+}
+
+// Var returns a placeholder for value.
+func (ub *UnionBuilder) Var(arg interface{}) string {
+	return ub.args.Add(arg)
+}
+
+// SQL adds an arbitrary sql to current position.
+func (ub *UnionBuilder) SQL(sql string) *UnionBuilder {
+	ub.injection.SQL(ub.marker, sql)
+	return ub
 }

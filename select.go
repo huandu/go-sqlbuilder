@@ -10,6 +10,18 @@ import (
 	"strings"
 )
 
+const (
+	selectMarkerInit injectionMarker = iota
+	selectMarkerAfterSelect
+	selectMarkerAfterFrom
+	selectMarkerAfterJoin
+	selectMarkerAfterWhere
+	selectMarkerAfterGroupBy
+	selectMarkerAfterOrderBy
+	selectMarkerAfterLimit
+	selectMarkerAfterFor
+)
+
 // JoinOption is the option in JOIN.
 type JoinOption string
 
@@ -35,9 +47,10 @@ func newSelectBuilder() *SelectBuilder {
 		Cond: Cond{
 			Args: args,
 		},
-		limit:  -1,
-		offset: -1,
-		args:   args,
+		limit:     -1,
+		offset:    -1,
+		args:      args,
+		injection: newInjection(),
 	}
 }
 
@@ -58,27 +71,39 @@ type SelectBuilder struct {
 	order       string
 	limit       int
 	offset      int
+	forWhat     string
 
 	args *Args
+
+	injection *injection
+	marker    injectionMarker
 }
 
 var _ Builder = new(SelectBuilder)
 
-// Distinct marks this SELECT as DISTINCT.
-func (sb *SelectBuilder) Distinct() *SelectBuilder {
-	sb.distinct = true
-	return sb
+// Select sets columns in SELECT.
+func Select(col ...string) *SelectBuilder {
+	return DefaultFlavor.NewSelectBuilder().Select(col...)
 }
 
 // Select sets columns in SELECT.
 func (sb *SelectBuilder) Select(col ...string) *SelectBuilder {
 	sb.selectCols = col
+	sb.marker = selectMarkerAfterSelect
+	return sb
+}
+
+// Distinct marks this SELECT as DISTINCT.
+func (sb *SelectBuilder) Distinct() *SelectBuilder {
+	sb.distinct = true
+	sb.marker = selectMarkerAfterSelect
 	return sb
 }
 
 // From sets table names in SELECT.
 func (sb *SelectBuilder) From(table ...string) *SelectBuilder {
 	sb.tables = table
+	sb.marker = selectMarkerAfterFrom
 	return sb
 }
 
@@ -87,6 +112,7 @@ func (sb *SelectBuilder) From(table ...string) *SelectBuilder {
 // It builds a JOIN expression like
 //     JOIN table ON onExpr[0] AND onExpr[1] ...
 func (sb *SelectBuilder) Join(table string, onExpr ...string) *SelectBuilder {
+	sb.marker = selectMarkerAfterJoin
 	return sb.JoinWithOption("", table, onExpr...)
 }
 
@@ -107,54 +133,77 @@ func (sb *SelectBuilder) JoinWithOption(option JoinOption, table string, onExpr 
 	sb.joinOptions = append(sb.joinOptions, option)
 	sb.joinTables = append(sb.joinTables, table)
 	sb.joinExprs = append(sb.joinExprs, onExpr)
+	sb.marker = selectMarkerAfterJoin
 	return sb
 }
 
 // Where sets expressions of WHERE in SELECT.
 func (sb *SelectBuilder) Where(andExpr ...string) *SelectBuilder {
 	sb.whereExprs = append(sb.whereExprs, andExpr...)
+	sb.marker = selectMarkerAfterWhere
 	return sb
 }
 
 // Having sets expressions of HAVING in SELECT.
 func (sb *SelectBuilder) Having(andExpr ...string) *SelectBuilder {
 	sb.havingExprs = append(sb.havingExprs, andExpr...)
+	sb.marker = selectMarkerAfterGroupBy
 	return sb
 }
 
 // GroupBy sets columns of GROUP BY in SELECT.
 func (sb *SelectBuilder) GroupBy(col ...string) *SelectBuilder {
 	sb.groupByCols = col
+	sb.marker = selectMarkerAfterGroupBy
 	return sb
 }
 
 // OrderBy sets columns of ORDER BY in SELECT.
 func (sb *SelectBuilder) OrderBy(col ...string) *SelectBuilder {
 	sb.orderByCols = col
+	sb.marker = selectMarkerAfterOrderBy
 	return sb
 }
 
 // Asc sets order of ORDER BY to ASC.
 func (sb *SelectBuilder) Asc() *SelectBuilder {
 	sb.order = "ASC"
+	sb.marker = selectMarkerAfterOrderBy
 	return sb
 }
 
 // Desc sets order of ORDER BY to DESC.
 func (sb *SelectBuilder) Desc() *SelectBuilder {
 	sb.order = "DESC"
+	sb.marker = selectMarkerAfterOrderBy
 	return sb
 }
 
 // Limit sets the LIMIT in SELECT.
 func (sb *SelectBuilder) Limit(limit int) *SelectBuilder {
 	sb.limit = limit
+	sb.marker = selectMarkerAfterLimit
 	return sb
 }
 
 // Offset sets the LIMIT offset in SELECT.
 func (sb *SelectBuilder) Offset(offset int) *SelectBuilder {
 	sb.offset = offset
+	sb.marker = selectMarkerAfterLimit
+	return sb
+}
+
+// ForUpdate adds FOR UPDATE at the end of SELECT statement.
+func (sb *SelectBuilder) ForUpdate() *SelectBuilder {
+	sb.forWhat = "UPDATE"
+	sb.marker = selectMarkerAfterFor
+	return sb
+}
+
+// ForShare adds FOR SHARE at the end of SELECT statement.
+func (sb *SelectBuilder) ForShare() *SelectBuilder {
+	sb.forWhat = "SHARE"
+	sb.marker = selectMarkerAfterFor
 	return sb
 }
 
@@ -185,6 +234,7 @@ func (sb *SelectBuilder) Build() (sql string, args []interface{}) {
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
+	sb.injection.WriteTo(buf, selectMarkerInit)
 	buf.WriteString("SELECT ")
 
 	if sb.distinct {
@@ -192,8 +242,11 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	}
 
 	buf.WriteString(strings.Join(sb.selectCols, ", "))
+	sb.injection.WriteTo(buf, selectMarkerAfterSelect)
+
 	buf.WriteString(" FROM ")
 	buf.WriteString(strings.Join(sb.tables, ", "))
+	sb.injection.WriteTo(buf, selectMarkerAfterFrom)
 
 	for i := range sb.joinTables {
 		if option := sb.joinOptions[i]; option != "" {
@@ -208,11 +261,18 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			buf.WriteString(" ON ")
 			buf.WriteString(strings.Join(sb.joinExprs[i], " AND "))
 		}
+
+	}
+
+	if len(sb.joinTables) > 0 {
+		sb.injection.WriteTo(buf, selectMarkerAfterJoin)
 	}
 
 	if len(sb.whereExprs) > 0 {
 		buf.WriteString(" WHERE ")
 		buf.WriteString(strings.Join(sb.whereExprs, " AND "))
+
+		sb.injection.WriteTo(buf, selectMarkerAfterWhere)
 	}
 
 	if len(sb.groupByCols) > 0 {
@@ -223,6 +283,8 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			buf.WriteString(" HAVING ")
 			buf.WriteString(strings.Join(sb.havingExprs, " AND "))
 		}
+
+		sb.injection.WriteTo(buf, selectMarkerAfterGroupBy)
 	}
 
 	if len(sb.orderByCols) > 0 {
@@ -233,6 +295,8 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			buf.WriteRune(' ')
 			buf.WriteString(sb.order)
 		}
+
+		sb.injection.WriteTo(buf, selectMarkerAfterOrderBy)
 	}
 
 	if sb.limit >= 0 {
@@ -247,6 +311,17 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		}
 	}
 
+	if sb.limit >= 0 {
+		sb.injection.WriteTo(buf, selectMarkerAfterLimit)
+	}
+
+	if sb.forWhat != "" {
+		buf.WriteString(" FOR ")
+		buf.WriteString(sb.forWhat)
+
+		sb.injection.WriteTo(buf, selectMarkerAfterFor)
+	}
+
 	return sb.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
 }
 
@@ -255,4 +330,10 @@ func (sb *SelectBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	old = sb.args.Flavor
 	sb.args.Flavor = flavor
 	return
+}
+
+// SQL adds an arbitrary sql to current position.
+func (sb *SelectBuilder) SQL(sql string) *SelectBuilder {
+	sb.injection.SQL(sb.marker, sql)
+	return sb
 }

@@ -8,6 +8,13 @@ import (
 	"strings"
 )
 
+const (
+	createTableMarkerInit injectionMarker = iota
+	createTableMarkerAfterCreate
+	createTableMarkerAfterDefine
+	createTableMarkerAfterOption
+)
+
 // NewCreateTableBuilder creates a new CREATE TABLE builder.
 func NewCreateTableBuilder() *CreateTableBuilder {
 	return DefaultFlavor.NewCreateTableBuilder()
@@ -16,8 +23,10 @@ func NewCreateTableBuilder() *CreateTableBuilder {
 func newCreateTableBuilder() *CreateTableBuilder {
 	args := &Args{}
 	return &CreateTableBuilder{
-		verb: "CREATE TABLE",
-		args: args,
+		verb:      "CREATE TABLE",
+		args:      args,
+		injection: newInjection(),
+		marker:    createTableMarkerInit,
 	}
 }
 
@@ -30,11 +39,22 @@ type CreateTableBuilder struct {
 	options     [][]string
 
 	args *Args
+
+	injection *injection
+	marker    injectionMarker
+}
+
+var _ Builder = new(CreateTableBuilder)
+
+// CreateTable sets the table name in CREATE TABLE.
+func CreateTable(table string) *CreateTableBuilder {
+	return DefaultFlavor.NewCreateTableBuilder().CreateTable(table)
 }
 
 // CreateTable sets the table name in CREATE TABLE.
 func (ctb *CreateTableBuilder) CreateTable(table string) *CreateTableBuilder {
 	ctb.table = Escape(table)
+	ctb.marker = createTableMarkerAfterCreate
 	return ctb
 }
 
@@ -42,6 +62,7 @@ func (ctb *CreateTableBuilder) CreateTable(table string) *CreateTableBuilder {
 func (ctb *CreateTableBuilder) CreateTempTable(table string) *CreateTableBuilder {
 	ctb.verb = "CREATE TEMPORARY TABLE"
 	ctb.table = Escape(table)
+	ctb.marker = createTableMarkerAfterCreate
 	return ctb
 }
 
@@ -54,12 +75,14 @@ func (ctb *CreateTableBuilder) IfNotExists() *CreateTableBuilder {
 // Define adds definition of a column or index in CREATE TABLE.
 func (ctb *CreateTableBuilder) Define(def ...string) *CreateTableBuilder {
 	ctb.defs = append(ctb.defs, def)
+	ctb.marker = createTableMarkerAfterDefine
 	return ctb
 }
 
 // Option adds a table option in CREATE TABLE.
 func (ctb *CreateTableBuilder) Option(opt ...string) *CreateTableBuilder {
 	ctb.options = append(ctb.options, opt)
+	ctb.marker = createTableMarkerAfterOption
 	return ctb
 }
 
@@ -79,6 +102,7 @@ func (ctb *CreateTableBuilder) Build() (sql string, args []interface{}) {
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (ctb *CreateTableBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
+	ctb.injection.WriteTo(buf, createTableMarkerInit)
 	buf.WriteString(ctb.verb)
 
 	if ctb.ifNotExists {
@@ -87,16 +111,22 @@ func (ctb *CreateTableBuilder) BuildWithFlavor(flavor Flavor, initialArg ...inte
 
 	buf.WriteRune(' ')
 	buf.WriteString(ctb.table)
-	buf.WriteString(" (")
+	ctb.injection.WriteTo(buf, createTableMarkerAfterCreate)
 
-	defs := make([]string, 0, len(ctb.defs))
+	if len(ctb.defs) > 0 {
+		buf.WriteString(" (")
 
-	for _, def := range ctb.defs {
-		defs = append(defs, strings.Join(def, " "))
+		defs := make([]string, 0, len(ctb.defs))
+
+		for _, def := range ctb.defs {
+			defs = append(defs, strings.Join(def, " "))
+		}
+
+		buf.WriteString(strings.Join(defs, ", "))
+		buf.WriteRune(')')
+
+		ctb.injection.WriteTo(buf, createTableMarkerAfterDefine)
 	}
-
-	buf.WriteString(strings.Join(defs, ", "))
-	buf.WriteRune(')')
 
 	if len(ctb.options) > 0 {
 		buf.WriteRune(' ')
@@ -108,6 +138,7 @@ func (ctb *CreateTableBuilder) BuildWithFlavor(flavor Flavor, initialArg ...inte
 		}
 
 		buf.WriteString(strings.Join(opts, ", "))
+		ctb.injection.WriteTo(buf, createTableMarkerAfterOption)
 	}
 
 	return ctb.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
@@ -118,4 +149,15 @@ func (ctb *CreateTableBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	old = ctb.args.Flavor
 	ctb.args.Flavor = flavor
 	return
+}
+
+// Var returns a placeholder for value.
+func (ctb *CreateTableBuilder) Var(arg interface{}) string {
+	return ctb.args.Add(arg)
+}
+
+// SQL adds an arbitrary sql to current position.
+func (ctb *CreateTableBuilder) SQL(sql string) *CreateTableBuilder {
+	ctb.injection.SQL(ctb.marker, sql)
+	return ctb
 }
