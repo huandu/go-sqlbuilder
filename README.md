@@ -19,7 +19,20 @@ go get github.com/huandu/go-sqlbuilder
 
 ### Basic usage
 
-Here is a sample to demonstrate how to build a SELECT query.
+We can build a SQL really quick with this package.
+
+```go
+sql := sqlbuilder.Select("id", "name").From("demo.user").
+    Where("status = 1").Limit(10).
+    String()
+
+fmt.Println(sql)
+
+// Output:
+// SELECT id, name FROM demo.user WHERE status = 1 LIMIT 10
+```
+
+In the most cases, we need to escape all input from user. In this case, create a builder before starting.
 
 ```go
 sb := sqlbuilder.NewSelectBuilder()
@@ -37,6 +50,8 @@ fmt.Println(args)
 // [1 2 5]
 ```
 
+### Pre-defined SQL builders
+
 Following builders are implemented right now. API document and examples are provided in the `godoc` document.
 
 - [Struct](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Struct): Builder factory for a struct.
@@ -49,6 +64,29 @@ Following builders are implemented right now. API document and examples are prov
 - [Buildf](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Buildf): Freestyle builder using `fmt.Sprintf`-like syntax.
 - [Build](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Build): Advanced freestyle builder using special syntax defined in [Args#Compile](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Args.Compile).
 - [BuildNamed](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#BuildNamed): Advanced freestyle builder using `${key}` to refer the value of a map by key.
+
+There is a method `SQL(sql string)` implemented by all statement builders like `SelectBuilder`. We can use this method to insert any arbitrary SQL fragment when building a SQL. It's quite useful to build SQL containing non-standard syntax supported by a OLTP or OLAP system.
+
+```go
+// Build a SQL to create a HIVE table.
+sql := sqlbuilder.CreateTable("users").
+    SQL("PARTITION BY (year)").
+    SQL("AS").
+    SQL(
+        sqlbuilder.Select("columns[0] id", "columns[1] name", "columns[2] year").
+            From("`all-users.csv`").
+            Limit(100).
+            String(),
+    ).
+    String()
+
+fmt.Println(sql)
+
+// Output:
+// CREATE TABLE users PARTITION BY (year) AS SELECT columns[0] id, columns[1] name, columns[2] year FROM `all-users.csv` LIMIT 100
+```
+
+To learn how to use builders, check out [examples on GoDoc](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#pkg-examples).
 
 ### Build SQL for MySQL, PostgreSQL or SQLite
 

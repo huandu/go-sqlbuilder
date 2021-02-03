@@ -104,16 +104,9 @@ func (f Flavor) NewUpdateBuilder() *UpdateBuilder {
 	return b
 }
 
-// Union unions all builders together using UNION operator with flavor.
-func (f Flavor) Union(builders ...Builder) *UnionBuilder {
-	b := newUnionBuilder(unionDistinct, builders...)
-	b.SetFlavor(f)
-	return b
-}
-
-// UnionAll unions all builders together using UNION ALL operator with flavor.
-func (f Flavor) UnionAll(builders ...Builder) *UnionBuilder {
-	b := newUnionBuilder(unionAll, builders...)
+// NewUnionBuilder creates a new UNION builder with flavor.
+func (f Flavor) NewUnionBuilder() *UnionBuilder {
+	b := newUnionBuilder()
 	b.SetFlavor(f)
 	return b
 }

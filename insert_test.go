@@ -7,6 +7,48 @@ import (
 	"fmt"
 )
 
+func ExampleInsertInto() {
+	sql, args := InsertInto("demo.user").
+		Cols("id", "name", "status").
+		Values(4, "Sample", 2).
+		Build()
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// INSERT INTO demo.user (id, name, status) VALUES (?, ?, ?)
+	// [4 Sample 2]
+}
+
+func ExampleInsertIgnoreInto() {
+	sql, args := InsertIgnoreInto("demo.user").
+		Cols("id", "name", "status").
+		Values(4, "Sample", 2).
+		Build()
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// INSERT IGNORE INTO demo.user (id, name, status) VALUES (?, ?, ?)
+	// [4 Sample 2]
+}
+
+func ExampleReplaceInto() {
+	sql, args := ReplaceInto("demo.user").
+		Cols("id", "name", "status").
+		Values(4, "Sample", 2).
+		Build()
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// REPLACE INTO demo.user (id, name, status) VALUES (?, ?, ?)
+	// [4 Sample 2]
+}
+
 func ExampleInsertBuilder() {
 	ib := NewInsertBuilder()
 	ib.InsertInto("demo.user")
@@ -53,4 +95,23 @@ func ExampleInsertBuilder_replaceInto() {
 	// Output:
 	// REPLACE INTO demo.user (id, name, status, created_at) VALUES (?, ?, ?, UNIX_TIMESTAMP(NOW())), (?, ?, ?, ?)
 	// [1 Huan Du 1 2 Charmy Liu 1 1234567890]
+}
+
+func ExampleInsertBuilder_SQL() {
+	ib := NewInsertBuilder()
+	ib.SQL("/* before */")
+	ib.InsertInto("demo.user")
+	ib.SQL("PARTITION (p0)")
+	ib.Cols("id", "name", "status", "created_at")
+	ib.SQL("/* after cols */")
+	ib.Values(3, "Shawn Du", 1, 1234567890)
+	ib.SQL(ib.Var(Build("ON DUPLICATE KEY UPDATE status = $?", 1)))
+
+	sql, args := ib.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// /* before */ INSERT INTO demo.user PARTITION (p0) (id, name, status, created_at) /* after cols */ VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE status = ?
+	// [3 Shawn Du 1 1234567890 1]
 }

@@ -8,6 +8,25 @@ import (
 	"fmt"
 )
 
+func ExampleSelect() {
+	// Build a SQL to create a HIVE table.
+	sql := CreateTable("users").
+		SQL("PARTITION BY (year)").
+		SQL("AS").
+		SQL(
+			Select("columns[0] id", "columns[1] name", "columns[2] year").
+				From("`all-users.csv`").
+				Limit(100).
+				String(),
+		).
+		String()
+
+	fmt.Println(sql)
+
+	// Output:
+	// CREATE TABLE users PARTITION BY (year) AS SELECT columns[0] id, columns[1] name, columns[2] year FROM `all-users.csv` LIMIT 100
+}
+
 func ExampleSelectBuilder() {
 	sb := NewSelectBuilder()
 	sb.Distinct().Select("id", "name", sb.As("COUNT(*)", "t"))
@@ -153,6 +172,21 @@ func ExampleSelectBuilder_limit_offset() {
 	// SELECT * FROM user LIMIT 0
 }
 
+func ExampleSelectBuilder_ForUpdate() {
+	sb := newSelectBuilder()
+	sb.Select("*").From("user").Where(
+		sb.Equal("id", 1234),
+	).ForUpdate()
+
+	sql, args := sb.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT * FROM user WHERE id = ? FOR UPDATE
+	// [1234]
+}
+
 func ExampleSelectBuilder_varInCols() {
 	// Column name may contain some characters, e.g. the $ sign, which have special meanings in builders.
 	// It's recommended to call Escape() or EscapeAll() to escape the name.
@@ -169,4 +203,36 @@ func ExampleSelectBuilder_varInCols() {
 	// Output:
 	// SELECT colHasA$Sign, ? FROM table
 	// [foo]
+}
+
+func ExampleSelectBuilder_SQL() {
+	sb := NewSelectBuilder()
+	sb.SQL("/* before */")
+	sb.Select("u.id", "u.name", "c.type", "p.nickname")
+	sb.SQL("/* after select */")
+	sb.From("user u")
+	sb.SQL("/* after from */")
+	sb.Join("contract c",
+		"u.id = c.user_id",
+	)
+	sb.JoinWithOption(RightOuterJoin, "person p",
+		"u.id = p.user_id",
+	)
+	sb.SQL("/* after join */")
+	sb.Where(
+		"u.modified_at > u.created_at",
+	)
+	sb.SQL("/* after where */")
+	sb.OrderBy("id")
+	sb.SQL("/* after order by */")
+	sb.Limit(10)
+	sb.SQL("/* after limit */")
+	sb.ForShare()
+	sb.SQL("/* after for */")
+
+	sql := sb.String()
+	fmt.Println(sql)
+
+	// Output:
+	// /* before */ SELECT u.id, u.name, c.type, p.nickname /* after select */ FROM user u /* after from */ JOIN contract c ON u.id = c.user_id RIGHT OUTER JOIN person p ON u.id = p.user_id /* after join */ WHERE u.modified_at > u.created_at /* after where */ ORDER BY id /* after order by */ LIMIT 10 /* after limit */ FOR SHARE /* after for */
 }
