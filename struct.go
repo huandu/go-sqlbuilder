@@ -5,6 +5,7 @@ package sqlbuilder
 
 import (
 	"bytes"
+	"math"
 	"reflect"
 	"regexp"
 	"strings"
@@ -40,22 +41,11 @@ var optRegex = regexp.MustCompile(`(?P<` + optName + `>\w+)(\((?P<` + optParams 
 type Struct struct {
 	Flavor Flavor
 
-	structType      reflect.Type
-	fieldAlias      map[string]string
-	taggedFields    map[string][]string
-	quotedFields    map[string]struct{}
-	omitEmptyFields map[string]omitEmptyTagMap
+	structType         reflect.Type
+	structFieldsParser structFieldsieldsParser
 }
-type omitEmptyTagMap map[string]struct{}
 
-func (sm omitEmptyTagMap) containsAny(tags ...string) (res bool) {
-	for _, tag := range tags {
-		if _, res = sm[tag]; res {
-			return
-		}
-	}
-	return
-}
+var emptyStruct Struct
 
 // NewStruct analyzes type information in structValue
 // and creates a new Struct with all structValue fields.
@@ -63,91 +53,36 @@ func (sm omitEmptyTagMap) containsAny(tags ...string) (res bool) {
 func NewStruct(structValue interface{}) *Struct {
 	t := reflect.TypeOf(structValue)
 	t = dereferencedType(t)
-	s := &Struct{
-		Flavor: DefaultFlavor,
-	}
 
 	if t.Kind() != reflect.Struct {
-		return s
+		return &emptyStruct
 	}
 
-	s.structType = t
-	s.fieldAlias = map[string]string{}
-	s.taggedFields = map[string][]string{}
-	s.quotedFields = map[string]struct{}{}
-	s.omitEmptyFields = map[string]omitEmptyTagMap{}
-	s.parse(t)
-	return s
+	return &Struct{
+		Flavor:             DefaultFlavor,
+		structType:         t,
+		structFieldsParser: makeDefaultFieldsParser(t),
+	}
 }
 
-// For sets the default flavor of s.
+// For sets the default flavor of s and returns a shadow copy of s.
+// The original s.Flavor is not changed.
 func (s *Struct) For(flavor Flavor) *Struct {
-	s.Flavor = flavor
-	return s
+	copy := *s
+	copy.Flavor = flavor
+	return &copy
 }
 
-func (s *Struct) parse(t reflect.Type) {
-	l := t.NumField()
-
-	for i := 0; i < l; i++ {
-		field := t.Field(i)
-
-		if field.Anonymous {
-			ft := dereferencedType(field.Type)
-			s.parse(ft)
-			continue
-		}
-
-		// Parse DBTag.
-		dbtag := field.Tag.Get(DBTag)
-		alias := dbtag
-
-		if dbtag == "-" {
-			continue
-		}
-
-		if dbtag == "" {
-			alias = field.Name
-			s.fieldAlias[field.Name] = field.Name
-		} else {
-			s.fieldAlias[dbtag] = field.Name
-		}
-
-		// Parse FieldTag.
-		fieldtag := field.Tag.Get(FieldTag)
-		tags := splitTokens(fieldtag)
-
-		for _, t := range tags {
-			if t != "" {
-				s.taggedFields[t] = append(s.taggedFields[t], alias)
-			}
-		}
-
-		s.taggedFields[""] = append(s.taggedFields[""], alias)
-
-		// Parse FieldOpt.
-		fieldopt := field.Tag.Get(FieldOpt)
-		opts := optRegex.FindAllString(fieldopt, -1)
-		for _, opt := range opts {
-			optMap := getOptMatchedMap(opt)
-			switch optMap[optName] {
-			case fieldOptOmitEmpty:
-				tags := getTagsFromOptParams(optMap[optParams])
-				s.appendOmitEmptyFieldsTags(alias, tags...)
-			case fieldOptWithQuote:
-				s.quotedFields[alias] = struct{}{}
-			}
-		}
+// WithFieldMapper returns a new Struct based on s with custom field mapper.
+// The original s is not changed.
+func (s *Struct) WithFieldMapper(mapper FieldMapperFunc) *Struct {
+	if s.structType == nil {
+		return &emptyStruct
 	}
-}
 
-func (s *Struct) appendOmitEmptyFieldsTags(alias string, tags ...string) {
-	if s.omitEmptyFields[alias] == nil {
-		s.omitEmptyFields[alias] = omitEmptyTagMap{}
-	}
-	for _, tag := range tags {
-		s.omitEmptyFields[alias][tag] = struct{}{}
-	}
+	copy := *s
+	copy.structFieldsParser = makeCustomFieldsParser(s.structType, mapper)
+	return &copy
 }
 
 // SelectFrom creates a new `SelectBuilder` with table name.
@@ -163,17 +98,18 @@ func (s *Struct) SelectFrom(table string) *SelectBuilder {
 //
 // Caller is responsible to set WHERE condition to find right record.
 func (s *Struct) SelectFromForTag(table string, tag string) *SelectBuilder {
+	sf := s.structFieldsParser()
 	sb := s.Flavor.NewSelectBuilder()
 	sb.From(table)
 
-	if s.taggedFields == nil {
+	if sf.taggedFields == nil {
 		return sb
 	}
 
-	fields, ok := s.taggedFields[tag]
+	fields, ok := sf.taggedFields[tag]
 
 	if ok {
-		fields = s.quoteFields(fields)
+		fields = s.quoteFields(sf, fields)
 
 		buf := &bytes.Buffer{}
 		cols := make([]string, 0, len(fields))
@@ -209,14 +145,15 @@ func (s *Struct) Update(table string, value interface{}) *UpdateBuilder {
 //
 // Caller is responsible to set WHERE condition to match right record.
 func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *UpdateBuilder {
+	sf := s.structFieldsParser()
 	ub := s.Flavor.NewUpdateBuilder()
 	ub.Update(table)
 
-	if s.taggedFields == nil {
+	if sf.taggedFields == nil {
 		return ub
 	}
 
-	fields, ok := s.taggedFields[tag]
+	fields, ok := sf.taggedFields[tag]
 
 	if !ok {
 		return ub
@@ -229,15 +166,15 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 		return ub
 	}
 
-	quoted := s.quoteFields(fields)
+	quoted := s.quoteFields(sf, fields)
 	assignments := make([]string, 0, len(fields))
 
 	for i, f := range fields {
-		name := s.fieldAlias[f]
+		name := sf.fieldAlias[f]
 		val := v.FieldByName(name)
 
 		if isEmptyValue(val) {
-			if omitEmptyTagMap, ok := s.omitEmptyFields[f]; ok {
+			if omitEmptyTagMap, ok := sf.omitEmptyFields[f]; ok {
 				if omitEmptyTagMap.containsAny("", tag) {
 					continue
 				}
@@ -289,11 +226,13 @@ func (s *Struct) ReplaceInto(table string, value ...interface{}) *InsertBuilder 
 // buildColsAndValuesForTag uses ib to set exported fields tagged with tag as columns
 // and add value as a list of values.
 func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, tag string, value ...interface{}) {
-	if s.taggedFields == nil {
+	sf := s.structFieldsParser()
+
+	if sf.taggedFields == nil {
 		return
 	}
 
-	fields, ok := s.taggedFields[tag]
+	fields, ok := sf.taggedFields[tag]
 
 	if !ok {
 		return
@@ -318,7 +257,7 @@ func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, tag string, value .
 
 	for _, f := range fields {
 		cols = append(cols, f)
-		name := s.fieldAlias[f]
+		name := sf.fieldAlias[f]
 
 		for i, v := range vs {
 			data := v.FieldByName(name).Interface()
@@ -326,7 +265,7 @@ func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, tag string, value .
 		}
 	}
 
-	cols = s.quoteFields(cols)
+	cols = s.quoteFields(sf, cols)
 	ib.Cols(cols...)
 
 	for _, value := range values {
@@ -399,7 +338,8 @@ func (s *Struct) Addr(value interface{}) []interface{} {
 //
 // If tag is not defined in s in advance,
 func (s *Struct) AddrForTag(tag string, value interface{}) []interface{} {
-	fields, ok := s.taggedFields[tag]
+	sf := s.structFieldsParser()
+	fields, ok := sf.taggedFields[tag]
 
 	if !ok {
 		return nil
@@ -411,6 +351,7 @@ func (s *Struct) AddrForTag(tag string, value interface{}) []interface{} {
 // AddrWithCols takes address of all columns defined in cols from the value.
 // The returned result can be used in `Row#Scan` directly.
 func (s *Struct) AddrWithCols(cols []string, value interface{}) []interface{} {
+	sf := s.structFieldsParser()
 	v := reflect.ValueOf(value)
 	v = dereferencedValue(v)
 
@@ -419,7 +360,7 @@ func (s *Struct) AddrWithCols(cols []string, value interface{}) []interface{} {
 	}
 
 	for _, c := range cols {
-		if _, ok := s.fieldAlias[c]; !ok {
+		if _, ok := sf.fieldAlias[c]; !ok {
 			return nil
 		}
 	}
@@ -427,7 +368,7 @@ func (s *Struct) AddrWithCols(cols []string, value interface{}) []interface{} {
 	addrs := make([]interface{}, 0, len(cols))
 
 	for _, c := range cols {
-		name := s.fieldAlias[c]
+		name := sf.fieldAlias[c]
 		data := v.FieldByName(name).Addr().Interface()
 		addrs = append(addrs, data)
 	}
@@ -435,16 +376,16 @@ func (s *Struct) AddrWithCols(cols []string, value interface{}) []interface{} {
 	return addrs
 }
 
-func (s *Struct) quoteFields(fields []string) []string {
+func (s *Struct) quoteFields(sf *structFields, fields []string) []string {
 	// Try best not to allocate new slice.
-	if len(s.quotedFields) == 0 {
+	if len(sf.quotedFields) == 0 {
 		return fields
 	}
 
 	needQuote := false
 
 	for _, field := range fields {
-		if _, ok := s.quotedFields[field]; ok {
+		if _, ok := sf.quotedFields[field]; ok {
 			needQuote = true
 			break
 		}
@@ -457,7 +398,7 @@ func (s *Struct) quoteFields(fields []string) []string {
 	quoted := make([]string, 0, len(fields))
 
 	for _, field := range fields {
-		if _, ok := s.quotedFields[field]; ok {
+		if _, ok := sf.quotedFields[field]; ok {
 			quoted = append(quoted, s.Flavor.Quote(field))
 		} else {
 			quoted = append(quoted, field)
@@ -477,6 +418,7 @@ func getOptMatchedMap(opt string) (res map[string]string) {
 	}
 	return
 }
+
 func getTagsFromOptParams(opts string) (tags []string) {
 	tags = splitTokens(opts)
 	if len(tags) == 0 {
@@ -484,6 +426,7 @@ func getTagsFromOptParams(opts string) (tags []string) {
 	}
 	return
 }
+
 func splitTokens(fieldtag string) (res []string) {
 	res = strings.Split(fieldtag, ",")
 	for i, v := range res {
@@ -491,6 +434,7 @@ func splitTokens(fieldtag string) (res []string) {
 	}
 	return
 }
+
 func dereferencedType(t reflect.Type) reflect.Type {
 	for k := t.Kind(); k == reflect.Ptr || k == reflect.Interface; k = t.Kind() {
 		t = t.Elem()
@@ -507,20 +451,39 @@ func dereferencedValue(v reflect.Value) reflect.Value {
 	return v
 }
 
-func isEmptyValue(value reflect.Value) bool {
-	switch value.Kind() {
-	case reflect.Interface, reflect.Ptr, reflect.Chan, reflect.Func, reflect.Map, reflect.Slice:
-		return value.IsNil()
+// isEmptyValue checks if v is zero.
+// Following code is borrowed from `IsZero` method in `reflect.Value` since Go 1.13.
+func isEmptyValue(v reflect.Value) bool {
+	switch v.Kind() {
 	case reflect.Bool:
-		return !value.Bool()
+		return !v.Bool()
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return value.Int() == 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return value.Uint() == 0
-	case reflect.String:
-		return value.String() == ""
+		return v.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return v.Uint() == 0
 	case reflect.Float32, reflect.Float64:
-		return value.Float() == 0
+		return math.Float64bits(v.Float()) == 0
+	case reflect.Complex64, reflect.Complex128:
+		c := v.Complex()
+		return math.Float64bits(real(c)) == 0 && math.Float64bits(imag(c)) == 0
+	case reflect.Array:
+		for i := 0; i < v.Len(); i++ {
+			if !isEmptyValue(v.Index(i)) {
+				return false
+			}
+		}
+		return true
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice, reflect.UnsafePointer:
+		return v.IsNil()
+	case reflect.String:
+		return v.Len() == 0
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			if !isEmptyValue(v.Field(i)) {
+				return false
+			}
+		}
+		return true
 	}
 
 	return false

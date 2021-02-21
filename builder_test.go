@@ -6,8 +6,9 @@ package sqlbuilder
 import (
 	"database/sql"
 	"fmt"
-	"reflect"
 	"testing"
+
+	"github.com/huandu/go-assert"
 )
 
 func ExampleBuildf() {
@@ -78,6 +79,7 @@ func ExampleWithFlavor() {
 }
 
 func TestBuildWithPostgreSQL(t *testing.T) {
+	a := assert.New(t)
 	sb1 := PostgreSQL.NewSelectBuilder()
 	sb1.Select("col1", "col2").From("t1").Where(sb1.E("id", 1234), sb1.G("level", 2))
 
@@ -87,13 +89,8 @@ func TestBuildWithPostgreSQL(t *testing.T) {
 	// Use DefaultFlavor (MySQL) instead of PostgreSQL.
 	sql, args := Build("SELECT $1 AS col5 LEFT JOIN $0 LEFT JOIN $2", sb1, 7890, sb2).Build()
 
-	if expected := "SELECT ? AS col5 LEFT JOIN SELECT col1, col2 FROM t1 WHERE id = ? AND level > ? LEFT JOIN SELECT col3, col4 FROM t2 WHERE id = ? AND level <= ?"; sql != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
-	}
-
-	if expected := []interface{}{7890, 1234, 2, 4567, 5}; !reflect.DeepEqual(args, expected) {
-		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
-	}
+	a.Equal(sql, "SELECT ? AS col5 LEFT JOIN SELECT col1, col2 FROM t1 WHERE id = ? AND level > ? LEFT JOIN SELECT col3, col4 FROM t2 WHERE id = ? AND level <= ?")
+	a.Equal(args, []interface{}{7890, 1234, 2, 4567, 5})
 
 	old := DefaultFlavor
 	DefaultFlavor = PostgreSQL
@@ -103,11 +100,6 @@ func TestBuildWithPostgreSQL(t *testing.T) {
 
 	sql, args = Build("SELECT $1 AS col5 LEFT JOIN $0 LEFT JOIN $2", sb1, 7890, sb2).Build()
 
-	if expected := "SELECT $1 AS col5 LEFT JOIN SELECT col1, col2 FROM t1 WHERE id = $2 AND level > $3 LEFT JOIN SELECT col3, col4 FROM t2 WHERE id = $4 AND level <= $5"; sql != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
-	}
-
-	if expected := []interface{}{7890, 1234, 2, 4567, 5}; !reflect.DeepEqual(args, expected) {
-		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
-	}
+	a.Equal(sql, "SELECT $1 AS col5 LEFT JOIN SELECT col1, col2 FROM t1 WHERE id = $2 AND level > $3 LEFT JOIN SELECT col3, col4 FROM t2 WHERE id = $4 AND level <= $5")
+	a.Equal(args, []interface{}{7890, 1234, 2, 4567, 5})
 }

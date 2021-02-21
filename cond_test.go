@@ -5,9 +5,12 @@ package sqlbuilder
 
 import (
 	"testing"
+
+	"github.com/huandu/go-assert"
 )
 
 func TestCond(t *testing.T) {
+	a := assert.New(t)
 	cases := map[string]func() string{
 		"$$a = $0":                    func() string { return newTestCond().Equal("$a", 123) },
 		"$$b = $0":                    func() string { return newTestCond().E("$b", 123) },
@@ -35,9 +38,8 @@ func TestCond(t *testing.T) {
 	}
 
 	for expected, f := range cases {
-		if actual := f(); expected != actual {
-			t.Fatalf("invalid result. [expected:%v] [actual:%v]", expected, actual)
-		}
+		actual := f()
+		a.Equal(actual, expected)
 	}
 }
 

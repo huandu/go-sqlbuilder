@@ -6,6 +6,8 @@ package sqlbuilder
 import (
 	"fmt"
 	"testing"
+
+	"github.com/huandu/go-assert"
 )
 
 func ExampleUpdate() {
@@ -53,6 +55,7 @@ func ExampleUpdateBuilder() {
 }
 
 func TestUpdateAssignments(t *testing.T) {
+	a := assert.New(t)
 	cases := map[string]func(ub *UpdateBuilder) string{
 		"f = f + 1|[]":     func(ub *UpdateBuilder) string { return ub.Incr("f") },
 		"f = f - 1|[]":     func(ub *UpdateBuilder) string { return ub.Decr("f") },
@@ -69,9 +72,7 @@ func TestUpdateAssignments(t *testing.T) {
 		_, args := ub.Build()
 		actual := fmt.Sprintf("%v|%v", s, args)
 
-		if actual != expected {
-			t.Fatalf("invalid assignment result. [expected:%v] [actual:%v]", expected, actual)
-		}
+		a.Equal(actual, expected)
 	}
 }
 

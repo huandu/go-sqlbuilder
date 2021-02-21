@@ -8,9 +8,12 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/huandu/go-assert"
 )
 
 func TestFlavor(t *testing.T) {
+	a := assert.New(t)
 	cases := map[Flavor]string{
 		0:          "<invalid>",
 		MySQL:      "MySQL",
@@ -19,13 +22,13 @@ func TestFlavor(t *testing.T) {
 	}
 
 	for f, expected := range cases {
-		if actual := f.String(); actual != expected {
-			t.Fatalf("invalid flavor name. [expected:%v] [actual:%v]", expected, actual)
-		}
+		actual := f.String()
+		a.Equal(actual, expected)
 	}
 }
 
 func TestFlavorInterpolate(t *testing.T) {
+	a := assert.New(t)
 	dt := time.Date(2019, 4, 24, 12, 23, 34, 123456789, time.FixedZone("CST", 8*60*60)) // 2019-04-24 12:23:34.987654321 CST
 	_, errOutOfRange := strconv.ParseInt("12345678901234567890", 10, 32)
 	cases := []struct {
@@ -130,12 +133,11 @@ func TestFlavorInterpolate(t *testing.T) {
 	}
 
 	for idx, c := range cases {
+		a.Use(&idx, &c)
 		query, err := c.flavor.Interpolate(c.sql, c.args)
 
-		if query != c.query || (err != c.err && err.Error() != c.err.Error()) {
-			t.Fatalf("unexpected interpolate result. [idx:%v] [err:%v] [case:%#v]\n  expected: %v\n  actual:   %v",
-				idx, err, c, c.query, query)
-		}
+		a.Equal(query, c.query)
+		a.Assert(err == c.err || err.Error() == c.err.Error())
 	}
 }
 

@@ -4,11 +4,13 @@
 package sqlbuilder
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/huandu/go-assert"
 )
 
 func TestEscape(t *testing.T) {
+	a := assert.New(t)
 	cases := map[string]string{
 		"foo":  "foo",
 		"$foo": "$$foo",
@@ -19,20 +21,17 @@ func TestEscape(t *testing.T) {
 	for s, expected := range cases {
 		inputs = append(inputs, s)
 		expects = append(expects, expected)
+		actual := Escape(s)
 
-		if actual := Escape(s); actual != expected {
-			t.Fatalf("invalid escape result. [expected:%v] [actual:%v]", expected, actual)
-		}
+		a.Equal(actual, expected)
 	}
 
 	actuals := EscapeAll(inputs...)
-
-	if !reflect.DeepEqual(expects, actuals) {
-		t.Fatalf("invalid escape result. [expected:%v] [actual:%v]", expects, actuals)
-	}
+	a.Equal(actuals, expects)
 }
 
 func TestFlatten(t *testing.T) {
+	a := assert.New(t)
 	cases := [][2]interface{}{
 		{
 			"foo",
@@ -52,8 +51,6 @@ func TestFlatten(t *testing.T) {
 		input, expected := c[0], c[1]
 		actual := Flatten(input)
 
-		if !reflect.DeepEqual(expected, actual) {
-			t.Fatalf("invalid flatten result. [expected:%v] [actual:%v]", expected, actual)
-		}
+		a.Equal(actual, expected)
 	}
 }

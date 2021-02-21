@@ -5,9 +5,10 @@ package sqlbuilder
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 	"time"
+
+	"github.com/huandu/go-assert"
 )
 
 type structUserForTest struct {
@@ -20,32 +21,25 @@ type structUserForTest struct {
 var userForTest = NewStruct(new(structUserForTest))
 
 func TestStructSelectFrom(t *testing.T) {
+	a := assert.New(t)
 	sb := userForTest.SelectFrom("user")
 	sql, args := sb.Build()
 
-	if expected := "SELECT user.id, user.Name, user.status, user.created_at FROM user"; expected != sql {
-		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
-	}
-
-	if len(args) != 0 {
-		t.Fatalf("args must be empty. [args:%v]", args)
-	}
+	a.Equal(sql, "SELECT user.id, user.Name, user.status, user.created_at FROM user")
+	a.Equal(args, nil)
 }
 
 func TestStructSelectFromForTag(t *testing.T) {
+	a := assert.New(t)
 	sb := userForTest.SelectFromForTag("user", "important")
 	sql, args := sb.Build()
 
-	if expected := "SELECT user.id, user.Name, user.status FROM user"; expected != sql {
-		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
-	}
-
-	if len(args) != 0 {
-		t.Fatalf("args must be empty. [args:%v]", args)
-	}
+	a.Equal(sql, "SELECT user.id, user.Name, user.status FROM user")
+	a.Equal(args, nil)
 }
 
 func TestStructUpdate(t *testing.T) {
+	a := assert.New(t)
 	user := &structUserForTest{
 		ID:        123,
 		Name:      "Huan Du",
@@ -55,16 +49,12 @@ func TestStructUpdate(t *testing.T) {
 	ub := userForTest.Update("user", user)
 	sql, args := ub.Build()
 
-	if expected := "UPDATE user SET id = ?, Name = ?, status = ?, created_at = ?"; expected != sql {
-		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
-	}
-
-	if expected := []interface{}{123, "Huan Du", 2, 1234567890}; !reflect.DeepEqual(expected, args) {
-		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
-	}
+	a.Equal(sql, "UPDATE user SET id = ?, Name = ?, status = ?, created_at = ?")
+	a.Equal(args, []interface{}{123, "Huan Du", 2, 1234567890})
 }
 
 func TestStructUpdateForTag(t *testing.T) {
+	a := assert.New(t)
 	user := &structUserForTest{
 		ID:        123,
 		Name:      "Huan Du",
@@ -74,16 +64,12 @@ func TestStructUpdateForTag(t *testing.T) {
 	ub := userForTest.UpdateForTag("user", "important", user)
 	sql, args := ub.Build()
 
-	if expected := "UPDATE user SET id = ?, Name = ?, status = ?"; expected != sql {
-		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
-	}
-
-	if expected := []interface{}{123, "Huan Du", 2}; !reflect.DeepEqual(expected, args) {
-		t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
-	}
+	a.Equal(sql, "UPDATE user SET id = ?, Name = ?, status = ?")
+	a.Equal(args, []interface{}{123, "Huan Du", 2})
 }
 
 func TestStructInsertInto(t *testing.T) {
+	a := assert.New(t)
 	user := &structUserForTest{
 		ID:        123,
 		Name:      "Huan Du",
@@ -118,31 +104,19 @@ func TestStructInsertInto(t *testing.T) {
 
 	for ib, exceptedVerb := range testInsert {
 		sql, args := ib.Build()
-
-		if expected := exceptedVerb + "INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?)"; expected != sql {
-			t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
-		}
-
-		if expected := []interface{}{123, "Huan Du", 2, 1234567890}; !reflect.DeepEqual(expected, args) {
-			t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
-		}
+		a.Equal(sql, exceptedVerb+"INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?)")
+		a.Equal(args, []interface{}{123, "Huan Du", 2, 1234567890})
 	}
 
 	for ib, exceptedVerb := range testMulitInsert {
 		sql, args := ib.Build()
-
-		if expected := exceptedVerb + "INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?), (?, ?, ?, ?)"; expected != sql {
-			t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
-		}
-
-		if expected := []interface{}{123, "Huan Du", 2, 1234567890, 456, "Du Huan", 2, 1234567890}; !reflect.DeepEqual(expected, args) {
-			t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
-		}
+		a.Equal(sql, exceptedVerb+"INTO user (id, Name, status, created_at) VALUES (?, ?, ?, ?), (?, ?, ?, ?)")
+		a.Equal(args, []interface{}{123, "Huan Du", 2, 1234567890, 456, "Du Huan", 2, 1234567890})
 	}
-
 }
 
 func TestStructInsertIntoForTag(t *testing.T) {
+	a := assert.New(t)
 	user := &structUserForTest{
 		ID:        123,
 		Name:      "Huan Du",
@@ -177,44 +151,28 @@ func TestStructInsertIntoForTag(t *testing.T) {
 
 	for ib, exceptedVerb := range testInsertForTag {
 		sql, args := ib.Build()
-
-		if expected := exceptedVerb + "INTO user (id, Name, status) VALUES (?, ?, ?)"; expected != sql {
-			t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
-		}
-
-		if expected := []interface{}{123, "Huan Du", 2}; !reflect.DeepEqual(expected, args) {
-			t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
-		}
+		a.Equal(sql, exceptedVerb+"INTO user (id, Name, status) VALUES (?, ?, ?)")
+		a.Equal(args, []interface{}{123, "Huan Du", 2})
 	}
 
 	for ib, exceptedVerb := range testMulitInsertForTag {
 		sql, args := ib.Build()
-
-		if expected := exceptedVerb + "INTO user (id, Name, status) VALUES (?, ?, ?), (?, ?, ?)"; expected != sql {
-			t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
-		}
-
-		if expected := []interface{}{123, "Huan Du", 2, 456, "Du Huan", 2}; !reflect.DeepEqual(expected, args) {
-			t.Fatalf("invalid args. [expected:%v] [actual:%v]", expected, args)
-		}
+		a.Equal(sql, exceptedVerb+"INTO user (id, Name, status) VALUES (?, ?, ?), (?, ?, ?)")
+		a.Equal(args, []interface{}{123, "Huan Du", 2, 456, "Du Huan", 2})
 	}
-
 }
 
 func TestStructDeleteFrom(t *testing.T) {
+	a := assert.New(t)
 	db := userForTest.DeleteFrom("user")
 	sql, args := db.Build()
 
-	if expected := "DELETE FROM user"; expected != sql {
-		t.Fatalf("invalid SQL. [expected:%v] [actual:%v]", expected, sql)
-	}
-
-	if len(args) != 0 {
-		t.Fatalf("args must be empty. [args:%v]", args)
-	}
+	a.Equal(sql, "DELETE FROM user")
+	a.Equal(args, nil)
 }
 
 func TestStructAddr(t *testing.T) {
+	a := assert.New(t)
 	user := new(structUserForTest)
 	expected := &structUserForTest{
 		ID:        123,
@@ -225,12 +183,11 @@ func TestStructAddr(t *testing.T) {
 	str := fmt.Sprintf("%v %v %v %v", expected.ID, expected.Name, expected.Status, expected.CreatedAt)
 	fmt.Sscanf(str, "%d%s%d%d", userForTest.Addr(user)...)
 
-	if !reflect.DeepEqual(expected, user) {
-		t.Fatalf("invalid user. [expected:%v] [actual:%v]", expected, user)
-	}
+	a.Equal(user, expected)
 }
 
 func TestStructAddrForTag(t *testing.T) {
+	a := assert.New(t)
 	user := new(structUserForTest)
 	expected := &structUserForTest{
 		ID:        123,
@@ -243,12 +200,11 @@ func TestStructAddrForTag(t *testing.T) {
 	fmt.Sscanf(str, "%d%s%d%d", userForTest.AddrForTag("important", user)...)
 	expected.CreatedAt = 9876543210
 
-	if !reflect.DeepEqual(expected, user) {
-		t.Fatalf("invalid user. [expected:%v] [actual:%v]", expected, user)
-	}
+	a.Equal(user, expected)
 }
 
 func TestStructAddrWithCols(t *testing.T) {
+	a := assert.New(t)
 	user := new(structUserForTest)
 	expected := &structUserForTest{
 		ID:        123,
@@ -259,9 +215,7 @@ func TestStructAddrWithCols(t *testing.T) {
 	str := fmt.Sprintf("%v %v %v %v", expected.Name, expected.ID, expected.CreatedAt, expected.Status)
 	fmt.Sscanf(str, "%s%d%d%d", userForTest.AddrWithCols([]string{"Name", "id", "created_at", "status"}, user)...)
 
-	if !reflect.DeepEqual(expected, user) {
-		t.Fatalf("invalid user. [expected:%v] [actual:%v]", expected, user)
-	}
+	a.Equal(user, expected)
 }
 
 type User struct {
@@ -563,47 +517,30 @@ type structWithQuote struct {
 }
 
 func TestStructWithQuote(t *testing.T) {
+	a := assert.New(t)
 	sb := NewStruct(new(structWithQuote)).For(MySQL).SelectFrom("foo")
 	sql, _ := sb.Build()
-
-	if expected := "SELECT foo.`aa`, foo.ccc FROM foo"; sql != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
-	}
+	a.Equal(sql, "SELECT foo.`aa`, foo.ccc FROM foo")
 
 	sb = NewStruct(new(structWithQuote)).For(PostgreSQL).SelectFrom("foo")
 	sql, _ = sb.Build()
-
-	if expected := `SELECT foo."aa", foo.ccc FROM foo`; sql != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
-	}
+	a.Equal(sql, `SELECT foo."aa", foo.ccc FROM foo`)
 
 	ub := NewStruct(new(structWithQuote)).For(MySQL).Update("foo", structWithQuote{A: "aaa"})
 	sql, _ = ub.Build()
-
-	if expected := "UPDATE foo SET `aa` = ?, ccc = ?"; sql != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
-	}
+	a.Equal(sql, "UPDATE foo SET `aa` = ?, ccc = ?")
 
 	ub = NewStruct(new(structWithQuote)).For(PostgreSQL).Update("foo", structWithQuote{A: "aaa"})
 	sql, _ = ub.Build()
-
-	if expected := `UPDATE foo SET "aa" = $1, ccc = $2`; sql != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
-	}
+	a.Equal(sql, `UPDATE foo SET "aa" = $1, ccc = $2`)
 
 	ib := NewStruct(new(structWithQuote)).For(MySQL).InsertInto("foo", structWithQuote{A: "aaa"})
 	sql, _ = ib.Build()
-
-	if expected := "INSERT INTO foo (`aa`, ccc) VALUES (?, ?)"; sql != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
-	}
+	a.Equal(sql, "INSERT INTO foo (`aa`, ccc) VALUES (?, ?)")
 
 	ib = NewStruct(new(structWithQuote)).For(PostgreSQL).InsertInto("foo", structWithQuote{A: "aaa"})
 	sql, _ = ib.Build()
-
-	if expected := `INSERT INTO foo ("aa", ccc) VALUES ($1, $2)`; sql != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql)
-	}
+	a.Equal(sql, `INSERT INTO foo ("aa", ccc) VALUES ($1, $2)`)
 }
 
 type structOmitEmpty struct {
@@ -615,33 +552,27 @@ type structOmitEmpty struct {
 }
 
 func TestStructOmitEmpty(t *testing.T) {
+	a := assert.New(t)
 	st := NewStruct(new(structOmitEmpty)).For(MySQL)
 	sql1, _ := st.Update("foo", new(structOmitEmpty)).Build()
 
-	if expected := "UPDATE foo SET ee = ?"; sql1 != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql1)
-	}
+	a.Equal(sql1, "UPDATE foo SET ee = ?")
 
-	a := 123
+	i := 123
 	b := "bbbb"
 	c := uint16(234)
 	d := 123.45
 	e := true
 	sql2, args2 := st.Update("foo", &structOmitEmpty{
-		A: a,
+		A: i,
 		B: &b,
 		C: c,
 		D: &d,
 		E: e,
 	}).Build()
 
-	if expected := "UPDATE foo SET `aa` = ?, bb = ?, cc = ?, D = ?, ee = ?"; sql2 != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql2)
-	}
-
-	if expected := []interface{}{a, b, c, d, e}; !reflect.DeepEqual(expected, args2) {
-		t.Fatalf("invalid args. [expected:%#v] [actual:%#v]", expected, args2)
-	}
+	a.Equal(sql2, "UPDATE foo SET `aa` = ?, bb = ?, cc = ?, D = ?, ee = ?")
+	a.Equal(args2, []interface{}{i, b, c, d, e})
 }
 
 type structOmitEmptyForTag struct {
@@ -653,32 +584,26 @@ type structOmitEmptyForTag struct {
 }
 
 func TestStructOmitEmptyForTag(t *testing.T) {
+	a := assert.New(t)
 	st := NewStruct(new(structOmitEmptyForTag)).For(MySQL)
 	sql1, _ := st.Update("foo", new(structOmitEmptyForTag)).Build()
 
-	if expected := "UPDATE foo SET D = ?, ee = ?"; sql1 != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql1)
-	}
+	a.Equal(sql1, "UPDATE foo SET D = ?, ee = ?")
 
-	a := 123
+	i := 123
 	b := "bbbb"
 	c := uint16(234)
 	e := true
 	sql2, args2 := st.UpdateForTag("foo", "patch", &structOmitEmptyForTag{
-		A: a,
+		A: i,
 		B: &b,
 		C: c,
 		D: nil,
 		E: e,
 	}).Build()
 
-	if expected := "UPDATE foo SET `aa` = ?, bb = ?, cc = ?, ee = ?"; sql2 != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql2)
-	}
-
-	if expected := []interface{}{a, b, c, e}; !reflect.DeepEqual(expected, args2) {
-		t.Fatalf("invalid args. [expected:%#v] [actual:%#v]", expected, args2)
-	}
+	a.Equal(sql2, "UPDATE foo SET `aa` = ?, bb = ?, cc = ?, ee = ?")
+	a.Equal(args2, []interface{}{i, b, c, e})
 }
 
 type structOmitEmptyForMultipleTags struct {
@@ -690,31 +615,25 @@ type structOmitEmptyForMultipleTags struct {
 }
 
 func TestStructOmitEmptyForMultipleTags(t *testing.T) {
+	a := assert.New(t)
 	st := NewStruct(new(structOmitEmptyForMultipleTags)).For(MySQL)
 	sql1, _ := st.Update("foo", new(structOmitEmptyForMultipleTags)).Build()
 
-	if expected := "UPDATE foo SET D = ?, ee = ?"; sql1 != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql1)
-	}
+	a.Equal(sql1, "UPDATE foo SET D = ?, ee = ?")
 
-	a := 123
+	i := 123
 	b := "bbbb"
 	e := true
 	sql2, args2 := st.UpdateForTag("foo", "patch2", &structOmitEmptyForMultipleTags{
-		A: a,
+		A: i,
 		B: &b,
 		C: 0,
 		D: nil,
 		E: e,
 	}).Build()
 
-	if expected := "UPDATE foo SET `aa` = ?"; sql2 != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql2)
-	}
-
-	if expected := []interface{}{a}; !reflect.DeepEqual(expected, args2) {
-		t.Fatalf("invalid args. [expected:%#v] [actual:%#v]", expected, args2)
-	}
+	a.Equal(sql2, "UPDATE foo SET `aa` = ?")
+	a.Equal(args2, []interface{}{i})
 }
 
 type structWithPointers struct {
@@ -724,25 +643,109 @@ type structWithPointers struct {
 }
 
 func TestStructWithPointers(t *testing.T) {
+	a := assert.New(t)
 	st := NewStruct(new(structWithPointers)).For(MySQL)
 	sql1, _ := st.Update("foo", new(structWithPointers)).Build()
 
-	if expected := "UPDATE foo SET bb = ?"; sql1 != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql1)
-	}
+	a.Equal(sql1, "UPDATE foo SET bb = ?")
 
-	a := 123
+	i := 123
 	c := 123.45
 	sql2, args2 := st.Update("foo", &structWithPointers{
-		A: a,
+		A: i,
 		C: &c,
 	}).Build()
 
-	if expected := "UPDATE foo SET aa = ?, bb = ?, cc = ?"; sql2 != expected {
-		t.Fatalf("invalid sql. [expected:%v] [actual:%v]", expected, sql2)
+	a.Equal(sql2, "UPDATE foo SET aa = ?, bb = ?, cc = ?")
+	a.Equal(args2, []interface{}{i, (*string)(nil), c})
+}
+
+type structWithMapper struct {
+	structWithMapperEmbedded
+
+	FieldName1        string `fieldopt:"withquote"`
+	FieldNameSetByTag int    `db:"set_by_tag"`
+	FieldNameShadowed int    `db:"field_name1"` // Shadowed.
+}
+
+type structWithMapperEmbedded struct {
+	structWithMapperEmbedded2
+
+	FieldName1     int // Shadowed.
+	EmbeddedField2 int
+}
+
+type structWithMapperEmbedded2 struct {
+	EmbeddedAndEmbeddedField1 string
+}
+
+func TestStructFieldMapper(t *testing.T) {
+	a := assert.New(t)
+
+	old := DefaultFieldMapper
+	defer func() {
+		DefaultFieldMapper = old
+	}()
+
+	DefaultFieldMapper = SnakeCaseMapper
+	s := NewStruct(new(structWithMapper))
+	sWithoutMapper := s.WithFieldMapper(nil) // Columns in s will not be changed after this call.
+	sql, _ := s.SelectFrom("t").Build()
+	a.Equal(sql, "SELECT t.`field_name1`, t.set_by_tag, t.embedded_field2, t.embedded_and_embedded_field1 FROM t")
+
+	expected := &structWithMapper{
+		FieldName1:        "field",
+		FieldNameSetByTag: 123,
+
+		structWithMapperEmbedded: structWithMapperEmbedded{
+			structWithMapperEmbedded2: structWithMapperEmbedded2{
+				EmbeddedAndEmbeddedField1: "embedded",
+			},
+			EmbeddedField2: 456,
+		},
+	}
+	var actual structWithMapper
+	str := fmt.Sprintf("%v %v %v %v", expected.FieldName1, expected.FieldNameSetByTag, expected.EmbeddedField2, expected.EmbeddedAndEmbeddedField1)
+	fmt.Sscanf(str, "%d%s%d%d", s.Addr(&actual)...)
+
+	sql, _ = sWithoutMapper.SelectFrom("t").Build()
+	a.Equal(sql, "SELECT t.`FieldName1`, t.set_by_tag, t.field_name1, t.EmbeddedField2, t.EmbeddedAndEmbeddedField1 FROM t")
+}
+
+func SomeOtherMapper(s string) string {
+	return ""
+}
+
+func ExampleFieldMapperFunc() {
+	type Orders struct {
+		ID            int64
+		UserID        int64
+		ProductName   string
+		Status        int
+		UserAddrLine1 string
+		UserAddrLine2 string
+		CreatedAt     time.Time
 	}
 
-	if expected := []interface{}{a, (*string)(nil), c}; !reflect.DeepEqual(expected, args2) {
-		t.Fatalf("invalid args. [expected:%#v] [actual:%#v]", expected, args2)
-	}
+	// Create a Struct for Orders.
+	orders := NewStruct(new(Orders))
+
+	// Set the default field mapper to snake_case mapper globally.
+	DefaultFieldMapper = SnakeCaseMapper
+
+	// Field names are converted to snake_case words.
+	sql1, _ := orders.SelectFrom("orders").Limit(10).Build()
+
+	fmt.Println(sql1)
+
+	// Changing the default field mapper will *NOT* affect field names in orders.
+	// Once field name conversion is done, they will not be changed again.
+	DefaultFieldMapper = SomeOtherMapper
+	sql2, _ := orders.SelectFrom("orders").Limit(10).Build()
+
+	fmt.Println(sql1 == sql2)
+
+	// Output:
+	// SELECT orders.id, orders.user_id, orders.product_name, orders.status, orders.user_addr_line1, orders.user_addr_line2, orders.created_at FROM orders LIMIT 10
+	// true
 }

@@ -8,9 +8,12 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/huandu/go-assert"
 )
 
 func TestArgs(t *testing.T) {
+	a := assert.New(t)
 	cases := map[string][]interface{}{
 		"abc ? def\n[123]":                   {"abc $? def", 123},
 		"abc ? def\n[456]":                   {"abc $0 def", 456},
@@ -33,9 +36,7 @@ func TestArgs(t *testing.T) {
 		sql, values := args.Compile(c[0].(string))
 		actual := fmt.Sprintf("%v\n%v", sql, values)
 
-		if actual != expected {
-			t.Fatalf("invalid compile result. [expected:%v] [actual:%v]", expected, actual)
-		}
+		a.Equal(actual, expected)
 	}
 
 	old := DefaultFlavor
@@ -56,9 +57,7 @@ func TestArgs(t *testing.T) {
 		actual := fmt.Sprintf("%v\n%v", sql, values)
 		expected = toPostgreSQL(expected)
 
-		if actual != expected {
-			t.Fatalf("invalid compile result. [expected:%v] [actual:%v]", expected, actual)
-		}
+		a.Equal(actual, expected)
 	}
 }
 
@@ -76,13 +75,11 @@ func toPostgreSQL(sql string) string {
 }
 
 func TestArgsAdd(t *testing.T) {
+	a := assert.New(t)
 	args := &Args{}
 
 	for i := 0; i < maxPredefinedArgs*2; i++ {
-		expected := fmt.Sprintf("$%v", i)
-
-		if actual := args.Add(i); actual != expected {
-			t.Fatalf("invalid args placeholder. [expected:%v] [actual:%v]", expected, actual)
-		}
+		actual := args.Add(i)
+		a.Equal(actual, fmt.Sprintf("$%v", i))
 	}
 }

@@ -1,9 +1,25 @@
 # SQL builder for Go
 
-[![Build Status](https://travis-ci.com/huandu/go-sqlbuilder.svg?branch=master)](https://travis-ci.com/github/huandu/go-sqlbuilder)
+[![Go](https://github.com/huandu/go-sqlbuilder/workflows/Go/badge.svg)](https://github.com/huandu/go-sqlbuilder/actions)
 [![GoDoc](https://godoc.org/github.com/huandu/go-sqlbuilder?status.svg)](https://pkg.go.dev/github.com/huandu/go-sqlbuilder)
 [![Go Report](https://goreportcard.com/badge/github.com/huandu/go-sqlbuilder)](https://goreportcard.com/report/github.com/huandu/go-sqlbuilder)
 [![Coverage Status](https://coveralls.io/repos/github/huandu/go-sqlbuilder/badge.svg?branch=master)](https://coveralls.io/github/huandu/go-sqlbuilder?branch=master)
+
+- [Install](#install)
+- [Usage](#usage)
+  - [Basic usage](#basic-usage)
+  - [Pre-defined SQL builders](#pre-defined-sql-builders)
+  - [Build SQL for MySQL, PostgreSQL or SQLite](#build-sql-for-mysql--postgresql-or-sqlite)
+  - [Using `Struct` as a light weight ORM](#using--struct--as-a-light-weight-orm)
+  - [Nested SQL](#nested-sql)
+  - [Use `sql.Named` in a builder](#use--sqlnamed--in-a-builder)
+  - [Argument modifiers](#argument-modifiers)
+  - [Freestyle builder](#freestyle-builder)
+  - [Using special syntax to build SQL](#using-special-syntax-to-build-sql)
+  - [Interpolate `args` in the `sql`](#interpolate--args--in-the--sql-)
+- [FAQ](#faq)
+  - [What's the difference between this package and `squirrel`](#what-s-the-difference-between-this-package-and--squirrel-)
+- [License](#license)
 
 Package `sqlbuilder` provides a set of flexible and powerful SQL string builders. The only goal of this package is to build SQL string with arguments which can be used in `DB#Query` or `DB#Exec` defined in package `database/sql`.
 
@@ -172,6 +188,17 @@ func ExampleStruct() {
     // sqlbuilder.User{ID:1234, Name:"huandu", Status:1}
 }
 ```
+
+In many production environments, table column names are usually snake_case words, e.g. `user_id`, while we have to use CamelCase in struct types to make struct fields public and `golint` happy. It's a bit redundant to use the `db` tag in every struct field. If there is a certain rule to map field names to table column names, We can use field mapper function to make code simpler.
+
+The `DefaultFieldMapper` is a global field mapper function to convert field name to new style. By default, it sets to `nil` and does nothing. If we know that most table column names are snake_case words, we can set `DefaultFieldMapper` to `sqlbuilder.SnakeCaseMapper`. If we have some special cases, we can set custom mapper to a `Struct` by calling `WithFieldMapper`.
+
+Following are special notes regarding to field mapper.
+
+- Field tag has precedence over field mapper function - thus, mapper is ignored if the `db` tag is set;
+- Field mapper is called only once on a Struct when the Struct is used to create builder for the first time.
+
+See [field mapper function sample](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#FieldMapperFunc) as a demo.
 
 ### Nested SQL
 
