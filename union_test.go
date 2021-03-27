@@ -3,7 +3,12 @@
 
 package sqlbuilder
 
-import "fmt"
+import (
+	"fmt"
+	"testing"
+
+	"github.com/huandu/go-assert"
+)
 
 func ExampleUnion() {
 	sb1 := NewSelectBuilder()
@@ -76,4 +81,13 @@ func ExampleUnionBuilder_SQL() {
 
 	// Output:
 	// /* before */ (SELECT id, name, created_at FROM demo.user) UNION (SELECT id, avatar FROM demo.user_profile) /* after union */ ORDER BY created_at DESC /* after order by */ LIMIT 100 OFFSET 5 /* after limit */
+}
+
+func TestUnionForSQLite(t *testing.T) {
+	a := assert.New(t)
+	sb1 := Select("id", "name").From("users").Where("created_at > DATE('now', '-15 days')")
+	sb2 := Select("id", "nick_name").From("user_extras").Where("status IN (1, 2, 3)")
+	sql, _ := UnionAll(sb1, sb2).OrderBy("id").BuildWithFlavor(SQLite)
+
+	a.Equal(sql, "SELECT id, name FROM users WHERE created_at > DATE('now', '-15 days') UNION ALL SELECT id, nick_name FROM user_extras WHERE status IN (1, 2, 3) ORDER BY id")
 }

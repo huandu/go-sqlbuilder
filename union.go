@@ -38,7 +38,7 @@ func newUnionBuilder() *UnionBuilder {
 
 // UnionBuilder is a builder to build UNION.
 type UnionBuilder struct {
-	format      string
+	opt         string
 	builders    []Builder
 	orderByCols []string
 	order       string
@@ -74,23 +74,7 @@ func (ub *UnionBuilder) UnionAll(builders ...Builder) *UnionBuilder {
 }
 
 func (ub *UnionBuilder) union(opt string, builders ...Builder) *UnionBuilder {
-	buf := &bytes.Buffer{}
-
-	if len(builders) > 0 {
-		buf.Grow(len(builders) * (4 + len(opt)))
-		buf.WriteRune('(')
-		buf.WriteString(ub.Var(builders[0]))
-		buf.WriteRune(')')
-
-		for _, b := range builders[1:] {
-			buf.WriteString(opt)
-			buf.WriteRune('(')
-			buf.WriteString(ub.Var(b))
-			buf.WriteRune(')')
-		}
-	}
-
-	ub.format = buf.String()
+	ub.opt = opt
 	ub.builders = builders
 	ub.marker = unionMarkerAfterUnion
 	return ub
@@ -148,7 +132,35 @@ func (ub *UnionBuilder) Build() (sql string, args []interface{}) {
 func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := &bytes.Buffer{}
 	ub.injection.WriteTo(buf, unionMarkerInit)
-	buf.WriteString(ub.format)
+
+	if len(ub.builders) > 0 {
+		needParen := flavor != SQLite
+
+		if needParen {
+			buf.WriteRune('(')
+		}
+
+		buf.WriteString(ub.Var(ub.builders[0]))
+
+		if needParen {
+			buf.WriteRune(')')
+		}
+
+		for _, b := range ub.builders[1:] {
+			buf.WriteString(ub.opt)
+
+			if needParen {
+				buf.WriteRune('(')
+			}
+
+			buf.WriteString(ub.Var(b))
+
+			if needParen {
+				buf.WriteRune(')')
+			}
+		}
+	}
+
 	ub.injection.WriteTo(buf, unionMarkerAfterUnion)
 
 	if len(ub.orderByCols) > 0 {
