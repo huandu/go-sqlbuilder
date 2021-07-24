@@ -112,64 +112,83 @@ func ExampleSelectBuilder_join() {
 }
 
 func ExampleSelectBuilder_limit_offset() {
+	flavors := []Flavor{MySQL, PostgreSQL, SQLite, SQLServer}
+	results := make([][]string, len(flavors))
 	sb := NewSelectBuilder()
+	saveResults := func() {
+		for i, f := range flavors {
+			sql, _ := sb.BuildWithFlavor(f)
+			results[i] = append(results[i], sql)
+		}
+	}
+
 	sb.Select("*")
 	sb.From("user")
 
-	// first test case: limit and offset < 0
-	// will not add LIMIT and OFFSET to either query for MySQL or PostgresSQL
+	// Case #1: limit < 0 and offset < 0
+	//
+	// All: No limit or offset in query.
 	sb.Limit(-1)
 	sb.Offset(-1)
+	saveResults()
 
-	pgSQL, _ := sb.BuildWithFlavor(PostgreSQL)
-	fmt.Println(pgSQL)
-
-	mySQL, _ := sb.BuildWithFlavor(MySQL)
-	fmt.Println(mySQL)
-
-	// second test case: limit <= 0 and offset >= 0
-	// doesn't add offset for MySQL as limit <= 0
-	// just adds offset to PostgresSQL with no limit as it is not specified
+	// Case #2: limit < 0 and offset >= 0
+	//
+	// MySQL and SQLite: Ignore offset if the limit is not set.
+	// PostgreSQL: Offset can be set without limit.
+	// SQLServer: Offset can be set without limit.
 	sb.Limit(-1)
 	sb.Offset(0)
+	saveResults()
 
-	pgSQL, _ = sb.BuildWithFlavor(PostgreSQL)
-	fmt.Println(pgSQL)
-
-	mySQL, _ = sb.BuildWithFlavor(MySQL)
-	fmt.Println(mySQL)
-
-	// third test case: limit >= 0 and offset >= 0
-	// adds offset and limit for MySQL and PostgresSQL, the query will not return a row (hint: can be used to check if table exists)
-	sb.Limit(0)
+	// Case #3: limit >= 0 and offset >= 0
+	//
+	// All: Set both limit and offset.
+	sb.Limit(1)
 	sb.Offset(0)
+	saveResults()
 
-	pgSQL, _ = sb.BuildWithFlavor(PostgreSQL)
-	fmt.Println(pgSQL)
-
-	mySQL, _ = sb.BuildWithFlavor(MySQL)
-	fmt.Println(mySQL)
-
-	// forth test case: limit >= 0 and offset <= 0
-	// adds limit for MySQL and PostgresSQL and omits offset
-	sb.Limit(0)
+	// Case #4: limit >= 0 and offset < 0
+	//
+	// All: Set limit in query.
+	sb.Limit(1)
 	sb.Offset(-1)
+	saveResults()
 
-	pgSQL, _ = sb.BuildWithFlavor(PostgreSQL)
-	fmt.Println(pgSQL)
+	for i, result := range results {
+		fmt.Println()
+		fmt.Println(flavors[i])
 
-	mySQL, _ = sb.BuildWithFlavor(MySQL)
-	fmt.Println(mySQL)
+		for n, sql := range result {
+			fmt.Printf("#%d: %s\n", n+1, sql)
+		}
+	}
 
 	// Output:
-	// SELECT * FROM user
-	// SELECT * FROM user
-	// SELECT * FROM user OFFSET 0
-	// SELECT * FROM user
-	// SELECT * FROM user LIMIT 0 OFFSET 0
-	// SELECT * FROM user LIMIT 0 OFFSET 0
-	// SELECT * FROM user LIMIT 0
-	// SELECT * FROM user LIMIT 0
+	//
+	// MySQL
+	// #1: SELECT * FROM user
+	// #2: SELECT * FROM user
+	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
+	// #4: SELECT * FROM user LIMIT 1
+	//
+	// PostgreSQL
+	// #1: SELECT * FROM user
+	// #2: SELECT * FROM user OFFSET 0
+	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
+	// #4: SELECT * FROM user LIMIT 1
+	//
+	// SQLite
+	// #1: SELECT * FROM user
+	// #2: SELECT * FROM user
+	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
+	// #4: SELECT * FROM user LIMIT 1
+	//
+	// SQLServer
+	// #1: SELECT * FROM user
+	// #2: SELECT * FROM user OFFSET 0 ROWS
+	// #3: SELECT * FROM user OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
+	// #4: SELECT * FROM user OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
 }
 
 func ExampleSelectBuilder_ForUpdate() {

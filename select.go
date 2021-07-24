@@ -299,15 +299,43 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		sb.injection.WriteTo(buf, selectMarkerAfterOrderBy)
 	}
 
-	if sb.limit >= 0 {
-		buf.WriteString(" LIMIT ")
-		buf.WriteString(strconv.Itoa(sb.limit))
-	}
+	switch flavor {
+	case MySQL, SQLite:
+		if sb.limit >= 0 {
+			buf.WriteString(" LIMIT ")
+			buf.WriteString(strconv.Itoa(sb.limit))
 
-	if MySQL == flavor && sb.limit >= 0 || PostgreSQL == flavor {
+			if sb.offset >= 0 {
+				buf.WriteString(" OFFSET ")
+				buf.WriteString(strconv.Itoa(sb.offset))
+			}
+		}
+	case PostgreSQL:
+		if sb.limit >= 0 {
+			buf.WriteString(" LIMIT ")
+			buf.WriteString(strconv.Itoa(sb.limit))
+		}
+
 		if sb.offset >= 0 {
 			buf.WriteString(" OFFSET ")
 			buf.WriteString(strconv.Itoa(sb.offset))
+		}
+
+	case SQLServer:
+		if sb.offset >= 0 {
+			buf.WriteString(" OFFSET ")
+			buf.WriteString(strconv.Itoa(sb.offset))
+			buf.WriteString(" ROWS")
+		}
+
+		if sb.limit >= 0 {
+			if sb.offset < 0 {
+				buf.WriteString(" OFFSET 0 ROWS")
+			}
+
+			buf.WriteString(" FETCH NEXT ")
+			buf.WriteString(strconv.Itoa(sb.limit))
+			buf.WriteString(" ROWS ONLY")
 		}
 	}
 

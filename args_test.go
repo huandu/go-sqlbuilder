@@ -40,10 +40,11 @@ func TestArgs(t *testing.T) {
 	}
 
 	old := DefaultFlavor
-	DefaultFlavor = PostgreSQL
 	defer func() {
 		DefaultFlavor = old
 	}()
+
+	DefaultFlavor = PostgreSQL
 
 	// PostgreSQL flavor compiled sql.
 	for expected, c := range cases {
@@ -59,6 +60,23 @@ func TestArgs(t *testing.T) {
 
 		a.Equal(actual, expected)
 	}
+
+	DefaultFlavor = SQLServer
+
+	// SQLServer flavor compiled sql.
+	for expected, c := range cases {
+		args := new(Args)
+
+		for i := 1; i < len(c); i++ {
+			args.Add(c[i])
+		}
+
+		sql, values := args.Compile(c[0].(string))
+		actual := fmt.Sprintf("%v\n%v", sql, values)
+		expected = toSQLServerSQL(expected)
+
+		a.Equal(actual, expected)
+	}
 }
 
 func toPostgreSQL(sql string) string {
@@ -68,6 +86,19 @@ func toPostgreSQL(sql string) string {
 
 	for i, p := range parts[1:] {
 		fmt.Fprintf(buf, "$%v", i+1)
+		buf.WriteString(p)
+	}
+
+	return buf.String()
+}
+
+func toSQLServerSQL(sql string) string {
+	parts := strings.Split(sql, "?")
+	buf := &bytes.Buffer{}
+	buf.WriteString(parts[0])
+
+	for i, p := range parts[1:] {
+		fmt.Fprintf(buf, "@p%v", i+1)
 		buf.WriteString(p)
 	}
 
