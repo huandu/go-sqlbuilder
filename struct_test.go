@@ -623,6 +623,7 @@ func TestStructOmitEmptyForMultipleTags(t *testing.T) {
 
 	i := 123
 	b := "bbbb"
+	c := uint16(2)
 	e := true
 	sql2, args2 := st.UpdateForTag("foo", "patch2", &structOmitEmptyForMultipleTags{
 		A: i,
@@ -634,6 +635,24 @@ func TestStructOmitEmptyForMultipleTags(t *testing.T) {
 
 	a.Equal(sql2, "UPDATE foo SET `aa` = ?")
 	a.Equal(args2, []interface{}{i})
+
+	value1 := &structOmitEmptyForMultipleTags{
+		A: i,
+		B: &b,
+		C: 0,
+		D: nil,
+		E: false, // should be false value.
+	}
+	value2 := &structOmitEmptyForMultipleTags{
+		A: i,
+		B: &b,
+		C: c, // should not be omitted as C in value1 is not empty.
+		D: nil,
+		E: true,
+	}
+	sql3, args3 := st.InsertIntoForTag("foo", "patch2", value1, value2).Build()
+	a.Equal(sql3, "INSERT INTO foo (`aa`, cc) VALUES (?, ?), (?, ?)")
+	a.Equal(args3, []interface{}{i, uint16(0), i, c})
 }
 
 type structWithPointers struct {

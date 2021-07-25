@@ -182,6 +182,7 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 		} else {
 			val = dereferencedValue(val)
 		}
+
 		data := val.Interface()
 		assignments = append(assignments, ub.Assign(quoted[i], data))
 	}
@@ -252,23 +253,60 @@ func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, tag string, value .
 	if len(vs) == 0 {
 		return
 	}
+
 	cols := make([]string, 0, len(fields))
 	values := make([][]interface{}, len(vs))
+	nilCols := make([]int, len(fields))
 
-	for _, f := range fields {
+	for idx, f := range fields {
 		cols = append(cols, f)
 		name := sf.fieldAlias[f]
+		shouldOmitempty := false
+
+		if omitEmptyTagMap, ok := sf.omitEmptyFields[f]; ok {
+			if omitEmptyTagMap.containsAny("", tag) {
+				shouldOmitempty = true
+			}
+		}
 
 		for i, v := range vs {
-			data := v.FieldByName(name).Interface()
-			values[i] = append(values[i], data)
+			val := v.FieldByName(name)
+
+			if isEmptyValue(val) && shouldOmitempty {
+				nilCols[idx]++
+			}
+
+			val = dereferencedValue(val)
+
+			if val.IsValid() {
+				values[i] = append(values[i], val.Interface())
+			} else {
+				values[i] = append(values[i], nil)
+			}
 		}
 	}
 
-	cols = s.quoteFields(sf, cols)
-	ib.Cols(cols...)
+	// Try to filter out nil values if possible.
+	filteredCols := make([]string, 0, len(cols))
+	filteredValues := make([][]interface{}, len(values))
 
-	for _, value := range values {
+	for i, cnt := range nilCols {
+		// If all values are nil in a column, ignore the column completedly.
+		if cnt == len(values) {
+			continue
+		}
+
+		filteredCols = append(filteredCols, cols[i])
+
+		for n, value := range values {
+			filteredValues[n] = append(filteredValues[n], value[i])
+		}
+	}
+
+	filteredCols = s.quoteFields(sf, filteredCols)
+	ib.Cols(filteredCols...)
+
+	for _, value := range filteredValues {
 		ib.Values(value...)
 	}
 }
