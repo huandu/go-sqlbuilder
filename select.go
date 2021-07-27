@@ -322,6 +322,12 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		}
 
 	case SQLServer:
+		// If ORDER BY is not set, sort column #1 by default.
+		// It's required to make OFFSET...FETCH work.
+		if len(sb.orderByCols) == 0 && (sb.limit >= 0 || sb.offset >= 0) {
+			buf.WriteString(" ORDER BY 1")
+		}
+
 		if sb.offset >= 0 {
 			buf.WriteString(" OFFSET ")
 			buf.WriteString(strconv.Itoa(sb.offset))

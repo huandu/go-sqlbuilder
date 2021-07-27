@@ -186,9 +186,9 @@ func ExampleSelectBuilder_limit_offset() {
 	//
 	// SQLServer
 	// #1: SELECT * FROM user
-	// #2: SELECT * FROM user OFFSET 0 ROWS
-	// #3: SELECT * FROM user OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
-	// #4: SELECT * FROM user OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
+	// #2: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS
+	// #3: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
+	// #4: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
 }
 
 func ExampleSelectBuilder_ForUpdate() {
