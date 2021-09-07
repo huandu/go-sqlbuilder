@@ -9,7 +9,7 @@
 - [Usage](#usage)
   - [Basic usage](#basic-usage)
   - [Pre-defined SQL builders](#pre-defined-sql-builders)
-  - [Build SQL for MySQL, PostgreSQL or SQLite](#build-sql-for-mysql--postgresql-or-sqlite)
+  - [Build SQL for MySQL, PostgreSQL, SQLServer or SQLite](#build-sql-for-mysql--postgresql-sqlserver-or-sqlite)
   - [Using `Struct` as a light weight ORM](#using--struct--as-a-light-weight-orm)
   - [Nested SQL](#nested-sql)
   - [Use `sql.Named` in a builder](#use--sqlnamed--in-a-builder)
@@ -104,9 +104,9 @@ fmt.Println(sql)
 
 To learn how to use builders, check out [examples on GoDoc](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#pkg-examples).
 
-### Build SQL for MySQL, PostgreSQL or SQLite
+### Build SQL for MySQL, PostgreSQL, SQLServer or SQLite
 
-Parameter markers are different in MySQL, PostgreSQL and SQLite. This package provides some methods to set the type of markers (we call it "flavor") in all builders.
+Parameter markers are different in MySQL, PostgreSQL, SQLServer and SQLite. This package provides some methods to set the type of markers (we call it "flavor") in all builders.
 
 By default, all builders uses `DefaultFlavor` to build SQL. The default value is `MySQL`.
 
@@ -116,7 +116,7 @@ We can wrap any `Builder` with a default flavor through `WithFlavor`.
 
 To be more verbose, we can use `PostgreSQL.NewSelectBuilder()` to create a `SelectBuilder` with the `PostgreSQL` flavor. All builders can be created in this way.
 
-Right now, there are only three flavors, `MySQL`, `PostgreSQL` and `SQLite`. Open new issue to me to ask for a new flavor if you find it necessary.
+Right now, there are only three flavors, `MySQL`, `PostgreSQL`, `SQLServer` and `SQLite`. Open new issue to me to ask for a new flavor if you find it necessary.
 
 ### Using `Struct` as a light weight ORM
 

@@ -267,6 +267,118 @@ func postgresqlInterpolate(query string, args ...interface{}) (string, error) {
 	return *(*string)(unsafe.Pointer(&buf)), nil
 }
 
+// sqlserverInterpolate parses query and replace all "@p*" with encoded args.
+// If there are more "@p*" than len(args), returns ErrMissingArgs.
+// Otherwise, if there are less "@p*" than len(args), the redundant args are omitted.
+func sqlserverInterpolate(query string, args ...interface{}) (string, error) {
+	// Roughly estimate the size to avoid useless memory allocation and copy.
+	buf := make([]byte, 0, len(query)+len(args)*20)
+
+	var quote rune
+	var err error
+	var idx int64
+	max := len(args)
+	escaping := false
+	offset := 0
+	target := query
+	r, sz := utf8.DecodeRuneInString(target)
+
+	for ; sz != 0; r, sz = utf8.DecodeRuneInString(target) {
+		offset += sz
+		target = query[offset:]
+
+		if escaping {
+			escaping = false
+			continue
+		}
+
+		switch r {
+		case '@':
+			if quote != 0 {
+				continue
+			}
+
+			oldSz := sz
+			pos := offset
+			r, sz = utf8.DecodeRuneInString(target)
+
+			// Only parameters starting with @p or @P are interpolated.
+			if r != 'p' && r != 'P' {
+				continue
+			}
+
+			pos += sz
+			target = query[pos:]
+			r, sz = utf8.DecodeRuneInString(target)
+
+			if '1' <= r && r <= '9' {
+				// A placeholder is found.
+				pos += sz
+				target = query[pos:]
+
+				for r, sz = utf8.DecodeRuneInString(target); sz != 0 && '0' <= r && r <= '9'; r, sz = utf8.DecodeRuneInString(target) {
+					pos += sz
+					target = query[pos:]
+				}
+
+				idx, err = strconv.ParseInt(query[offset+1:pos], 10, strconv.IntSize)
+
+				if err != nil {
+					return "", err
+				}
+
+				if int(idx) >= max+1 {
+					return "", ErrInterpolateMissingArgs
+				}
+
+				buf = append(buf, query[:offset-oldSz]...)
+				buf, err = encodeValue(buf, args[idx-1], SQLServer)
+
+				if err != nil {
+					return "", err
+				}
+
+				query = target
+				offset = 0
+
+				if sz == 0 {
+					break
+				}
+
+				continue
+			}
+
+		case '\'':
+			if quote == '\'' {
+				quote = 0
+				continue
+			}
+
+			if quote == 0 {
+				quote = '\''
+			}
+
+		case '"':
+			if quote == '"' {
+				quote = 0
+				continue
+			}
+
+			if quote == 0 {
+				quote = '"'
+			}
+
+		case '\\':
+			if quote != 0 {
+				escaping = true
+			}
+		}
+	}
+
+	buf = append(buf, query...)
+	return *(*string)(unsafe.Pointer(&buf)), nil
+}
+
 // mysqlInterpolate works the same as MySQL interpolating.
 func sqliteInterpolate(query string, args ...interface{}) (string, error) {
 	return mysqlLikeInterpolate(SQLite, query, args...)
@@ -340,6 +452,10 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 			buf = append(buf, "X'"...)
 			buf = appendHex(buf, v)
 			buf = append(buf, '\'')
+
+		case SQLServer:
+			buf = append(buf, "0x"...)
+			buf = appendHex(buf, v)
 		}
 
 	case string:
@@ -365,6 +481,9 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 
 		case SQLite:
 			buf = append(buf, v.Format("2006-01-02 15:04:05.000")...)
+
+		case SQLServer:
+			buf = append(buf, v.Format("2006-01-02 15:04:05.999999 Z07:00")...)
 		}
 
 		buf = append(buf, '\'')
@@ -390,8 +509,11 @@ func appendHex(buf, v []byte) []byte {
 }
 
 func quoteStringValue(buf []byte, s string, flavor Flavor) []byte {
-	if flavor == PostgreSQL {
+	switch flavor {
+	case PostgreSQL:
 		buf = append(buf, 'E')
+	case SQLServer:
+		buf = append(buf, 'N')
 	}
 
 	buf = append(buf, '\'')
