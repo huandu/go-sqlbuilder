@@ -9,16 +9,16 @@
 - [Usage](#usage)
   - [Basic usage](#basic-usage)
   - [Pre-defined SQL builders](#pre-defined-sql-builders)
-  - [Build SQL for MySQL, PostgreSQL, SQLServer or SQLite](#build-sql-for-mysql--postgresql-sqlserver-or-sqlite)
-  - [Using `Struct` as a light weight ORM](#using--struct--as-a-light-weight-orm)
+  - [Build SQL for MySQL, PostgreSQL, SQLServer or SQLite](#build-sql-for-mysql-postgresql-sqlserver-or-sqlite)
+  - [Using `Struct` as a light weight ORM](#using-struct-as-a-light-weight-orm)
   - [Nested SQL](#nested-sql)
-  - [Use `sql.Named` in a builder](#use--sqlnamed--in-a-builder)
+  - [Use `sql.Named` in a builder](#use-sqlnamed-in-a-builder)
   - [Argument modifiers](#argument-modifiers)
   - [Freestyle builder](#freestyle-builder)
   - [Using special syntax to build SQL](#using-special-syntax-to-build-sql)
-  - [Interpolate `args` in the `sql`](#interpolate--args--in-the--sql-)
+  - [Interpolate `args` in the `sql`](#interpolate-args-in-the-sql)
 - [FAQ](#faq)
-  - [What's the difference between this package and `squirrel`](#what-s-the-difference-between-this-package-and--squirrel-)
+  - [What's the difference between this package and `squirrel`](#whats-the-difference-between-this-package-and-squirrel)
 - [License](#license)
 
 Package `sqlbuilder` provides a set of flexible and powerful SQL string builders. The only goal of this package is to build SQL string with arguments which can be used in `DB#Query` or `DB#Exec` defined in package `database/sql`.
@@ -68,7 +68,7 @@ fmt.Println(args)
 
 ### Pre-defined SQL builders
 
-Following builders are implemented right now. API document and examples are provided in the `godoc` document.
+This package includes following pre-defined builders so far. API document and examples can be found in the `godoc` online document.
 
 - [Struct](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Struct): Builder factory for a struct.
 - [CreateTableBuilder](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#CreateTableBuilder): Builder for CREATE TABLE.
@@ -81,7 +81,7 @@ Following builders are implemented right now. API document and examples are prov
 - [Build](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Build): Advanced freestyle builder using special syntax defined in [Args#Compile](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Args.Compile).
 - [BuildNamed](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#BuildNamed): Advanced freestyle builder using `${key}` to refer the value of a map by key.
 
-There is a method `SQL(sql string)` implemented by all statement builders like `SelectBuilder`. We can use this method to insert any arbitrary SQL fragment when building a SQL. It's quite useful to build SQL containing non-standard syntax supported by a OLTP or OLAP system.
+There is a special method `SQL(sql string)` implemented by all statement builders. We can use this method to insert any arbitrary SQL fragment into a builder when building a SQL. It's quite useful to build SQL containing non-standard syntax supported by a OLTP or OLAP system.
 
 ```go
 // Build a SQL to create a HIVE table.
@@ -101,6 +101,12 @@ fmt.Println(sql)
 // Output:
 // CREATE TABLE users PARTITION BY (year) AS SELECT columns[0] id, columns[1] name, columns[2] year FROM `all-users.csv` LIMIT 100
 ```
+
+Following are some utility methods to deal with special cases.
+
+- [Flatten](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Flatten) can convert an array-like variable to a flat slice of `[]interface{}` recursively. For instance, calling `Flatten([]interface{"foo", []int{2, 3}})` returns `[]interface{}{"foo", 2, 3}`. This method can work with builder methods like `In`/`NotIn`/`Values`/etc to convert a typed array to `[]interface{}` or merge inputs.
+- [List](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#List) works similar to `Flatten` except that its return value is dedecated for builder args. For instance, calling `Buildf("my_func(%v)", List([]int{1, 2, 3})).Build()` returns SQL `my_func(?, ?, ?)` and args `[]interface{}{1, 2, 3}`.
+- [Raw](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Raw) marks a string as "raw string" in args. For instance, calling `Buildf("SELECT %v", Raw("NOW()")).Build()` returns SQL `SELECT NOW()`.
 
 To learn how to use builders, check out [examples on GoDoc](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#pkg-examples).
 
