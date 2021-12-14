@@ -49,7 +49,7 @@ var emptyStruct Struct
 
 // NewStruct analyzes type information in structValue
 // and creates a new Struct with all structValue fields.
-// If structValue is not a struct, NewStruct returns a dummy Sturct.
+// If structValue is not a struct, NewStruct returns a dummy Struct.
 func NewStruct(structValue interface{}) *Struct {
 	t := reflect.TypeOf(structValue)
 	t = dereferencedType(t)
