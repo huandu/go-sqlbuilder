@@ -67,14 +67,14 @@ func (ub *UpdateBuilder) Update(table string) *UpdateBuilder {
 	return ub
 }
 
-// Set sets the assignements in SET.
+// Set sets the assignments in SET.
 func (ub *UpdateBuilder) Set(assignment ...string) *UpdateBuilder {
 	ub.assignments = assignment
 	ub.marker = updateMarkerAfterSet
 	return ub
 }
 
-// SetMore appends the assignements in SET.
+// SetMore appends the assignments in SET.
 func (ub *UpdateBuilder) SetMore(assignment ...string) *UpdateBuilder {
 	ub.assignments = append(ub.assignments, assignment...)
 	ub.marker = updateMarkerAfterSet

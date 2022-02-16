@@ -42,7 +42,7 @@ type Struct struct {
 	Flavor Flavor
 
 	structType         reflect.Type
-	structFieldsParser structFieldsieldsParser
+	structFieldsParser structFieldsParser
 }
 
 var emptyStruct Struct
@@ -68,9 +68,9 @@ func NewStruct(structValue interface{}) *Struct {
 // For sets the default flavor of s and returns a shadow copy of s.
 // The original s.Flavor is not changed.
 func (s *Struct) For(flavor Flavor) *Struct {
-	copy := *s
-	copy.Flavor = flavor
-	return &copy
+	c := *s
+	c.Flavor = flavor
+	return &c
 }
 
 // WithFieldMapper returns a new Struct based on s with custom field mapper.
@@ -80,9 +80,9 @@ func (s *Struct) WithFieldMapper(mapper FieldMapperFunc) *Struct {
 		return &emptyStruct
 	}
 
-	copy := *s
-	copy.structFieldsParser = makeCustomFieldsParser(s.structType, mapper)
-	return &copy
+	c := *s
+	c.structFieldsParser = makeCustomFieldsParser(s.structType, mapper)
+	return &c
 }
 
 // SelectFrom creates a new `SelectBuilder` with table name.
@@ -291,7 +291,7 @@ func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, tag string, value .
 	filteredValues := make([][]interface{}, len(values))
 
 	for i, cnt := range nilCols {
-		// If all values are nil in a column, ignore the column completedly.
+		// If all values are nil in a column, ignore the column completely.
 		if cnt == len(values) {
 			continue
 		}

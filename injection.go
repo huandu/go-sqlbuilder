@@ -15,11 +15,6 @@ type injection struct {
 
 type injectionMarker int
 
-type injectedSQL struct {
-	marker injectionMarker
-	sql    string
-}
-
 // newInjection creates a new injection.
 func newInjection() *injection {
 	return &injection{
