@@ -181,7 +181,7 @@ func TestStructAddr(t *testing.T) {
 		CreatedAt: 1234567890,
 	}
 	str := fmt.Sprintf("%v %v %v %v", expected.ID, expected.Name, expected.Status, expected.CreatedAt)
-	fmt.Sscanf(str, "%d%s%d%d", userForTest.Addr(user)...)
+	_, _ = fmt.Sscanf(str, "%d%s%d%d", userForTest.Addr(user)...)
 
 	a.Equal(user, expected)
 }
@@ -197,7 +197,7 @@ func TestStructAddrForTag(t *testing.T) {
 	}
 	user.CreatedAt = 9876543210
 	str := fmt.Sprintf("%v %v %v %v", expected.ID, expected.Name, expected.Status, expected.CreatedAt)
-	fmt.Sscanf(str, "%d%s%d%d", userForTest.AddrForTag("important", user)...)
+	_, _ = fmt.Sscanf(str, "%d%s%d%d", userForTest.AddrForTag("important", user)...)
 	expected.CreatedAt = 9876543210
 
 	a.Equal(user, expected)
@@ -213,7 +213,7 @@ func TestStructAddrWithCols(t *testing.T) {
 		CreatedAt: 1234567890,
 	}
 	str := fmt.Sprintf("%v %v %v %v", expected.Name, expected.ID, expected.CreatedAt, expected.Status)
-	fmt.Sscanf(str, "%s%d%d%d", userForTest.AddrWithCols([]string{"Name", "id", "created_at", "status"}, user)...)
+	_, _ = fmt.Sscanf(str, "%s%d%d%d", userForTest.AddrWithCols([]string{"Name", "id", "created_at", "status"}, user)...)
 
 	a.Equal(user, expected)
 }
@@ -240,11 +240,11 @@ type State int
 type testDB int
 type testRows int
 
-func (db testDB) Query(query string, args ...interface{}) (testRows, error) {
+func (db testDB) Query(string, ...interface{}) (testRows, error) {
 	return 0, nil
 }
 
-func (db testDB) Exec(query string, args ...interface{}) {
+func (db testDB) Exec(string, ...interface{}) {
 	return
 }
 
@@ -253,7 +253,7 @@ func (rows testRows) Close() error {
 }
 
 func (rows testRows) Scan(dest ...interface{}) error {
-	fmt.Sscan("1234 huandu 1", dest...)
+	_, _ = fmt.Sscan("1234 huandu 1", dest...)
 	return nil
 }
 
@@ -285,11 +285,13 @@ func ExampleStruct_useStructAsORM() {
 	// Execute the query.
 	sql, args := sb.Build()
 	rows, _ := db.Query(sql, args...)
-	defer rows.Close()
+	defer func(rows testRows) {
+		_ = rows.Close()
+	}(rows)
 
 	// Scan row data to user.
 	var user User
-	rows.Scan(userStruct.Addr(&user)...)
+	_ = rows.Scan(userStruct.Addr(&user)...)
 
 	fmt.Println(sql)
 	fmt.Println(args)
@@ -343,8 +345,10 @@ func ExampleStruct_useTag() {
 		var order Order
 		sql, args := orderStruct.SelectFromForTag(table, tag).Where("id = 1234").Build()
 		rows, _ := db.Query(sql, args...)
-		defer rows.Close()
-		rows.Scan(orderStruct.AddrForTag(tag, &order)...)
+		defer func(rows testRows) {
+			_ = rows.Close()
+		}(rows)
+		_ = rows.Scan(orderStruct.AddrForTag(tag, &order)...)
 
 		// Discount for this user.
 		// Use tag "update" to update necessary columns only.
@@ -365,8 +369,10 @@ func ExampleStruct_useTag() {
 		var order Order
 		sql, args := orderStruct.SelectFromForTag(table, tag).Where("id = 1234").Build()
 		rows, _ := db.Query(sql, args...)
-		defer rows.Close()
-		rows.Scan(orderStruct.AddrForTag(tag, &order)...)
+		defer func(rows testRows) {
+			_ = rows.Close()
+		}(rows)
+		_ = rows.Scan(orderStruct.AddrForTag(tag, &order)...)
 
 		// Update state to paid when user has paid for the order.
 		// Use tag "paid" to update necessary columns only.
@@ -725,13 +731,13 @@ func TestStructFieldMapper(t *testing.T) {
 	}
 	var actual structWithMapper
 	str := fmt.Sprintf("%v %v %v %v", expected.FieldName1, expected.FieldNameSetByTag, expected.EmbeddedField2, expected.EmbeddedAndEmbeddedField1)
-	fmt.Sscanf(str, "%d%s%d%d", s.Addr(&actual)...)
+	_, _ = fmt.Sscanf(str, "%d%s%d%d", s.Addr(&actual)...)
 
 	sql, _ = sWithoutMapper.SelectFrom("t").Build()
 	a.Equal(sql, "SELECT t.`FieldName1`, t.set_by_tag, t.field_name1, t.EmbeddedField2, t.EmbeddedAndEmbeddedField1 FROM t")
 }
 
-func SomeOtherMapper(s string) string {
+func SomeOtherMapper(string) string {
 	return ""
 }
 

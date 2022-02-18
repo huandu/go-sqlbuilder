@@ -12,17 +12,17 @@ type structFields struct {
 	omitEmptyFields map[string]omitEmptyTagMap
 }
 
-type structFieldsieldsParser func() *structFields
+type structFieldsParser func() *structFields
 
-func makeDefaultFieldsParser(t reflect.Type) structFieldsieldsParser {
+func makeDefaultFieldsParser(t reflect.Type) structFieldsParser {
 	return makeFieldsParser(t, nil, true)
 }
 
-func makeCustomFieldsParser(t reflect.Type, mapper FieldMapperFunc) structFieldsieldsParser {
+func makeCustomFieldsParser(t reflect.Type, mapper FieldMapperFunc) structFieldsParser {
 	return makeFieldsParser(t, mapper, false)
 }
 
-func makeFieldsParser(t reflect.Type, mapper FieldMapperFunc, useDefault bool) structFieldsieldsParser {
+func makeFieldsParser(t reflect.Type, mapper FieldMapperFunc, useDefault bool) structFieldsParser {
 	var once sync.Once
 	sf := &structFields{
 		fieldAlias:      map[string]string{},

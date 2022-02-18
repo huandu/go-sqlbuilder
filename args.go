@@ -90,18 +90,18 @@ func (args *Args) add(arg interface{}) int {
 //     $0 $1 ... $n refers nth-argument passed in the call. Next $? will use arguments n+1.
 //     ${name} refers a named argument created by `Named` with `name`.
 //     $$ is a "$" string.
-func (args *Args) Compile(format string, intialValue ...interface{}) (query string, values []interface{}) {
-	return args.CompileWithFlavor(format, args.Flavor, intialValue...)
+func (args *Args) Compile(format string, initialValue ...interface{}) (query string, values []interface{}) {
+	return args.CompileWithFlavor(format, args.Flavor, initialValue...)
 }
 
 // CompileWithFlavor compiles builder's format to standard sql with flavor and returns associated args.
 //
 // See doc for `Compile` to learn details.
-func (args *Args) CompileWithFlavor(format string, flavor Flavor, intialValue ...interface{}) (query string, values []interface{}) {
+func (args *Args) CompileWithFlavor(format string, flavor Flavor, initialValue ...interface{}) (query string, values []interface{}) {
 	buf := &bytes.Buffer{}
 	idx := strings.IndexRune(format, '$')
 	offset := 0
-	values = intialValue
+	values = initialValue
 
 	if flavor == invalidFlavor {
 		flavor = DefaultFlavor
