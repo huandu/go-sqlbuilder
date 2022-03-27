@@ -89,15 +89,19 @@ func (s *Struct) WithFieldMapper(mapper FieldMapperFunc) *Struct {
 // By default, all exported fields of the s are listed as columns in SELECT.
 //
 // Caller is responsible to set WHERE condition to find right record.
-func (s *Struct) SelectFrom(table string) *SelectBuilder {
-	return s.SelectFromForTag(table, "")
+func (s *Struct) SelectFrom(table string, tableNamePrefix bool) *SelectBuilder {
+	return s.SelectFromForTag(table, tableNamePrefix, "")
 }
 
 // SelectFromForTag creates a new `SelectBuilder` with table name for a specified tag.
 // By default, all fields of the s tagged with tag are listed as columns in SELECT.
 //
 // Caller is responsible to set WHERE condition to find right record.
-func (s *Struct) SelectFromForTag(table string, tag string) *SelectBuilder {
+func (s *Struct) SelectFromForTag(
+	table string,
+	tableNamePrefix bool,
+	tag string,
+) *SelectBuilder {
 	sf := s.structFieldsParser()
 	sb := s.Flavor.NewSelectBuilder()
 	sb.From(table)
@@ -111,18 +115,22 @@ func (s *Struct) SelectFromForTag(table string, tag string) *SelectBuilder {
 	if ok {
 		fields = s.quoteFields(sf, fields)
 
-		buf := &bytes.Buffer{}
-		cols := make([]string, 0, len(fields))
+		if tableNamePrefix {
+			buf := &bytes.Buffer{}
+			prefixed := make([]string, 0, len(fields))
 
-		for _, field := range fields {
-			buf.WriteString(table)
-			buf.WriteRune('.')
-			buf.WriteString(field)
-			cols = append(cols, buf.String())
-			buf.Reset()
+			for _, field := range fields {
+				buf.WriteString(table)
+				buf.WriteRune('.')
+				buf.WriteString(field)
+				prefixed = append(prefixed, buf.String())
+				buf.Reset()
+			}
+
+			sb.Select(prefixed...)
+		} else {
+			sb.Select(fields...)
 		}
-
-		sb.Select(cols...)
 	} else {
 		sb.Select("*")
 	}
@@ -144,7 +152,11 @@ func (s *Struct) Update(table string, value interface{}) *UpdateBuilder {
 // If value's type is not the same as that of s, UpdateForTag returns a dummy `UpdateBuilder` with table name.
 //
 // Caller is responsible to set WHERE condition to match right record.
-func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *UpdateBuilder {
+func (s *Struct) UpdateForTag(
+	table string,
+	tag string,
+	value interface{},
+) *UpdateBuilder {
 	sf := s.structFieldsParser()
 	ub := s.Flavor.NewUpdateBuilder()
 	ub.Update(table)
@@ -209,7 +221,10 @@ func (s *Struct) InsertInto(table string, value ...interface{}) *InsertBuilder {
 // InsertIgnoreInto never returns any error.
 // If the type of any item in value is not expected, it will be ignored.
 // If value is an empty slice, `InsertBuilder#Values` will not be called.
-func (s *Struct) InsertIgnoreInto(table string, value ...interface{}) *InsertBuilder {
+func (s *Struct) InsertIgnoreInto(
+	table string,
+	value ...interface{},
+) *InsertBuilder {
 	return s.InsertIgnoreIntoForTag(table, "", value...)
 }
 
@@ -220,13 +235,20 @@ func (s *Struct) InsertIgnoreInto(table string, value ...interface{}) *InsertBui
 // ReplaceInto never returns any error.
 // If the type of any item in value is not expected, it will be ignored.
 // If value is an empty slice, `InsertBuilder#Values` will not be called.
-func (s *Struct) ReplaceInto(table string, value ...interface{}) *InsertBuilder {
+func (s *Struct) ReplaceInto(
+	table string,
+	value ...interface{},
+) *InsertBuilder {
 	return s.ReplaceIntoForTag(table, "", value...)
 }
 
 // buildColsAndValuesForTag uses ib to set exported fields tagged with tag as columns
 // and add value as a list of values.
-func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, tag string, value ...interface{}) {
+func (s *Struct) buildColsAndValuesForTag(
+	ib *InsertBuilder,
+	tag string,
+	value ...interface{},
+) {
 	sf := s.structFieldsParser()
 
 	if sf.taggedFields == nil {
@@ -318,7 +340,11 @@ func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, tag string, value .
 // InsertIntoForTag never returns any error.
 // If the type of any item in value is not expected, it will be ignored.
 // If value is an empty slice, `InsertBuilder#Values` will not be called.
-func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
+func (s *Struct) InsertIntoForTag(
+	table string,
+	tag string,
+	value ...interface{},
+) *InsertBuilder {
 	ib := s.Flavor.NewInsertBuilder()
 	ib.InsertInto(table)
 
@@ -333,7 +359,11 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}
 // InsertIgnoreIntoForTag never returns any error.
 // If the type of any item in value is not expected, it will be ignored.
 // If value is an empty slice, `InsertBuilder#Values` will not be called.
-func (s *Struct) InsertIgnoreIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
+func (s *Struct) InsertIgnoreIntoForTag(
+	table string,
+	tag string,
+	value ...interface{},
+) *InsertBuilder {
 	ib := s.Flavor.NewInsertBuilder()
 	ib.InsertIgnoreInto(table)
 
@@ -348,7 +378,11 @@ func (s *Struct) InsertIgnoreIntoForTag(table string, tag string, value ...inter
 // ReplaceIntoForTag never returns any error.
 // If the type of any item in value is not expected, it will be ignored.
 // If value is an empty slice, `InsertBuilder#Values` will not be called.
-func (s *Struct) ReplaceIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
+func (s *Struct) ReplaceIntoForTag(
+	table string,
+	tag string,
+	value ...interface{},
+) *InsertBuilder {
 	ib := s.Flavor.NewInsertBuilder()
 	ib.ReplaceInto(table)
 

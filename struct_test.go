@@ -22,19 +22,37 @@ var userForTest = NewStruct(new(structUserForTest))
 
 func TestStructSelectFrom(t *testing.T) {
 	a := assert.New(t)
-	sb := userForTest.SelectFrom("user")
+	sb := userForTest.SelectFrom("user", true)
 	sql, args := sb.Build()
 
 	a.Equal(sql, "SELECT user.id, user.Name, user.status, user.created_at FROM user")
 	a.Equal(args, nil)
 }
 
+func TestStructSelectFromNoPrefix(t *testing.T) {
+	a := assert.New(t)
+	sb := userForTest.SelectFrom("user", false)
+	sql, args := sb.Build()
+
+	a.Equal(sql, "SELECT id, Name, status, created_at FROM user")
+	a.Equal(args, nil)
+}
+
 func TestStructSelectFromForTag(t *testing.T) {
 	a := assert.New(t)
-	sb := userForTest.SelectFromForTag("user", "important")
+	sb := userForTest.SelectFromForTag("user", true, "important")
 	sql, args := sb.Build()
 
 	a.Equal(sql, "SELECT user.id, user.Name, user.status FROM user")
+	a.Equal(args, nil)
+}
+
+func TestStructSelectFromForTagNoPrefix(t *testing.T) {
+	a := assert.New(t)
+	sb := userForTest.SelectFromForTag("user", false, "important")
+	sql, args := sb.Build()
+
+	a.Equal(sql, "SELECT id, Name, status FROM user")
 	a.Equal(args, nil)
 }
 
@@ -279,7 +297,7 @@ func ExampleStruct_useStructAsORM() {
 	//     var userStruct = NewStruct(new(User))
 
 	// Prepare SELECT query.
-	sb := userStruct.SelectFrom("user")
+	sb := userStruct.SelectFrom("user", true)
 	sb.Where(sb.E("id", 1234))
 
 	// Execute the query.
@@ -343,7 +361,7 @@ func ExampleStruct_useTag() {
 
 		// Read order from database.
 		var order Order
-		sql, args := orderStruct.SelectFromForTag(table, tag).Where("id = 1234").Build()
+		sql, args := orderStruct.SelectFromForTag(table, true, tag).Where("id = 1234").Build()
 		rows, _ := db.Query(sql, args...)
 		defer func(rows testRows) {
 			_ = rows.Close()
@@ -367,7 +385,7 @@ func ExampleStruct_useTag() {
 
 		// Read order from database.
 		var order Order
-		sql, args := orderStruct.SelectFromForTag(table, tag).Where("id = 1234").Build()
+		sql, args := orderStruct.SelectFromForTag(table, true, tag).Where("id = 1234").Build()
 		rows, _ := db.Query(sql, args...)
 		defer func(rows testRows) {
 			_ = rows.Close()
@@ -504,7 +522,7 @@ func ExampleStruct_buildDELETE() {
 func ExampleStruct_forPostgreSQL() {
 	userStruct := NewStruct(new(User)).For(PostgreSQL)
 
-	sb := userStruct.SelectFrom("user")
+	sb := userStruct.SelectFrom("user", true)
 	sb.Where(sb.E("id", 1234))
 	sql, args := sb.Build()
 
@@ -524,11 +542,11 @@ type structWithQuote struct {
 
 func TestStructWithQuote(t *testing.T) {
 	a := assert.New(t)
-	sb := NewStruct(new(structWithQuote)).For(MySQL).SelectFrom("foo")
+	sb := NewStruct(new(structWithQuote)).For(MySQL).SelectFrom("foo", true)
 	sql, _ := sb.Build()
 	a.Equal(sql, "SELECT foo.`aa`, foo.ccc FROM foo")
 
-	sb = NewStruct(new(structWithQuote)).For(PostgreSQL).SelectFrom("foo")
+	sb = NewStruct(new(structWithQuote)).For(PostgreSQL).SelectFrom("foo", true)
 	sql, _ = sb.Build()
 	a.Equal(sql, `SELECT foo."aa", foo.ccc FROM foo`)
 
@@ -715,7 +733,7 @@ func TestStructFieldMapper(t *testing.T) {
 	DefaultFieldMapper = SnakeCaseMapper
 	s := NewStruct(new(structWithMapper))
 	sWithoutMapper := s.WithFieldMapper(nil) // Columns in s will not be changed after this call.
-	sql, _ := s.SelectFrom("t").Build()
+	sql, _ := s.SelectFrom("t", true).Build()
 	a.Equal(sql, "SELECT t.`field_name1`, t.set_by_tag, t.embedded_field2, t.embedded_and_embedded_field1 FROM t")
 
 	expected := &structWithMapper{
@@ -733,7 +751,7 @@ func TestStructFieldMapper(t *testing.T) {
 	str := fmt.Sprintf("%v %v %v %v", expected.FieldName1, expected.FieldNameSetByTag, expected.EmbeddedField2, expected.EmbeddedAndEmbeddedField1)
 	_, _ = fmt.Sscanf(str, "%d%s%d%d", s.Addr(&actual)...)
 
-	sql, _ = sWithoutMapper.SelectFrom("t").Build()
+	sql, _ = sWithoutMapper.SelectFrom("t", true).Build()
 	a.Equal(sql, "SELECT t.`FieldName1`, t.set_by_tag, t.field_name1, t.EmbeddedField2, t.EmbeddedAndEmbeddedField1 FROM t")
 }
 
@@ -759,14 +777,14 @@ func ExampleFieldMapperFunc() {
 	DefaultFieldMapper = SnakeCaseMapper
 
 	// Field names are converted to snake_case words.
-	sql1, _ := orders.SelectFrom("orders").Limit(10).Build()
+	sql1, _ := orders.SelectFrom("orders", true).Limit(10).Build()
 
 	fmt.Println(sql1)
 
 	// Changing the default field mapper will *NOT* affect field names in orders.
 	// Once field name conversion is done, they will not be changed again.
 	DefaultFieldMapper = SomeOtherMapper
-	sql2, _ := orders.SelectFrom("orders").Limit(10).Build()
+	sql2, _ := orders.SelectFrom("orders", true).Limit(10).Build()
 
 	fmt.Println(sql1 == sql2)
 
