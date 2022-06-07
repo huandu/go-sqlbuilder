@@ -51,6 +51,11 @@ func (sf *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix str
 	for i := 0; i < l; i++ {
 		field := t.Field(i)
 
+		// Skip unexported fields that are not embedded structs.
+		if !field.IsExported() && !field.Anonymous {
+			continue
+		}
+
 		if field.Anonymous {
 			ft := field.Type
 
