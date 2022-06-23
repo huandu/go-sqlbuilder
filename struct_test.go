@@ -12,10 +12,11 @@ import (
 )
 
 type structUserForTest struct {
-	ID        int    `db:"id" fieldtag:"important"`
-	Name      string `fieldtag:"important"`
-	Status    int    `db:"status" fieldtag:"important"`
-	CreatedAt int    `db:"created_at"`
+	ID         int    `db:"id" fieldtag:"important"`
+	Name       string `fieldtag:"important"`
+	Status     int    `db:"status" fieldtag:"important"`
+	CreatedAt  int    `db:"created_at"`
+	unexported struct{}
 }
 
 var userForTest = NewStruct(new(structUserForTest))
