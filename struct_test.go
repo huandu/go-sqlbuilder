@@ -244,8 +244,7 @@ func (db testDB) Query(string, ...interface{}) (testRows, error) {
 	return 0, nil
 }
 
-func (db testDB) Exec(string, ...interface{}) {
-	return
+func (db testDB) Exec(query string, args ...interface{}) {
 }
 
 func (rows testRows) Close() error {
