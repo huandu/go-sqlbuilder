@@ -245,7 +245,6 @@ func (db testDB) Query(query string, args ...interface{}) (testRows, error) {
 }
 
 func (db testDB) Exec(query string, args ...interface{}) {
-	return
 }
 
 func (rows testRows) Close() error {
