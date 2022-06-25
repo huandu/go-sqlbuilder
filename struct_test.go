@@ -20,6 +20,7 @@ type structUserForTest struct {
 }
 
 var userForTest = NewStruct(new(structUserForTest))
+var _ = new(structUserForTest).unexported // disable lint warning
 
 func TestStructSelectFrom(t *testing.T) {
 	a := assert.New(t)
@@ -202,6 +203,7 @@ func TestStructAddrForTag(t *testing.T) {
 	expected.CreatedAt = 9876543210
 
 	a.Equal(user, expected)
+	a.Equal(userForTest.AddrForTag("invalid", user), nil)
 }
 
 func TestStructAddrWithCols(t *testing.T) {
@@ -217,6 +219,43 @@ func TestStructAddrWithCols(t *testing.T) {
 	_, _ = fmt.Sscanf(str, "%s%d%d%d", userForTest.AddrWithCols([]string{"Name", "id", "created_at", "status"}, user)...)
 
 	a.Equal(user, expected)
+	a.Equal(userForTest.AddrWithCols([]string{"invalid", "non-exist"}, user), nil)
+}
+
+func TestStructValues(t *testing.T) {
+	a := assert.New(t)
+	st := &structUserForTest{
+		ID:        123,
+		Name:      "huandu",
+		Status:    2,
+		CreatedAt: 1234567890,
+	}
+	expected := fmt.Sprintf("%v %v %v %v", st.ID, st.Name, st.Status, st.CreatedAt)
+	actual := fmt.Sprintf("%v %v %v %v", userForTest.Values(st)...)
+
+	a.Equal(actual, expected)
+}
+
+func TestStructValuesForTag(t *testing.T) {
+	a := assert.New(t)
+	st := &structUserForTest{
+		ID:        123,
+		Name:      "huandu",
+		Status:    2,
+		CreatedAt: 1234567890,
+	}
+	expected := fmt.Sprintf("%v %v %v", st.ID, st.Name, st.Status)
+	actual := fmt.Sprintf("%v %v %v", userForTest.ValuesForTag("important", st)...)
+
+	a.Equal(actual, expected)
+	a.Equal(userForTest.ValuesForTag("invalid", st), nil)
+}
+
+func TestStructColumns(t *testing.T) {
+	a := assert.New(t)
+	a.Equal(userForTest.Columns(), []string{"id", "Name", "status", "created_at"})
+	a.Equal(userForTest.ColumnsForTag("important"), []string{"id", "Name", "status"})
+	a.Equal(userForTest.ColumnsForTag("invalid"), nil)
 }
 
 type User struct {

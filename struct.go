@@ -365,17 +365,17 @@ func (s *Struct) DeleteFrom(table string) *DeleteBuilder {
 	return db
 }
 
-// Addr takes address of all exported fields of the s from the value.
+// Addr takes address of all exported fields of the s from the st.
 // The returned result can be used in `Row#Scan` directly.
-func (s *Struct) Addr(value interface{}) []interface{} {
-	return s.AddrForTag("", value)
+func (s *Struct) Addr(st interface{}) []interface{} {
+	return s.AddrForTag("", st)
 }
 
-// AddrForTag takes address of all fields of the s tagged with tag from the value.
-// The returned result can be used in `Row#Scan` directly.
+// AddrForTag takes address of all fields of the s tagged with tag from the st.
+// The returned value can be used in `Row#Scan` directly.
 //
-// If tag is not defined in s in advance,
-func (s *Struct) AddrForTag(tag string, value interface{}) []interface{} {
+// If tag is not defined in s in advance, returns nil.
+func (s *Struct) AddrForTag(tag string, st interface{}) []interface{} {
 	sf := s.structFieldsParser()
 	fields, ok := sf.taggedFields[tag]
 
@@ -383,14 +383,14 @@ func (s *Struct) AddrForTag(tag string, value interface{}) []interface{} {
 		return nil
 	}
 
-	return s.AddrWithCols(fields, value)
+	return s.AddrWithCols(fields, st)
 }
 
-// AddrWithCols takes address of all columns defined in cols from the value.
-// The returned result can be used in `Row#Scan` directly.
-func (s *Struct) AddrWithCols(cols []string, value interface{}) []interface{} {
+// AddrWithCols takes address of all columns defined in cols from the st.
+// The returned value can be used in `Row#Scan` directly.
+func (s *Struct) AddrWithCols(cols []string, st interface{}) []interface{} {
 	sf := s.structFieldsParser()
-	v := reflect.ValueOf(value)
+	v := reflect.ValueOf(st)
 	v = dereferencedValue(v)
 
 	if v.Type() != s.structType {
@@ -412,6 +412,56 @@ func (s *Struct) AddrWithCols(cols []string, value interface{}) []interface{} {
 	}
 
 	return addrs
+}
+
+// Columns returns column names of s for all exported struct fields.
+func (s *Struct) Columns() []string {
+	return s.ColumnsForTag("")
+}
+
+// ColumnsForTag returns column names of the s tagged with tag.
+func (s *Struct) ColumnsForTag(tag string) (cols []string) {
+	sf := s.structFieldsParser()
+	fields, ok := sf.taggedFields[tag]
+
+	if !ok {
+		return
+	}
+
+	cols = append(cols, fields...)
+	return
+}
+
+// Values returns a shadow copy of all exported fields in st.
+func (s *Struct) Values(st interface{}) []interface{} {
+	return s.ValuesForTag("", st)
+}
+
+// Values returns a shadow copy of all fields tagged with tag in st.
+func (s *Struct) ValuesForTag(tag string, value interface{}) (values []interface{}) {
+	sf := s.structFieldsParser()
+	v := reflect.ValueOf(value)
+	v = dereferencedValue(v)
+
+	if v.Type() != s.structType {
+		return
+	}
+
+	cols, ok := sf.taggedFields[tag]
+
+	if !ok {
+		return
+	}
+
+	values = make([]interface{}, 0, len(cols))
+
+	for _, c := range cols {
+		name := sf.fieldAlias[c]
+		data := v.FieldByName(name).Interface()
+		values = append(values, data)
+	}
+
+	return
 }
 
 func (s *Struct) quoteFields(sf *structFields, fields []string) []string {
