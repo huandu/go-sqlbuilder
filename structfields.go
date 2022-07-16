@@ -52,7 +52,7 @@ func (sf *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix str
 		field := t.Field(i)
 
 		// Skip unexported fields that are not embedded structs.
-		if !field.IsExported() && !field.Anonymous {
+		if field.PkgPath != "" && !field.Anonymous {
 			continue
 		}
 

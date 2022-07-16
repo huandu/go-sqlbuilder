@@ -437,7 +437,7 @@ func (s *Struct) Values(st interface{}) []interface{} {
 	return s.ValuesForTag("", st)
 }
 
-// Values returns a shadow copy of all fields tagged with tag in st.
+// ValuesForTag returns a shadow copy of all fields tagged with tag in st.
 func (s *Struct) ValuesForTag(tag string, value interface{}) (values []interface{}) {
 	sf := s.structFieldsParser()
 	v := reflect.ValueOf(value)
