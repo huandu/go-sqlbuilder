@@ -136,6 +136,7 @@ type ATable struct {
     Field2     int    `db:"field2"`                      // Use "db" in field tag to set column name used in SQL.
     Field3     int64  `db:"field3" fieldtag:"foo,bar"`   // Set fieldtag to a field. We can use methods like `Struct#SelectForTag` to use it.
     Field4     int64  `db:"field4" fieldtag:"foo"`       // If we use `s.SelectForTag(table, "foo")`, columnes of SELECT are field3 and field4.
+    Field5As  string `db:"field5" fieldas:"FIELD5"`      // Use "fieldas" in field tag to set AS name used in SELECT.
     Ignored    int32  `db:"-"`                           // If we set field name as "-", Struct will ignore it.
     unexported int                                       // Unexported field is not visible to Struct.
     Quoted     string `db:"quoted" fieldopt:"withquote"` // Add quote to the field using back quote or double quote. See `Flavor#Quote`.

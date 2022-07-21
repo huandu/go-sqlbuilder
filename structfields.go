@@ -7,6 +7,7 @@ import (
 
 type structFields struct {
 	fieldAlias      map[string]string
+	fieldAs         map[string]string
 	taggedFields    map[string][]string
 	quotedFields    map[string]struct{}
 	omitEmptyFields map[string]omitEmptyTagMap
@@ -26,6 +27,7 @@ func makeFieldsParser(t reflect.Type, mapper FieldMapperFunc, useDefault bool) s
 	var once sync.Once
 	sf := &structFields{
 		fieldAlias:      map[string]string{},
+		fieldAs:         map[string]string{},
 		taggedFields:    map[string][]string{},
 		quotedFields:    map[string]struct{}{},
 		omitEmptyFields: map[string]omitEmptyTagMap{},
@@ -117,6 +119,13 @@ func (sf *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix str
 			case fieldOptWithQuote:
 				sf.quotedFields[alias] = struct{}{}
 			}
+		}
+
+		// Parse FieldAs.
+		fieldas := field.Tag.Get(FieldAs)
+
+		if fieldas != "" {
+			sf.fieldAs[alias] = fieldas
 		}
 	}
 

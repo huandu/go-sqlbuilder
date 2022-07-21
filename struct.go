@@ -22,6 +22,9 @@ var (
 	// FieldOpt is the options for a struct field.
 	// As db column can contain "," in theory, field options should be provided in a separated tag.
 	FieldOpt = "fieldopt"
+
+	// FieldAs is the AS name for a struct field.
+	FieldAs = "fieldas"
 )
 
 const (
@@ -117,7 +120,13 @@ func (s *Struct) SelectFromForTag(table string, tag string) *SelectBuilder {
 		for _, field := range fields {
 			buf.WriteString(table)
 			buf.WriteRune('.')
-			buf.WriteString(field)
+
+			if fieldas, exists := sf.fieldAs[field]; exists {
+				buf.WriteString(sb.As(field, fieldas))
+			} else {
+				buf.WriteString(field)
+			}
+
 			cols = append(cols, buf.String())
 			buf.Reset()
 		}
