@@ -23,7 +23,7 @@ var (
 	// As db column can contain "," in theory, field options should be provided in a separated tag.
 	FieldOpt = "fieldopt"
 
-	// FieldAs is the AS name for a struct field.
+	// FieldAs is the column alias (AS) for a struct field.
 	FieldAs = "fieldas"
 )
 
