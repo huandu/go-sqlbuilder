@@ -86,6 +86,13 @@ func (sf *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix str
 			}
 		}
 
+		// Parse FieldAs.
+		fieldas := field.Tag.Get(FieldAs)
+
+		if fieldas != "" {
+			sf.fieldAs[alias] = fieldas
+		}
+
 		// Parse FieldTag.
 		fieldtag := field.Tag.Get(FieldTag)
 		tags := splitTokens(fieldtag)
@@ -93,8 +100,6 @@ func (sf *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix str
 		for _, t := range tags {
 			if t != "" {
 				sf.taggedFields[t] = append(sf.taggedFields[t], alias)
-				// Parse FieldAs.
-				fieldas := field.Tag.Get(FieldAs)
 
 				if fieldas != "" {
 					sf.fieldAsTagged[t] = make(map[string]string)
@@ -130,12 +135,6 @@ func (sf *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix str
 			}
 		}
 
-		// Parse FieldAs.
-		fieldas := field.Tag.Get(FieldAs)
-
-		if fieldas != "" {
-			sf.fieldAs[alias] = fieldas
-		}
 	}
 
 	for _, field := range anonymous {
