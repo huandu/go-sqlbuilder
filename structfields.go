@@ -98,11 +98,14 @@ func (sf *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix str
 		tags := splitTokens(fieldtag)
 
 		for _, t := range tags {
+			if _, ok := sf.fieldAsTagged[t]; !ok {
+				sf.fieldAsTagged[t] = make(map[string]string)
+			}
+
 			if t != "" {
 				sf.taggedFields[t] = append(sf.taggedFields[t], alias)
 
 				if fieldas != "" {
-					sf.fieldAsTagged[t] = make(map[string]string)
 					sf.fieldAsTagged[t][alias] = fieldas
 				}
 			}

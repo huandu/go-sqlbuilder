@@ -793,8 +793,9 @@ func TestStructFieldAs(t *testing.T) {
 }
 
 type structWithAsAndTags struct {
-	T5 string `db:"t5" fieldas:"f4" fieldtag:"a"`
-	T6 string `db:"t5" fieldas:"f5" fieldtag:"b"`
+	T5a string `db:"t5" fieldas:"f4" fieldtag:"a"`
+	T5b string `db:"t5" fieldas:"f5" fieldtag:"b"`
+	T6b string `db:"t6" fieldas:"f6" fieldtag:"b"`
 }
 
 func TestStructFieldAsAndTagsA(t *testing.T) {
@@ -812,7 +813,7 @@ func TestStructFieldAsAndTagsB(t *testing.T) {
 	sb := s.SelectFromForTag("t", "b")
 	b := Build(`COPY ($?) TO '/path/to/file.csv' (FORMAT CSV, HEADER)`, sb)
 	sql, _ := b.Build()
-	a.Equal(string(sql), `COPY (SELECT t.t5 AS f5 FROM t) TO '/path/to/file.csv' (FORMAT CSV, HEADER)`)
+	a.Equal(string(sql), `COPY (SELECT t.t5 AS f5, t.t6 AS f6 FROM t) TO '/path/to/file.csv' (FORMAT CSV, HEADER)`)
 }
 
 func SomeOtherMapper(string) string {
