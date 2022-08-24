@@ -8,6 +8,7 @@ import (
 type structFields struct {
 	fieldAlias      map[string]string
 	fieldAs         map[string]string
+	fieldAsTagged   map[string]map[string]string
 	taggedFields    map[string][]string
 	quotedFields    map[string]struct{}
 	omitEmptyFields map[string]omitEmptyTagMap
@@ -28,6 +29,7 @@ func makeFieldsParser(t reflect.Type, mapper FieldMapperFunc, useDefault bool) s
 	sf := &structFields{
 		fieldAlias:      map[string]string{},
 		fieldAs:         map[string]string{},
+		fieldAsTagged:   map[string]map[string]string{},
 		taggedFields:    map[string][]string{},
 		quotedFields:    map[string]struct{}{},
 		omitEmptyFields: map[string]omitEmptyTagMap{},
@@ -84,14 +86,6 @@ func (sf *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix str
 			}
 		}
 
-		// The alias name has been used by another field.
-		// This field is shadowed.
-		if _, ok := sf.fieldAlias[alias]; ok {
-			continue
-		}
-
-		sf.fieldAlias[alias] = field.Name
-
 		// Parse FieldTag.
 		fieldtag := field.Tag.Get(FieldTag)
 		tags := splitTokens(fieldtag)
@@ -99,10 +93,25 @@ func (sf *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix str
 		for _, t := range tags {
 			if t != "" {
 				sf.taggedFields[t] = append(sf.taggedFields[t], alias)
+				// Parse FieldAs.
+				fieldas := field.Tag.Get(FieldAs)
+
+				if fieldas != "" {
+					sf.fieldAsTagged[t] = make(map[string]string)
+					sf.fieldAsTagged[t][alias] = fieldas
+				}
 			}
 		}
 
 		sf.taggedFields[""] = append(sf.taggedFields[""], alias)
+
+		// The alias name has been used by another field.
+		// This field is shadowed.
+		if _, ok := sf.fieldAlias[alias]; ok {
+			continue
+		}
+
+		sf.fieldAlias[alias] = field.Name
 
 		// Parse FieldOpt.
 		fieldopt := field.Tag.Get(FieldOpt)

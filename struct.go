@@ -121,10 +121,18 @@ func (s *Struct) SelectFromForTag(table string, tag string) *SelectBuilder {
 			buf.WriteString(table)
 			buf.WriteRune('.')
 
-			if fieldas, exists := sf.fieldAs[field]; exists {
-				buf.WriteString(sb.As(field, fieldas))
+			if tag == "" {
+				if fieldas, exists := sf.fieldAs[field]; exists {
+					buf.WriteString(sb.As(field, fieldas))
+				} else {
+					buf.WriteString(field)
+				}
 			} else {
-				buf.WriteString(field)
+				if fieldas, exists := sf.fieldAsTagged[tag][field]; exists {
+					buf.WriteString(sb.As(field, fieldas))
+				} else {
+					buf.WriteString(field)
+				}
 			}
 
 			cols = append(cols, buf.String())

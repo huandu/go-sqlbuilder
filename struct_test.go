@@ -792,6 +792,29 @@ func TestStructFieldAs(t *testing.T) {
 	a.Equal(sql, `COPY (SELECT t.t1 AS f1, t.t2, t.T3 AS f3, t.t4 AS f3 FROM t) TO '/path/to/file.csv' (FORMAT CSV, HEADER)`)
 }
 
+type structWithAsAndTags struct {
+	T5 string `db:"t5" fieldas:"f4" fieldtag:"a"`
+	T6 string `db:"t5" fieldas:"f5" fieldtag:"b"`
+}
+
+func TestStructFieldAsAndTagsA(t *testing.T) {
+	a := assert.New(t)
+	s := NewStruct(new(structWithAsAndTags))
+	sb := s.SelectFromForTag("t", "a")
+	b := Build(`COPY ($?) TO '/path/to/file.csv' (FORMAT CSV, HEADER)`, sb)
+	sql, _ := b.Build()
+	a.Equal(string(sql), `COPY (SELECT t.t5 AS f4 FROM t) TO '/path/to/file.csv' (FORMAT CSV, HEADER)`)
+}
+
+func TestStructFieldAsAndTagsB(t *testing.T) {
+	a := assert.New(t)
+	s := NewStruct(new(structWithAsAndTags))
+	sb := s.SelectFromForTag("t", "b")
+	b := Build(`COPY ($?) TO '/path/to/file.csv' (FORMAT CSV, HEADER)`, sb)
+	sql, _ := b.Build()
+	a.Equal(string(sql), `COPY (SELECT t.t5 AS f5 FROM t) TO '/path/to/file.csv' (FORMAT CSV, HEADER)`)
+}
+
 func SomeOtherMapper(string) string {
 	return ""
 }
