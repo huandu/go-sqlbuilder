@@ -777,19 +777,38 @@ func TestStructFieldMapper(t *testing.T) {
 }
 
 type structWithAs struct {
-	T1 string `db:"t1" fieldas:"f1"`
-	T2 string `db:"t2" fieldas:""`   // Empty fieldas is the same as the tag is not set.
-	T3 string `fieldas:"f3"`         // AS works without db tag.
-	T4 string `db:"t4" fieldas:"f3"` // fieldas tag can duplicate.
+	T1 string `db:"t1" fieldas:"f1" fieldtag:"tag"`
+	T2 string `db:"t2" fieldas:""`                  // Empty fieldas is the same as the tag is not set.
+	T3 string `db:"t2" fieldas:"f3"`                // AS works without db tag.
+	T4 string `db:"t4" fieldas:"f3" fieldtag:"tag"` // It's OK to set the same fieldas in different tags.
 }
 
 func TestStructFieldAs(t *testing.T) {
 	a := assert.New(t)
 	s := NewStruct(new(structWithAs))
-	sb := s.SelectFrom("t")
-	b := Build(`COPY ($?) TO '/path/to/file.csv' (FORMAT CSV, HEADER)`, sb)
-	sql, _ := b.Build()
-	a.Equal(sql, `COPY (SELECT t.t1 AS f1, t.t2, t.T3 AS f3, t.t4 AS f3 FROM t) TO '/path/to/file.csv' (FORMAT CSV, HEADER)`)
+	value := &structWithAs{
+		T1: "t1",
+		T2: "t2",
+		T3: "t3",
+		T4: "t4",
+	}
+	build := func(builder Builder) string {
+		sql, _ := builder.Build()
+		return sql
+	}
+
+	// Struct field T3 is not shadowed by T2.
+	// Struct field T4 is shadowed by T3 due to same fieldas.
+	sql := build(s.SelectFrom("t"))
+	a.Equal(sql, `SELECT t.t1 AS f1, t.t2, t.t2 AS f3 FROM t`)
+
+	// Struct field T4 is visible in the tag.
+	sql = build(s.WithTag("tag").SelectFrom("t"))
+	a.Equal(sql, `SELECT t.t1 AS f1, t.t4 AS f3 FROM t`)
+
+	// Struct field T3 is shadowed by T2 due to same alias.
+	sql = build(s.Update("t", value))
+	a.Equal(sql, `UPDATE t SET t1 = ?, t2 = ?, t4 = ?`)
 }
 
 func SomeOtherMapper(string) string {
