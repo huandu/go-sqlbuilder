@@ -52,48 +52,48 @@ func ExampleReplaceInto() {
 func ExampleInsertBuilder() {
 	ib := NewInsertBuilder()
 	ib.InsertInto("demo.user")
-	ib.Cols("id", "name", "status", "created_at")
-	ib.Values(1, "Huan Du", 1, Raw("UNIX_TIMESTAMP(NOW())"))
-	ib.Values(2, "Charmy Liu", 1, 1234567890)
+	ib.Cols("id", "name", "status", "created_at", "updated_at")
+	ib.Values(1, "Huan Du", 1, Raw("UNIX_TIMESTAMP(NOW())"), Now())
+	ib.Values(2, "Charmy Liu", 1, 1234567890, Now())
 
 	sql, args := ib.Build()
 	fmt.Println(sql)
 	fmt.Println(args)
 
 	// Output:
-	// INSERT INTO demo.user (id, name, status, created_at) VALUES (?, ?, ?, UNIX_TIMESTAMP(NOW())), (?, ?, ?, ?)
+	// INSERT INTO demo.user (id, name, status, created_at, updated_at) VALUES (?, ?, ?, UNIX_TIMESTAMP(NOW()), NOW()), (?, ?, ?, ?, NOW())
 	// [1 Huan Du 1 2 Charmy Liu 1 1234567890]
 }
 
 func ExampleInsertBuilder_insertIgnore() {
 	ib := NewInsertBuilder()
 	ib.InsertIgnoreInto("demo.user")
-	ib.Cols("id", "name", "status", "created_at")
-	ib.Values(1, "Huan Du", 1, Raw("UNIX_TIMESTAMP(NOW())"))
-	ib.Values(2, "Charmy Liu", 1, 1234567890)
+	ib.Cols("id", "name", "status", "created_at", "updated_at")
+	ib.Values(1, "Huan Du", 1, Raw("UNIX_TIMESTAMP(NOW())"), Now())
+	ib.Values(2, "Charmy Liu", 1, 1234567890, Now())
 
 	sql, args := ib.Build()
 	fmt.Println(sql)
 	fmt.Println(args)
 
 	// Output:
-	// INSERT IGNORE INTO demo.user (id, name, status, created_at) VALUES (?, ?, ?, UNIX_TIMESTAMP(NOW())), (?, ?, ?, ?)
+	// INSERT IGNORE INTO demo.user (id, name, status, created_at, updated_at) VALUES (?, ?, ?, UNIX_TIMESTAMP(NOW()), NOW()), (?, ?, ?, ?, NOW())
 	// [1 Huan Du 1 2 Charmy Liu 1 1234567890]
 }
 
 func ExampleInsertBuilder_replaceInto() {
 	ib := NewInsertBuilder()
 	ib.ReplaceInto("demo.user")
-	ib.Cols("id", "name", "status", "created_at")
-	ib.Values(1, "Huan Du", 1, Raw("UNIX_TIMESTAMP(NOW())"))
-	ib.Values(2, "Charmy Liu", 1, 1234567890)
+	ib.Cols("id", "name", "status", "created_at", "updated_at")
+	ib.Values(1, "Huan Du", 1, Raw("UNIX_TIMESTAMP(NOW())"), Now())
+	ib.Values(2, "Charmy Liu", 1, 1234567890, Now())
 
 	sql, args := ib.Build()
 	fmt.Println(sql)
 	fmt.Println(args)
 
 	// Output:
-	// REPLACE INTO demo.user (id, name, status, created_at) VALUES (?, ?, ?, UNIX_TIMESTAMP(NOW())), (?, ?, ?, ?)
+	// REPLACE INTO demo.user (id, name, status, created_at, updated_at) VALUES (?, ?, ?, UNIX_TIMESTAMP(NOW()), NOW()), (?, ?, ?, ?, NOW())
 	// [1 Huan Du 1 2 Charmy Liu 1 1234567890]
 }
 

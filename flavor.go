@@ -16,6 +16,7 @@ const (
 	PostgreSQL
 	SQLite
 	SQLServer
+	CQL
 )
 
 var (
@@ -49,6 +50,8 @@ func (f Flavor) String() string {
 		return "SQLite"
 	case SQLServer:
 		return "SQLServer"
+	case CQL:
+		return "CQL"
 	}
 
 	return "<invalid>"
@@ -69,6 +72,8 @@ func (f Flavor) Interpolate(sql string, args []interface{}) (string, error) {
 		return sqliteInterpolate(sql, args...)
 	case SQLServer:
 		return sqlserverInterpolate(sql, args...)
+	case CQL:
+		return cqlInterpolate(sql, args...)
 	}
 
 	return "", ErrInterpolateNotImplemented
@@ -127,6 +132,8 @@ func (f Flavor) Quote(name string) string {
 		return fmt.Sprintf("`%s`", name)
 	case PostgreSQL, SQLServer, SQLite:
 		return fmt.Sprintf(`"%s"`, name)
+	case CQL:
+		return fmt.Sprintf("'%s'", name)
 	}
 
 	return name

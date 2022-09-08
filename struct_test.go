@@ -516,6 +516,21 @@ func ExampleStruct_forPostgreSQL() {
 	// [1234]
 }
 
+func ExampleStruct_forCQL() {
+	userStruct := NewStruct(new(User)).For(CQL)
+
+	sb := userStruct.SelectFrom("user")
+	sb.Where(sb.E("id", 1234))
+	sql, args := sb.Build()
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT id, name, status FROM user WHERE id = ?
+	// [1234]
+}
+
 type structWithQuote struct {
 	A string  `db:"aa" fieldopt:"withquote"`
 	B int     `db:"-" fieldopt:"withquote"` // fieldopt is ignored as db is "-".
@@ -532,6 +547,10 @@ func TestStructWithQuote(t *testing.T) {
 	sql, _ = sb.Build()
 	a.Equal(sql, `SELECT foo."aa", foo.ccc FROM foo`)
 
+	sb = NewStruct(new(structWithQuote)).For(CQL).SelectFrom("foo")
+	sql, _ = sb.Build()
+	a.Equal(sql, "SELECT 'aa', ccc FROM foo")
+
 	ub := NewStruct(new(structWithQuote)).For(MySQL).Update("foo", structWithQuote{A: "aaa"})
 	sql, _ = ub.Build()
 	a.Equal(sql, "UPDATE foo SET `aa` = ?, ccc = ?")
@@ -540,6 +559,10 @@ func TestStructWithQuote(t *testing.T) {
 	sql, _ = ub.Build()
 	a.Equal(sql, `UPDATE foo SET "aa" = $1, ccc = $2`)
 
+	ub = NewStruct(new(structWithQuote)).For(CQL).Update("foo", structWithQuote{A: "aaa"})
+	sql, _ = ub.Build()
+	a.Equal(sql, `UPDATE foo SET 'aa' = ?, ccc = ?`)
+
 	ib := NewStruct(new(structWithQuote)).For(MySQL).InsertInto("foo", structWithQuote{A: "aaa"})
 	sql, _ = ib.Build()
 	a.Equal(sql, "INSERT INTO foo (`aa`, ccc) VALUES (?, ?)")
@@ -547,6 +570,10 @@ func TestStructWithQuote(t *testing.T) {
 	ib = NewStruct(new(structWithQuote)).For(PostgreSQL).InsertInto("foo", structWithQuote{A: "aaa"})
 	sql, _ = ib.Build()
 	a.Equal(sql, `INSERT INTO foo ("aa", ccc) VALUES ($1, $2)`)
+
+	ib = NewStruct(new(structWithQuote)).For(CQL).InsertInto("foo", structWithQuote{A: "aaa"})
+	sql, _ = ib.Build()
+	a.Equal(sql, "INSERT INTO foo ('aa', ccc) VALUES (?, ?)")
 }
 
 type structOmitEmpty struct {

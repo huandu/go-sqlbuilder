@@ -17,6 +17,7 @@ const (
 	updateMarkerAfterWhere
 	updateMarkerAfterOrderBy
 	updateMarkerAfterLimit
+	updateMarkerAfterIf
 )
 
 // NewUpdateBuilder creates a new UPDATE builder.
@@ -46,6 +47,7 @@ type UpdateBuilder struct {
 	orderByCols []string
 	order       string
 	limit       int
+	ifExprs     []string
 
 	args *Args
 
@@ -157,6 +159,13 @@ func (ub *UpdateBuilder) Limit(limit int) *UpdateBuilder {
 	return ub
 }
 
+// If sets IF expressions for UPDATE.
+func (ub *UpdateBuilder) If(andExpr ...string) *UpdateBuilder {
+	ub.ifExprs = append(ub.ifExprs, andExpr...)
+	ub.marker = updateMarkerAfterIf
+	return ub
+}
+
 // String returns the compiled UPDATE string.
 func (ub *UpdateBuilder) String() string {
 	s, _ := ub.Build()
@@ -205,6 +214,12 @@ func (ub *UpdateBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		buf.WriteString(strconv.Itoa(ub.limit))
 
 		ub.injection.WriteTo(buf, updateMarkerAfterLimit)
+	}
+
+	if len(ub.ifExprs) > 0 {
+		buf.WriteString(" IF ")
+		buf.WriteString(strings.Join(ub.ifExprs, " AND "))
+		ub.injection.WriteTo(buf, updateMarkerAfterIf)
 	}
 
 	return ub.args.CompileWithFlavor(buf.String(), flavor, initialArg...)

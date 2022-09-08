@@ -112,7 +112,7 @@ func ExampleSelectBuilder_join() {
 }
 
 func ExampleSelectBuilder_limit_offset() {
-	flavors := []Flavor{MySQL, PostgreSQL, SQLite, SQLServer}
+	flavors := []Flavor{MySQL, PostgreSQL, SQLite, SQLServer, CQL}
 	results := make([][]string, len(flavors))
 	sb := NewSelectBuilder()
 	saveResults := func() {
@@ -137,13 +137,15 @@ func ExampleSelectBuilder_limit_offset() {
 	// MySQL and SQLite: Ignore offset if the limit is not set.
 	// PostgreSQL: Offset can be set without limit.
 	// SQLServer: Offset can be set without limit.
+	// CQL: Ignore offset.
 	sb.Limit(-1)
 	sb.Offset(0)
 	saveResults()
 
 	// Case #3: limit >= 0 and offset >= 0
 	//
-	// All: Set both limit and offset.
+	// CQL: Ignore offset.
+	// All others: Set both limit and offset.
 	sb.Limit(1)
 	sb.Offset(0)
 	saveResults()
@@ -189,6 +191,12 @@ func ExampleSelectBuilder_limit_offset() {
 	// #2: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS
 	// #3: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
 	// #4: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
+	//
+	// CQL
+	// #1: SELECT * FROM user
+	// #2: SELECT * FROM user
+	// #3: SELECT * FROM user LIMIT 1
+	// #4: SELECT * FROM user LIMIT 1
 }
 
 func ExampleSelectBuilder_ForUpdate() {

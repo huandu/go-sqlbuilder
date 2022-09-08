@@ -233,7 +233,7 @@ func (args *Args) compileArg(buf *bytes.Buffer, flavor Flavor, values []interfac
 		}
 	default:
 		switch flavor {
-		case MySQL, SQLite:
+		case MySQL, SQLite, CQL:
 			buf.WriteRune('?')
 		case PostgreSQL:
 			fmt.Fprintf(buf, "$%d", len(values)+1)

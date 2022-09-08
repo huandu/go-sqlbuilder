@@ -114,12 +114,16 @@ func (s *Struct) SelectFromForTag(table string, tag string) *SelectBuilder {
 		buf := &bytes.Buffer{}
 		cols := make([]string, 0, len(fields))
 
-		for _, field := range fields {
-			buf.WriteString(table)
-			buf.WriteRune('.')
-			buf.WriteString(field)
-			cols = append(cols, buf.String())
-			buf.Reset()
+		if s.Flavor == CQL {
+			cols = append(cols, fields...)
+		} else {
+			for _, field := range fields {
+				buf.WriteString(table)
+				buf.WriteRune('.')
+				buf.WriteString(field)
+				cols = append(cols, buf.String())
+				buf.Reset()
+			}
 		}
 
 		sb.Select(cols...)

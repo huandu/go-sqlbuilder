@@ -72,6 +72,11 @@ func Raw(expr string) interface{} {
 	return rawArgs{expr}
 }
 
+// Now returns a raw value comprising the NOW() function.
+func Now() interface{} {
+	return Raw("NOW()")
+}
+
 type listArgs struct {
 	args []interface{}
 }
