@@ -64,9 +64,7 @@ func InsertIgnoreInto(table string) *InsertBuilder {
 
 // InsertIgnoreInto sets table name in INSERT IGNORE.
 func (ib *InsertBuilder) InsertIgnoreInto(table string) *InsertBuilder {
-	ib.verb = "INSERT IGNORE"
-	ib.table = Escape(table)
-	ib.marker = insertMarkerAfterInsertInto
+	ib.args.Flavor.PrepareInsertIgnore(table, ib)
 	return ib
 }
 

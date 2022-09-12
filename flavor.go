@@ -131,3 +131,27 @@ func (f Flavor) Quote(name string) string {
 
 	return name
 }
+
+// PrepareInsertIgnore prepares the insert builder to build insert ignore SQL statement based on the sql flavor
+func (f Flavor) PrepareInsertIgnore(table string, ib *InsertBuilder) {
+	switch ib.args.Flavor {
+	case MySQL:
+		ib.verb = "INSERT IGNORE"
+	case PostgreSQL:
+		// see https://www.postgresql.org/docs/current/sql-insert.html
+		ib.verb = "INSERT"
+		// add sql statement at the end after values, i.e. INSERT INTO ... ON CONFLICT DO NOTHING
+		ib.marker = insertMarkerAfterValues
+		ib.SQL("ON CONFLICT DO NOTHING")
+	case SQLite:
+		// see https://www.sqlite.org/lang_insert.html
+		ib.verb = "INSERT OR IGNORE"
+	default:
+		// panic if the db flavor is not supported
+		panic(fmt.Errorf("unsupported db flavor: %s", ib.args.Flavor.String()))
+	}
+
+	// Set the table and reset the marker right after insert into
+	ib.table = Escape(table)
+	ib.marker = insertMarkerAfterInsertInto
+}
