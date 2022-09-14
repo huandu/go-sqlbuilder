@@ -93,7 +93,7 @@ func ExampleInsertBuilder_insertIgnore_postgres() {
 	fmt.Println(args)
 
 	// Output:
-	// INSERT INTO demo.user (id,name,status,created_at) VALUES ($1,$2,$3,UNIX_TIMESTAMP(NOW())),($4,$5,$6,$7) ON CONFLICT DO NOTHING
+	// INSERT INTO demo.user (id, name, status, created_at) VALUES ($1, $2, $3, UNIX_TIMESTAMP(NOW())), ($4, $5, $6, $7) ON CONFLICT DO NOTHING
 	// [1 Huan Du 1 2 Charmy Liu 1 1234567890]
 }
 
@@ -109,7 +109,7 @@ func ExampleInsertBuilder_insertIgnore_sqlite() {
 	fmt.Println(args)
 
 	// Output:
-	// INSERT OR IGNORE INTO demo.user (id,name,status,created_at) VALUES (?,?,?,UNIX_TIMESTAMP(NOW())),(?,?,?,?)
+	// INSERT OR IGNORE INTO demo.user (id, name, status, created_at) VALUES (?, ?, ?, UNIX_TIMESTAMP(NOW())), (?, ?, ?, ?)
 	// [1 Huan Du 1 2 Charmy Liu 1 1234567890]
 }
 
