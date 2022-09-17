@@ -81,6 +81,38 @@ func ExampleInsertBuilder_insertIgnore() {
 	// [1 Huan Du 1 2 Charmy Liu 1 1234567890]
 }
 
+func ExampleInsertBuilder_insertIgnore_postgres() {
+	ib := PostgreSQL.NewInsertBuilder()
+	ib.InsertIgnoreInto("demo.user")
+	ib.Cols("id", "name", "status", "created_at")
+	ib.Values(1, "Huan Du", 1, Raw("UNIX_TIMESTAMP(NOW())"))
+	ib.Values(2, "Charmy Liu", 1, 1234567890)
+
+	sql, args := ib.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// INSERT INTO demo.user (id, name, status, created_at) VALUES ($1, $2, $3, UNIX_TIMESTAMP(NOW())), ($4, $5, $6, $7) ON CONFLICT DO NOTHING
+	// [1 Huan Du 1 2 Charmy Liu 1 1234567890]
+}
+
+func ExampleInsertBuilder_insertIgnore_sqlite() {
+	ib := SQLite.NewInsertBuilder()
+	ib.InsertIgnoreInto("demo.user")
+	ib.Cols("id", "name", "status", "created_at")
+	ib.Values(1, "Huan Du", 1, Raw("UNIX_TIMESTAMP(NOW())"))
+	ib.Values(2, "Charmy Liu", 1, 1234567890)
+
+	sql, args := ib.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// INSERT OR IGNORE INTO demo.user (id, name, status, created_at) VALUES (?, ?, ?, UNIX_TIMESTAMP(NOW())), (?, ?, ?, ?)
+	// [1 Huan Du 1 2 Charmy Liu 1 1234567890]
+}
+
 func ExampleInsertBuilder_replaceInto() {
 	ib := NewInsertBuilder()
 	ib.ReplaceInto("demo.user")
