@@ -12,13 +12,15 @@ import (
 )
 
 type structUserForTest struct {
-	ID        int    `db:"id" fieldtag:"important"`
-	Name      string `fieldtag:"important"`
-	Status    int    `db:"status" fieldtag:"important"`
-	CreatedAt int    `db:"created_at"`
+	ID         int    `db:"id" fieldtag:"important"`
+	Name       string `fieldtag:"important"`
+	Status     int    `db:"status" fieldtag:"important"`
+	CreatedAt  int    `db:"created_at"`
+	unexported struct{}
 }
 
 var userForTest = NewStruct(new(structUserForTest))
+var _ = new(structUserForTest).unexported // disable lint warning
 
 func TestStructSelectFrom(t *testing.T) {
 	a := assert.New(t)
@@ -201,6 +203,7 @@ func TestStructAddrForTag(t *testing.T) {
 	expected.CreatedAt = 9876543210
 
 	a.Equal(user, expected)
+	a.Equal(userForTest.AddrForTag("invalid", user), nil)
 }
 
 func TestStructAddrWithCols(t *testing.T) {
@@ -216,6 +219,43 @@ func TestStructAddrWithCols(t *testing.T) {
 	_, _ = fmt.Sscanf(str, "%s%d%d%d", userForTest.AddrWithCols([]string{"Name", "id", "created_at", "status"}, user)...)
 
 	a.Equal(user, expected)
+	a.Equal(userForTest.AddrWithCols([]string{"invalid", "non-exist"}, user), nil)
+}
+
+func TestStructValues(t *testing.T) {
+	a := assert.New(t)
+	st := &structUserForTest{
+		ID:        123,
+		Name:      "huandu",
+		Status:    2,
+		CreatedAt: 1234567890,
+	}
+	expected := fmt.Sprintf("%v %v %v %v", st.ID, st.Name, st.Status, st.CreatedAt)
+	actual := fmt.Sprintf("%v %v %v %v", userForTest.Values(st)...)
+
+	a.Equal(actual, expected)
+}
+
+func TestStructValuesForTag(t *testing.T) {
+	a := assert.New(t)
+	st := &structUserForTest{
+		ID:        123,
+		Name:      "huandu",
+		Status:    2,
+		CreatedAt: 1234567890,
+	}
+	expected := fmt.Sprintf("%v %v %v", st.ID, st.Name, st.Status)
+	actual := fmt.Sprintf("%v %v %v", userForTest.ValuesForTag("important", st)...)
+
+	a.Equal(actual, expected)
+	a.Equal(userForTest.ValuesForTag("invalid", st), nil)
+}
+
+func TestStructColumns(t *testing.T) {
+	a := assert.New(t)
+	a.Equal(userForTest.Columns(), []string{"id", "Name", "status", "created_at"})
+	a.Equal(userForTest.ColumnsForTag("important"), []string{"id", "Name", "status"})
+	a.Equal(userForTest.ColumnsForTag("invalid"), nil)
 }
 
 type User struct {
@@ -244,8 +284,7 @@ func (db testDB) Query(string, ...interface{}) (testRows, error) {
 	return 0, nil
 }
 
-func (db testDB) Exec(string, ...interface{}) {
-	return
+func (db testDB) Exec(query string, args ...interface{}) {
 }
 
 func (rows testRows) Close() error {
@@ -762,6 +801,41 @@ func TestStructFieldMapper(t *testing.T) {
 
 	sql, _ = sWithoutMapper.SelectFrom("t").Build()
 	a.Equal(sql, "SELECT t.`FieldName1`, t.set_by_tag, t.field_name1, t.EmbeddedField2, t.EmbeddedAndEmbeddedField1 FROM t")
+}
+
+type structWithAs struct {
+	T1 string `db:"t1" fieldas:"f1" fieldtag:"tag"`
+	T2 string `db:"t2" fieldas:""`                  // Empty fieldas is the same as the tag is not set.
+	T3 string `db:"t2" fieldas:"f3"`                // AS works without db tag.
+	T4 string `db:"t4" fieldas:"f3" fieldtag:"tag"` // It's OK to set the same fieldas in different tags.
+}
+
+func TestStructFieldAs(t *testing.T) {
+	a := assert.New(t)
+	s := NewStruct(new(structWithAs))
+	value := &structWithAs{
+		T1: "t1",
+		T2: "t2",
+		T3: "t3",
+		T4: "t4",
+	}
+	build := func(builder Builder) string {
+		sql, _ := builder.Build()
+		return sql
+	}
+
+	// Struct field T3 is not shadowed by T2.
+	// Struct field T4 is shadowed by T3 due to same fieldas.
+	sql := build(s.SelectFrom("t"))
+	a.Equal(sql, `SELECT t.t1 AS f1, t.t2, t.t2 AS f3 FROM t`)
+
+	// Struct field T4 is visible in the tag.
+	sql = build(s.WithTag("tag").SelectFrom("t"))
+	a.Equal(sql, `SELECT t.t1 AS f1, t.t4 AS f3 FROM t`)
+
+	// Struct field T3 is shadowed by T2 due to same alias.
+	sql = build(s.Update("t", value))
+	a.Equal(sql, `UPDATE t SET t1 = ?, t2 = ?, t4 = ?`)
 }
 
 func SomeOtherMapper(string) string {
