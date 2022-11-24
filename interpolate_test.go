@@ -1,6 +1,8 @@
 package sqlbuilder
 
 import (
+	"database/sql/driver"
+	"errors"
 	"strconv"
 	"testing"
 	"time"
@@ -8,16 +10,25 @@ import (
 	"github.com/huandu/go-assert"
 )
 
+type errorValuer int
+
+var ErrErrorValuer = errors.New("error valuer")
+
+func (v errorValuer) Value() (driver.Value, error) {
+	return 0, ErrErrorValuer
+}
+
 func TestFlavorInterpolate(t *testing.T) {
 	a := assert.New(t)
 	dt := time.Date(2019, 4, 24, 12, 23, 34, 123456789, time.FixedZone("CST", 8*60*60)) // 2019-04-24 12:23:34.987654321 CST
 	_, errOutOfRange := strconv.ParseInt("12345678901234567890", 10, 32)
+	byteArr := [...]byte{'f', 'o', 'o'}
 	cases := []struct {
-		flavor Flavor
-		sql    string
-		args   []interface{}
-		query  string
-		err    error
+		Flavor Flavor
+		SQL    string
+		Args   []interface{}
+		Query  string
+		Err    error
 	}{
 		{
 			MySQL,
@@ -41,6 +52,11 @@ func TestFlavorInterpolate(t *testing.T) {
 		},
 		{
 			MySQL,
+			"SELECT ?", []interface{}{byteArr},
+			"SELECT _binary'foo'", nil,
+		},
+		{
+			MySQL,
 			"SELECT ?", nil,
 			"", ErrInterpolateMissingArgs,
 		},
@@ -48,6 +64,16 @@ func TestFlavorInterpolate(t *testing.T) {
 			MySQL,
 			"SELECT ?", []interface{}{complex(1, 2)},
 			"", ErrInterpolateUnsupportedArgs,
+		},
+		{
+			MySQL,
+			"SELECT ?", []interface{}{[]complex128{complex(1, 2)}},
+			"", ErrInterpolateUnsupportedArgs,
+		},
+		{
+			MySQL,
+			"SELECT ?", []interface{}{errorValuer(1)},
+			"", ErrErrorValuer,
 		},
 
 		{
@@ -141,9 +167,9 @@ func TestFlavorInterpolate(t *testing.T) {
 
 	for idx, c := range cases {
 		a.Use(&idx, &c)
-		query, err := c.flavor.Interpolate(c.sql, c.args)
+		query, err := c.Flavor.Interpolate(c.SQL, c.Args)
 
-		a.Equal(query, c.query)
-		a.Assert(err == c.err || err.Error() == c.err.Error())
+		a.Equal(query, c.Query)
+		a.Assert(err == c.Err || err.Error() == c.Err.Error())
 	}
 }

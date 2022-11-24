@@ -4,7 +4,9 @@
 package sqlbuilder
 
 import (
+	"database/sql/driver"
 	"fmt"
+	"reflect"
 	"strconv"
 	"time"
 	"unicode"
@@ -389,77 +391,12 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 	case nil:
 		buf = append(buf, "NULL"...)
 
-	case bool:
-		if v {
-			buf = append(buf, "TRUE"...)
+	case driver.Valuer:
+		if val, err := v.Value(); err != nil {
+			return nil, err
 		} else {
-			buf = append(buf, "FALSE"...)
+			return encodeValue(buf, val, flavor)
 		}
-
-	case int:
-		buf = strconv.AppendInt(buf, int64(v), 10)
-
-	case int8:
-		buf = strconv.AppendInt(buf, int64(v), 10)
-
-	case int16:
-		buf = strconv.AppendInt(buf, int64(v), 10)
-
-	case int32:
-		buf = strconv.AppendInt(buf, int64(v), 10)
-
-	case int64:
-		buf = strconv.AppendInt(buf, v, 10)
-
-	case uint:
-		buf = strconv.AppendUint(buf, uint64(v), 10)
-
-	case uint8:
-		buf = strconv.AppendUint(buf, uint64(v), 10)
-
-	case uint16:
-		buf = strconv.AppendUint(buf, uint64(v), 10)
-
-	case uint32:
-		buf = strconv.AppendUint(buf, uint64(v), 10)
-
-	case uint64:
-		buf = strconv.AppendUint(buf, v, 10)
-
-	case float32:
-		buf = strconv.AppendFloat(buf, float64(v), 'g', -1, 32)
-
-	case float64:
-		buf = strconv.AppendFloat(buf, v, 'g', -1, 64)
-
-	case []byte:
-		if v == nil {
-			buf = append(buf, "NULL"...)
-			break
-		}
-
-		switch flavor {
-		case MySQL:
-			buf = append(buf, "_binary"...)
-			buf = quoteStringValue(buf, *(*string)(unsafe.Pointer(&v)), flavor)
-
-		case PostgreSQL:
-			buf = append(buf, "E'\\\\x"...)
-			buf = appendHex(buf, v)
-			buf = append(buf, "'::bytea"...)
-
-		case SQLite:
-			buf = append(buf, "X'"...)
-			buf = appendHex(buf, v)
-			buf = append(buf, '\'')
-
-		case SQLServer:
-			buf = append(buf, "0x"...)
-			buf = appendHex(buf, v)
-		}
-
-	case string:
-		buf = quoteStringValue(buf, v, flavor)
 
 	case time.Time:
 		if v.IsZero() {
@@ -492,7 +429,103 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 		buf = quoteStringValue(buf, v.String(), flavor)
 
 	default:
-		return nil, ErrInterpolateUnsupportedArgs
+		primative := reflect.ValueOf(arg)
+
+		switch k := primative.Kind(); k {
+		case reflect.Bool:
+			if primative.Bool() {
+				buf = append(buf, "TRUE"...)
+			} else {
+				buf = append(buf, "FALSE"...)
+			}
+
+		case reflect.Int:
+			buf = strconv.AppendInt(buf, primative.Int(), 10)
+
+		case reflect.Int8:
+			buf = strconv.AppendInt(buf, primative.Int(), 10)
+
+		case reflect.Int16:
+			buf = strconv.AppendInt(buf, primative.Int(), 10)
+
+		case reflect.Int32:
+			buf = strconv.AppendInt(buf, primative.Int(), 10)
+
+		case reflect.Int64:
+			buf = strconv.AppendInt(buf, primative.Int(), 10)
+
+		case reflect.Uint:
+			buf = strconv.AppendUint(buf, primative.Uint(), 10)
+
+		case reflect.Uint8:
+			buf = strconv.AppendUint(buf, primative.Uint(), 10)
+
+		case reflect.Uint16:
+			buf = strconv.AppendUint(buf, primative.Uint(), 10)
+
+		case reflect.Uint32:
+			buf = strconv.AppendUint(buf, primative.Uint(), 10)
+
+		case reflect.Uint64:
+			buf = strconv.AppendUint(buf, primative.Uint(), 10)
+
+		case reflect.Float32:
+			buf = strconv.AppendFloat(buf, primative.Float(), 'g', -1, 32)
+
+		case reflect.Float64:
+			buf = strconv.AppendFloat(buf, primative.Float(), 'g', -1, 64)
+
+		case reflect.String:
+			buf = quoteStringValue(buf, primative.String(), flavor)
+
+		case reflect.Slice, reflect.Array:
+			if k == reflect.Slice && primative.IsNil() {
+				buf = append(buf, "NULL"...)
+				break
+			}
+
+			if elem := primative.Type().Elem(); elem.Kind() != reflect.Uint8 {
+				return nil, ErrInterpolateUnsupportedArgs
+			}
+
+			var data []byte
+
+			// Bytes() will panic if primative is an array and cannot be addressed.
+			// Copy all bytes to data as a fallback.
+			if k == reflect.Array && !primative.CanAddr() {
+				l := primative.Len()
+				data = make([]byte, l)
+
+				for i := 0; i < l; i++ {
+					data[i] = byte(primative.Index(i).Uint())
+				}
+			} else {
+				data = primative.Bytes()
+			}
+
+			switch flavor {
+			case MySQL:
+				buf = append(buf, "_binary"...)
+				buf = quoteStringValue(buf, *(*string)(unsafe.Pointer(&data)), flavor)
+
+			case PostgreSQL:
+				buf = append(buf, "E'\\\\x"...)
+				buf = appendHex(buf, data)
+				buf = append(buf, "'::bytea"...)
+
+			case SQLite:
+				buf = append(buf, "X'"...)
+				buf = appendHex(buf, data)
+				buf = append(buf, '\'')
+
+			case SQLServer:
+				buf = append(buf, "0x"...)
+				buf = appendHex(buf, data)
+			}
+
+		default:
+			return nil, ErrInterpolateUnsupportedArgs
+		}
 	}
 
 	return buf, nil
