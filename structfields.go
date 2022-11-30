@@ -1,15 +1,35 @@
 package sqlbuilder
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 )
 
 type structFields struct {
-	fieldAlias      map[string]string
-	taggedFields    map[string][]string
-	quotedFields    map[string]struct{}
-	omitEmptyFields map[string]omitEmptyTagMap
+	noTag  *structTaggedFields
+	tagged map[string]*structTaggedFields
+}
+
+type structTaggedFields struct {
+	// All columns for SELECT.
+	ForRead     []*structField
+	colsForRead map[string]*structField
+
+	// All columns which can be used in INSERT and UPDATE.
+	ForWrite     []*structField
+	colsForWrite map[string]struct{}
+}
+
+type structField struct {
+	Name     string
+	Alias    string
+	As       string
+	Tags     []string
+	IsQuoted bool
+
+	omitEmptyTags omitEmptyTagMap
 }
 
 type structFieldsParser func() *structFields
@@ -24,11 +44,9 @@ func makeCustomFieldsParser(t reflect.Type, mapper FieldMapperFunc) structFields
 
 func makeFieldsParser(t reflect.Type, mapper FieldMapperFunc, useDefault bool) structFieldsParser {
 	var once sync.Once
-	sf := &structFields{
-		fieldAlias:      map[string]string{},
-		taggedFields:    map[string][]string{},
-		quotedFields:    map[string]struct{}{},
-		omitEmptyFields: map[string]omitEmptyTagMap{},
+	sfs := &structFields{
+		noTag:  makeStructTaggedFields(),
+		tagged: map[string]*structTaggedFields{},
 	}
 
 	return func() *structFields {
@@ -37,19 +55,24 @@ func makeFieldsParser(t reflect.Type, mapper FieldMapperFunc, useDefault bool) s
 				mapper = DefaultFieldMapper
 			}
 
-			sf.parse(t, mapper, "")
+			sfs.parse(t, mapper, "")
 		})
 
-		return sf
+		return sfs
 	}
 }
 
-func (sf *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix string) {
+func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix string) {
 	l := t.NumField()
 	var anonymous []reflect.StructField
 
 	for i := 0; i < l; i++ {
 		field := t.Field(i)
+
+		// Skip unexported fields that are not embedded structs.
+		if field.PkgPath != "" && !field.Anonymous {
+			continue
+		}
 
 		if field.Anonymous {
 			ft := field.Type
@@ -63,43 +86,26 @@ func (sf *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix str
 
 		// Parse DBTag.
 		dbtag := field.Tag.Get(DBTag)
-		alias := dbtag
 
 		if dbtag == "-" {
 			continue
 		}
 
+		alias := dbtag
+
 		if dbtag == "" {
-			if mapper == nil {
-				alias = field.Name
-			} else {
-				alias = mapper(field.Name)
+			alias = field.Name
+
+			if mapper != nil {
+				alias = mapper(alias)
 			}
 		}
-
-		// The alias name has been used by another field.
-		// This field is shadowed.
-		if _, ok := sf.fieldAlias[alias]; ok {
-			continue
-		}
-
-		sf.fieldAlias[alias] = field.Name
-
-		// Parse FieldTag.
-		fieldtag := field.Tag.Get(FieldTag)
-		tags := splitTokens(fieldtag)
-
-		for _, t := range tags {
-			if t != "" {
-				sf.taggedFields[t] = append(sf.taggedFields[t], alias)
-			}
-		}
-
-		sf.taggedFields[""] = append(sf.taggedFields[""], alias)
 
 		// Parse FieldOpt.
 		fieldopt := field.Tag.Get(FieldOpt)
 		opts := optRegex.FindAllString(fieldopt, -1)
+		isQuoted := false
+		omitEmptyTags := omitEmptyTagMap{}
 
 		for _, opt := range opts {
 			optMap := getOptMatchedMap(opt)
@@ -107,37 +113,194 @@ func (sf *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix str
 			switch optMap[optName] {
 			case fieldOptOmitEmpty:
 				tags := getTagsFromOptParams(optMap[optParams])
-				sf.appendOmitEmptyFieldsTags(alias, tags...)
+
+				for _, tag := range tags {
+					omitEmptyTags[tag] = struct{}{}
+				}
 
 			case fieldOptWithQuote:
-				sf.quotedFields[alias] = struct{}{}
+				isQuoted = true
 			}
+		}
+
+		// Parse FieldAs.
+		fieldas := field.Tag.Get(FieldAs)
+
+		// Parse FieldTag.
+		fieldtag := field.Tag.Get(FieldTag)
+		tags := splitTags(fieldtag)
+
+		// Make struct field.
+		structField := &structField{
+			Name:          field.Name,
+			Alias:         alias,
+			As:            fieldas,
+			Tags:          tags,
+			IsQuoted:      isQuoted,
+			omitEmptyTags: omitEmptyTags,
+		}
+
+		// Make sure all fields can be added to noTag without conflict.
+		sfs.noTag.Add(structField)
+
+		for _, tag := range tags {
+			sfs.taggedFields(tag).Add(structField)
 		}
 	}
 
 	for _, field := range anonymous {
 		ft := dereferencedType(field.Type)
-		sf.parse(ft, mapper, prefix+field.Name+".")
+		sfs.parse(ft, mapper, prefix+field.Name+".")
 	}
 }
 
-func (sf *structFields) appendOmitEmptyFieldsTags(alias string, tags ...string) {
-	if sf.omitEmptyFields[alias] == nil {
-		sf.omitEmptyFields[alias] = omitEmptyTagMap{}
+// Tag returns the fields with tag.
+func (sfs *structFields) Tag(tag string) *structTaggedFields {
+	if tag == "" {
+		return sfs.noTag
+	}
+
+	return sfs.tagged[tag]
+}
+
+func (sfs *structFields) taggedFields(tag string) *structTaggedFields {
+	fields, ok := sfs.tagged[tag]
+
+	if !ok {
+		fields = makeStructTaggedFields()
+		sfs.tagged[tag] = fields
+	}
+
+	return fields
+}
+
+func makeStructTaggedFields() *structTaggedFields {
+	return &structTaggedFields{
+		colsForRead:  map[string]*structField{},
+		colsForWrite: map[string]struct{}{},
+	}
+}
+
+// Add a new field to stfs.
+// If field's key exists in stfs.fields, the field is ignored.
+func (stfs *structTaggedFields) Add(field *structField) {
+	key := field.Key()
+
+	if _, ok := stfs.colsForRead[key]; !ok {
+		stfs.colsForRead[key] = field
+		stfs.ForRead = append(stfs.ForRead, field)
+	}
+
+	key = field.Alias
+
+	if _, ok := stfs.colsForWrite[key]; !ok {
+		stfs.colsForWrite[key] = struct{}{}
+		stfs.ForWrite = append(stfs.ForWrite, field)
+	}
+}
+
+// Cols returns the fields whose key is one of cols.
+// If any column in cols doesn't exist in sfs.fields, returns nil.
+func (stfs *structTaggedFields) Cols(cols []string) []*structField {
+	fields := make([]*structField, 0, len(cols))
+
+	for _, col := range cols {
+		field := stfs.colsForRead[col]
+
+		if field == nil {
+			return nil
+		}
+
+		fields = append(fields, field)
+	}
+
+	return fields
+}
+
+// Key returns the key name to identify a field.
+func (sf *structField) Key() string {
+	if sf.As != "" {
+		return sf.As
+	}
+
+	if sf.Alias != "" {
+		return sf.Alias
+	}
+
+	return sf.Name
+}
+
+// NameForSelect returns the name for SELECT.
+func (sf *structField) NameForSelect(flavor Flavor) string {
+	if sf.As == "" {
+		return sf.Quote(flavor)
+	}
+
+	return fmt.Sprintf("%s AS %s", sf.Quote(flavor), sf.As)
+}
+
+// Quote the Alias in sf with flavor.
+func (sf *structField) Quote(flavor Flavor) string {
+	if !sf.IsQuoted {
+		return sf.Alias
+	}
+
+	return flavor.Quote(sf.Alias)
+}
+
+// ShouldOmitEmpty returns true only if any one of tags is in the omitted tags map.
+func (sf *structField) ShouldOmitEmpty(tags ...string) (ret bool) {
+	omit := sf.omitEmptyTags
+
+	if len(omit) == 0 {
+		return
 	}
 
 	for _, tag := range tags {
-		sf.omitEmptyFields[alias][tag] = struct{}{}
+		if _, ret = omit[tag]; ret {
+			return
+		}
 	}
+
+	return
 }
 
 type omitEmptyTagMap map[string]struct{}
 
-func (sm omitEmptyTagMap) containsAny(tags ...string) (res bool) {
-	for _, tag := range tags {
-		if _, res = sm[tag]; res {
-			return
+func getOptMatchedMap(opt string) (res map[string]string) {
+	res = map[string]string{}
+	sm := optRegex.FindStringSubmatch(opt)
+
+	for i, name := range optRegex.SubexpNames() {
+		if name != "" {
+			res[name] = sm[i]
 		}
+	}
+
+	return
+}
+
+func getTagsFromOptParams(opts string) (tags []string) {
+	tags = splitTags(opts)
+
+	if len(tags) == 0 {
+		tags = append(tags, "")
+	}
+
+	return
+}
+
+func splitTags(fieldtag string) (tags []string) {
+	parts := strings.Split(fieldtag, ",")
+
+	for _, v := range parts {
+		tag := strings.TrimSpace(v)
+
+		if tag == "" {
+			continue
+		}
+
+		tags = append(tags, tag)
 	}
 
 	return

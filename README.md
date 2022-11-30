@@ -3,7 +3,7 @@
 [![Go](https://github.com/huandu/go-sqlbuilder/workflows/Go/badge.svg)](https://github.com/huandu/go-sqlbuilder/actions)
 [![GoDoc](https://godoc.org/github.com/huandu/go-sqlbuilder?status.svg)](https://pkg.go.dev/github.com/huandu/go-sqlbuilder)
 [![Go Report](https://goreportcard.com/badge/github.com/huandu/go-sqlbuilder)](https://goreportcard.com/report/github.com/huandu/go-sqlbuilder)
-[![Coverage Status](https://coveralls.io/repos/github/huandu/go-sqlbuilder/badge.svg?branch=master)](https://coveralls.io/github/huandu/go-sqlbuilder?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/huandu/go-sqlbuilder/badge.svg?branch=master)](https://coveralls.io/github/huandu/go-sqlbuilder?branch=master) [![Join the chat at https://gitter.im/go-sqlbuilder/community](https://badges.gitter.im/go-sqlbuilder/community.svg)](https://gitter.im/go-sqlbuilder/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 - [Install](#install)
 - [Usage](#usage)
@@ -134,8 +134,9 @@ We can define a struct type and use field tags to let `Struct` know how to creat
 type ATable struct {
     Field1     string                                    // If a field doesn't has a tag, use "Field1" as column name in SQL.
     Field2     int    `db:"field2"`                      // Use "db" in field tag to set column name used in SQL.
-    Field3     int64  `db:"field3" fieldtag:"foo,bar"`   // Set fieldtag to a field. We can use methods like `Struct#SelectForTag` to use it.
-    Field4     int64  `db:"field4" fieldtag:"foo"`       // If we use `s.SelectForTag(table, "foo")`, columnes of SELECT are field3 and field4.
+    Field3     int64  `db:"field3" fieldtag:"foo,bar"`   // Set fieldtag to a field. We can call `WithTag` to change default tag or call methods like `Struct#SelectForTag` to set tag explicitly.
+    Field4     int64  `db:"field4" fieldtag:"foo"`       // If we use `s.WithTag("foo").Select(table)`, columnes of SELECT are field3 and field4.
+    Field5     string `db:"field5" fieldas:"f5_alias"`   // Use "fieldas" in field tag to set a column alias (AS) used in SELECT.
     Ignored    int32  `db:"-"`                           // If we set field name as "-", Struct will ignore it.
     unexported int                                       // Unexported field is not visible to Struct.
     Quoted     string `db:"quoted" fieldopt:"withquote"` // Add quote to the field using back quote or double quote. See `Flavor#Quote`.

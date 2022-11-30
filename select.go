@@ -153,14 +153,14 @@ func (sb *SelectBuilder) Having(andExpr ...string) *SelectBuilder {
 
 // GroupBy sets columns of GROUP BY in SELECT.
 func (sb *SelectBuilder) GroupBy(col ...string) *SelectBuilder {
-	sb.groupByCols = col
+	sb.groupByCols = append(sb.groupByCols, col...)
 	sb.marker = selectMarkerAfterGroupBy
 	return sb
 }
 
 // OrderBy sets columns of ORDER BY in SELECT.
 func (sb *SelectBuilder) OrderBy(col ...string) *SelectBuilder {
-	sb.orderByCols = col
+	sb.orderByCols = append(sb.orderByCols, col...)
 	sb.marker = selectMarkerAfterOrderBy
 	return sb
 }
