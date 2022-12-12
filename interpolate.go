@@ -386,6 +386,10 @@ func sqliteInterpolate(query string, args ...interface{}) (string, error) {
 	return mysqlLikeInterpolate(SQLite, query, args...)
 }
 
+func clickhouseInterpolate(query string, args ...interface{}) (string, error) {
+	return mysqlLikeInterpolate(ClickHouse, query, args...)
+}
+
 func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 	switch v := arg.(type) {
 	case nil:

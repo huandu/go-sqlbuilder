@@ -112,7 +112,7 @@ func ExampleSelectBuilder_join() {
 }
 
 func ExampleSelectBuilder_limit_offset() {
-	flavors := []Flavor{MySQL, PostgreSQL, SQLite, SQLServer}
+	flavors := []Flavor{MySQL, PostgreSQL, SQLite, SQLServer, ClickHouse}
 	results := make([][]string, len(flavors))
 	sb := NewSelectBuilder()
 	saveResults := func() {
@@ -189,6 +189,12 @@ func ExampleSelectBuilder_limit_offset() {
 	// #2: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS
 	// #3: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
 	// #4: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
+	//
+	// ClickHouse
+	// #1: SELECT * FROM user
+	// #2: SELECT * FROM user
+	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
+	// #4: SELECT * FROM user LIMIT 1
 }
 
 func ExampleSelectBuilder_ForUpdate() {
