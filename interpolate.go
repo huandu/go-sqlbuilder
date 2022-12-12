@@ -425,6 +425,9 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 
 		case SQLServer:
 			buf = append(buf, v.Format("2006-01-02 15:04:05.999999 Z07:00")...)
+
+		case ClickHouse:
+			buf = append(buf, v.Format("2006-01-02 15:04:05.999999")...)
 		}
 
 		buf = append(buf, '\'')
@@ -525,6 +528,10 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 			case SQLServer:
 				buf = append(buf, "0x"...)
 				buf = appendHex(buf, data)
+
+			case ClickHouse:
+				buf = append(buf, "_binary"...)
+				buf = quoteStringValue(buf, *(*string)(unsafe.Pointer(&data)), flavor)
 			}
 
 		default:

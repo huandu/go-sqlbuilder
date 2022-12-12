@@ -165,47 +165,47 @@ func TestFlavorInterpolate(t *testing.T) {
 		},
 
 		{
-			MySQL,
+			ClickHouse,
 			"SELECT * FROM a WHERE name = ? AND state IN (?, ?, ?, ?, ?)", []interface{}{"I'm fine", 42, int8(8), int16(-16), int32(32), int64(64)},
 			"SELECT * FROM a WHERE name = 'I\\'m fine' AND state IN (42, 8, -16, 32, 64)", nil,
 		},
 		{
-			MySQL,
+			ClickHouse,
 			"SELECT * FROM `a?` WHERE name = \"?\" AND state IN (?, '?', ?, ?, ?, ?, ?)", []interface{}{"\r\n\b\t\x1a\x00\\\"'", uint(42), uint8(8), uint16(16), uint32(32), uint64(64), "useless"},
 			"SELECT * FROM `a?` WHERE name = \"?\" AND state IN ('\\r\\n\\b\\t\\Z\\0\\\\\\\"\\'', '?', 42, 8, 16, 32, 64)", nil,
 		},
 		{
-			MySQL,
-			"SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?", []interface{}{true, false, float32(1.234567), float64(9.87654321), []byte(nil), []byte("I'm bytes"), dt, time.Time{}, nil},
+			ClickHouse,
+			"SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?", []interface{}{true, false, float32(1.234567), 9.87654321, []byte(nil), []byte("I'm bytes"), dt, time.Time{}, nil},
 			"SELECT TRUE, FALSE, 1.234567, 9.87654321, NULL, _binary'I\\'m bytes', '2019-04-24 12:23:34.123457', '0000-00-00', NULL", nil,
 		},
 		{
-			MySQL,
+			ClickHouse,
 			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\?", []interface{}{MySQL},
 			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\'MySQL'", nil,
 		},
 		{
-			MySQL,
+			ClickHouse,
 			"SELECT ?", []interface{}{byteArr},
 			"SELECT _binary'foo'", nil,
 		},
 		{
-			MySQL,
+			ClickHouse,
 			"SELECT ?", nil,
 			"", ErrInterpolateMissingArgs,
 		},
 		{
-			MySQL,
+			ClickHouse,
 			"SELECT ?", []interface{}{complex(1, 2)},
 			"", ErrInterpolateUnsupportedArgs,
 		},
 		{
-			MySQL,
+			ClickHouse,
 			"SELECT ?", []interface{}{[]complex128{complex(1, 2)}},
 			"", ErrInterpolateUnsupportedArgs,
 		},
 		{
-			MySQL,
+			ClickHouse,
 			"SELECT ?", []interface{}{errorValuer(1)},
 			"", ErrErrorValuer,
 		},
