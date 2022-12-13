@@ -530,7 +530,7 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 				buf = appendHex(buf, data)
 
 			case ClickHouse:
-				buf = append(buf, "_binary"...)
+				buf = append(buf, "unhex"...)
 				buf = quoteStringValue(buf, *(*string)(unsafe.Pointer(&data)), flavor)
 			}
 

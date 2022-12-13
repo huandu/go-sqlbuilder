@@ -144,7 +144,7 @@ func (f Flavor) PrepareInsertIgnore(table string, ib *InsertBuilder) {
 		ib.verb = "INSERT IGNORE"
 	case PostgreSQL:
 		// see https://www.postgresql.org/docs/current/sql-insert.html
-		ib.verb = "INSERT"
+		ib.verb = "INSERT INTO"
 		// add sql statement at the end after values, i.e. INSERT INTO ... ON CONFLICT DO NOTHING
 		ib.marker = insertMarkerAfterValues
 		ib.SQL("ON CONFLICT DO NOTHING")
@@ -153,7 +153,7 @@ func (f Flavor) PrepareInsertIgnore(table string, ib *InsertBuilder) {
 		ib.verb = "INSERT OR IGNORE"
 	case ClickHouse:
 		// see https://clickhouse.tech/docs/en/sql-reference/statements/insert-into/
-		ib.verb = "INSERT"
+		ib.verb = "INSERT INTO"
 	default:
 		// panic if the db flavor is not supported
 		panic(fmt.Errorf("unsupported db flavor: %s", ib.args.Flavor.String()))
