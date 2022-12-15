@@ -177,7 +177,7 @@ func TestFlavorInterpolate(t *testing.T) {
 		{
 			ClickHouse,
 			"SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?", []interface{}{true, false, float32(1.234567), 9.87654321, []byte(nil), []byte("I'm bytes"), dt, time.Time{}, nil},
-			"SELECT TRUE, FALSE, 1.234567, 9.87654321, NULL, _binary'I\\'m bytes', '2019-04-24 12:23:34.123457', '0000-00-00', NULL", nil,
+			"SELECT TRUE, FALSE, 1.234567, 9.87654321, NULL, unhex('49276D206279746573'), '2019-04-24 12:23:34.123457', '0000-00-00', NULL", nil,
 		},
 		{
 			ClickHouse,
@@ -187,7 +187,7 @@ func TestFlavorInterpolate(t *testing.T) {
 		{
 			ClickHouse,
 			"SELECT ?", []interface{}{byteArr},
-			"SELECT _binary'foo'", nil,
+			"SELECT unhex('666F6F')", nil,
 		},
 		{
 			ClickHouse,
