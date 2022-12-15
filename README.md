@@ -9,7 +9,7 @@
 - [Usage](#usage)
   - [Basic usage](#basic-usage)
   - [Pre-defined SQL builders](#pre-defined-sql-builders)
-  - [Build SQL for MySQL, PostgreSQL, SQLServer or SQLite](#build-sql-for-mysql-postgresql-sqlserver-or-sqlite)
+  - [Build SQL for MySQL, PostgreSQL, SQLServer, SQLite or ClickHouse](#build-sql-for-mysql-postgresql-sqlserve-sqlite-or-clickhouse)
   - [Using `Struct` as a light weight ORM](#using-struct-as-a-light-weight-orm)
   - [Nested SQL](#nested-sql)
   - [Use `sql.Named` in a builder](#use-sqlnamed-in-a-builder)
@@ -110,7 +110,7 @@ Following are some utility methods to deal with special cases.
 
 To learn how to use builders, check out [examples on GoDoc](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#pkg-examples).
 
-### Build SQL for MySQL, PostgreSQL, SQLServer or SQLite
+### Build SQL for MySQL, PostgreSQL, SQLServe, SQLite or ClickHouse
 
 Parameter markers are different in MySQL, PostgreSQL, SQLServer and SQLite. This package provides some methods to set the type of markers (we call it "flavor") in all builders.
 
