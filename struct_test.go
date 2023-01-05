@@ -4,6 +4,7 @@
 package sqlbuilder
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"testing"
 	"time"
@@ -836,6 +837,37 @@ func TestStructFieldAs(t *testing.T) {
 	// Struct field T3 is shadowed by T2 due to same alias.
 	sql = build(s.Update("t", value))
 	a.Equal(sql, `UPDATE t SET t1 = ?, t2 = ?, t4 = ?`)
+}
+
+type structImplValuer int
+
+func (v *structImplValuer) Value() (driver.Value, error) {
+	return *v * 2, nil
+}
+
+type structContainsValuer struct {
+	F1 string
+	F2 *structImplValuer
+}
+
+func TestStructFieldsImplValuer(t *testing.T) {
+	a := assert.New(t)
+	st := NewStruct(new(structContainsValuer))
+	f1 := "foo"
+	f2 := structImplValuer(100)
+
+	sql, args := st.Update("t", structContainsValuer{
+		F1: f1,
+		F2: &f2,
+	}).BuildWithFlavor(MySQL)
+
+	a.Equal(sql, "UPDATE t SET F1 = ?, F2 = ?")
+	a.Equal(args[0], f1)
+	a.Equal(args[1], &f2)
+
+	result, err := MySQL.Interpolate(sql, args)
+	a.NilError(err)
+	a.Equal(result, "UPDATE t SET F1 = 'foo', F2 = 200")
 }
 
 func SomeOtherMapper(string) string {

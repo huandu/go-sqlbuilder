@@ -112,7 +112,7 @@ func ExampleSelectBuilder_join() {
 }
 
 func ExampleSelectBuilder_limit_offset() {
-	flavors := []Flavor{MySQL, PostgreSQL, SQLite, SQLServer, CQL}
+	flavors := []Flavor{MySQL, PostgreSQL, SQLite, SQLServer, CQL, ClickHouse}
 	results := make([][]string, len(flavors))
 	sb := NewSelectBuilder()
 	saveResults := func() {
@@ -196,6 +196,12 @@ func ExampleSelectBuilder_limit_offset() {
 	// #1: SELECT * FROM user
 	// #2: SELECT * FROM user
 	// #3: SELECT * FROM user LIMIT 1
+	// #4: SELECT * FROM user LIMIT 1
+	//
+	// ClickHouse
+	// #1: SELECT * FROM user
+	// #2: SELECT * FROM user
+	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
 	// #4: SELECT * FROM user LIMIT 1
 }
 

@@ -5,6 +5,7 @@ package sqlbuilder
 
 import (
 	"bytes"
+	"database/sql/driver"
 	"math"
 	"reflect"
 	"regexp"
@@ -35,6 +36,8 @@ const (
 )
 
 var optRegex = regexp.MustCompile(`(?P<` + optName + `>\w+)(\((?P<` + optParams + `>.*)\))?`)
+
+var typeOfSQLDriverValuer = reflect.TypeOf((*driver.Valuer)(nil)).Elem()
 
 // Struct represents a struct type.
 //
@@ -135,7 +138,6 @@ func (s *Struct) SelectFromForTag(table string, tag string) (sb *SelectBuilder) 
 	}
 
 	sb.Select(cols...)
-
 	return sb
 }
 
@@ -182,7 +184,7 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 				continue
 			}
 		} else {
-			val = dereferencedValue(val)
+			val = dereferencedFieldValue(val)
 		}
 
 		data := val.Interface()
@@ -240,7 +242,7 @@ func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, tag string, value .
 
 	for _, item := range value {
 		v := reflect.ValueOf(item)
-		v = dereferencedValue(v)
+		v = dereferencedFieldValue(v)
 
 		if v.Type() == s.structType {
 			vs = append(vs, v)
@@ -268,7 +270,7 @@ func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, tag string, value .
 				nilCnt++
 			}
 
-			val = dereferencedValue(val)
+			val = dereferencedFieldValue(val)
 
 			if val.IsValid() {
 				values[i] = append(values[i], val.Interface())
@@ -482,6 +484,18 @@ func dereferencedType(t reflect.Type) reflect.Type {
 
 func dereferencedValue(v reflect.Value) reflect.Value {
 	for k := v.Kind(); k == reflect.Ptr || k == reflect.Interface; k = v.Kind() {
+		v = v.Elem()
+	}
+
+	return v
+}
+
+func dereferencedFieldValue(v reflect.Value) reflect.Value {
+	for k := v.Kind(); k == reflect.Ptr || k == reflect.Interface; k = v.Kind() {
+		if v.Type().Implements(typeOfSQLDriverValuer) {
+			break
+		}
+
 		v = v.Elem()
 	}
 

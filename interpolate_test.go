@@ -1,6 +1,8 @@
 package sqlbuilder
 
 import (
+	"database/sql/driver"
+	"errors"
 	"fmt"
 	"strconv"
 	"testing"
@@ -9,15 +11,24 @@ import (
 	"github.com/huandu/go-assert"
 )
 
+type errorValuer int
+
+var ErrErrorValuer = errors.New("error valuer")
+
+func (v errorValuer) Value() (driver.Value, error) {
+	return 0, ErrErrorValuer
+}
+
 func TestFlavorInterpolate(t *testing.T) {
 	dt := time.Date(2019, 4, 24, 12, 23, 34, 123456789, time.FixedZone("CST", 8*60*60)) // 2019-04-24 12:23:34.987654321 CST
 	_, errOutOfRange := strconv.ParseInt("12345678901234567890", 10, 32)
+	byteArr := [...]byte{'f', 'o', 'o'}
 	cases := []struct {
-		flavor Flavor
-		sql    string
-		args   []interface{}
-		query  string
-		err    error
+		Flavor Flavor
+		SQL    string
+		Args   []interface{}
+		Query  string
+		Err    error
 	}{
 		{
 			MySQL,
@@ -41,6 +52,11 @@ func TestFlavorInterpolate(t *testing.T) {
 		},
 		{
 			MySQL,
+			"SELECT ?", []interface{}{byteArr},
+			"SELECT _binary'foo'", nil,
+		},
+		{
+			MySQL,
 			"SELECT ?", nil,
 			"", ErrInterpolateMissingArgs,
 		},
@@ -48,6 +64,16 @@ func TestFlavorInterpolate(t *testing.T) {
 			MySQL,
 			"SELECT ?", []interface{}{complex(1, 2)},
 			"", ErrInterpolateUnsupportedArgs,
+		},
+		{
+			MySQL,
+			"SELECT ?", []interface{}{[]complex128{complex(1, 2)}},
+			"", ErrInterpolateUnsupportedArgs,
+		},
+		{
+			MySQL,
+			"SELECT ?", []interface{}{errorValuer(1)},
+			"", ErrErrorValuer,
 		},
 
 		{
@@ -137,7 +163,6 @@ func TestFlavorInterpolate(t *testing.T) {
 			"SELECT @p1", nil,
 			"", ErrInterpolateMissingArgs,
 		},
-
 		{
 			CQL,
 			"SELECT * FROM a WHERE name = ? AND state IN (?, ?, ?, ?, ?)", []interface{}{"I'm fine", 42, int8(8), int16(-16), int32(32), int64(64)},
@@ -168,16 +193,61 @@ func TestFlavorInterpolate(t *testing.T) {
 			"SELECT ?", []interface{}{complex(1, 2)},
 			"", ErrInterpolateUnsupportedArgs,
 		},
+		{
+			ClickHouse,
+			"SELECT * FROM a WHERE name = ? AND state IN (?, ?, ?, ?, ?)", []interface{}{"I'm fine", 42, int8(8), int16(-16), int32(32), int64(64)},
+			"SELECT * FROM a WHERE name = 'I\\'m fine' AND state IN (42, 8, -16, 32, 64)", nil,
+		},
+		{
+			ClickHouse,
+			"SELECT * FROM `a?` WHERE name = \"?\" AND state IN (?, '?', ?, ?, ?, ?, ?)", []interface{}{"\r\n\b\t\x1a\x00\\\"'", uint(42), uint8(8), uint16(16), uint32(32), uint64(64), "useless"},
+			"SELECT * FROM `a?` WHERE name = \"?\" AND state IN ('\\r\\n\\b\\t\\Z\\0\\\\\\\"\\'', '?', 42, 8, 16, 32, 64)", nil,
+		},
+		{
+			ClickHouse,
+			"SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?", []interface{}{true, false, float32(1.234567), 9.87654321, []byte(nil), []byte("I'm bytes"), dt, time.Time{}, nil},
+			"SELECT TRUE, FALSE, 1.234567, 9.87654321, NULL, unhex('49276D206279746573'), '2019-04-24 12:23:34.123457', '0000-00-00', NULL", nil,
+		},
+		{
+			ClickHouse,
+			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\?", []interface{}{MySQL},
+			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\'MySQL'", nil,
+		},
+		{
+			ClickHouse,
+			"SELECT ?", []interface{}{byteArr},
+			"SELECT unhex('666F6F')", nil,
+		},
+		{
+			ClickHouse,
+			"SELECT ?", nil,
+			"", ErrInterpolateMissingArgs,
+		},
+		{
+			ClickHouse,
+			"SELECT ?", []interface{}{complex(1, 2)},
+			"", ErrInterpolateUnsupportedArgs,
+		},
+		{
+			ClickHouse,
+			"SELECT ?", []interface{}{[]complex128{complex(1, 2)}},
+			"", ErrInterpolateUnsupportedArgs,
+		},
+		{
+			ClickHouse,
+			"SELECT ?", []interface{}{errorValuer(1)},
+			"", ErrErrorValuer,
+		},
 	}
 
 	for idx, c := range cases {
-		t.Run(fmt.Sprintf("%s: %s", c.flavor.String(), c.query), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s: %s", c.Flavor.String(), c.Query), func(t *testing.T) {
 			a := assert.New(t)
 			a.Use(&idx, &c)
-			query, err := c.flavor.Interpolate(c.sql, c.args)
+			query, err := c.Flavor.Interpolate(c.SQL, c.Args)
 
-			a.Equal(query, c.query)
-			a.Assert(err == c.err || err.Error() == c.err.Error())
+			a.Equal(query, c.Query)
+			a.Assert(err == c.Err || err.Error() == c.Err.Error())
 		})
 	}
 }
