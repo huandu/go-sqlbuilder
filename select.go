@@ -310,6 +310,11 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 				buf.WriteString(strconv.Itoa(sb.offset))
 			}
 		}
+	case CQL:
+		if sb.limit >= 0 {
+			buf.WriteString(" LIMIT ")
+			buf.WriteString(strconv.Itoa(sb.limit))
+		}
 	case PostgreSQL:
 		if sb.limit >= 0 {
 			buf.WriteString(" LIMIT ")

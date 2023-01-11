@@ -386,6 +386,11 @@ func sqliteInterpolate(query string, args ...interface{}) (string, error) {
 	return mysqlLikeInterpolate(SQLite, query, args...)
 }
 
+// cqlInterpolate works the same as MySQL interpolating.
+func cqlInterpolate(query string, args ...interface{}) (string, error) {
+	return mysqlLikeInterpolate(CQL, query, args...)
+}
+
 func clickhouseInterpolate(query string, args ...interface{}) (string, error) {
 	return mysqlLikeInterpolate(ClickHouse, query, args...)
 }
@@ -425,6 +430,9 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 
 		case SQLServer:
 			buf = append(buf, v.Format("2006-01-02 15:04:05.999999 Z07:00")...)
+
+		case CQL:
+			buf = append(buf, v.Format("2006-01-02 15:04:05.999999Z0700")...)
 
 		case ClickHouse:
 			buf = append(buf, v.Format("2006-01-02 15:04:05.999999")...)
@@ -525,7 +533,7 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 				buf = appendHex(buf, data)
 				buf = append(buf, '\'')
 
-			case SQLServer:
+			case SQLServer, CQL:
 				buf = append(buf, "0x"...)
 				buf = appendHex(buf, data)
 
@@ -585,7 +593,11 @@ func quoteStringValue(buf []byte, s string, flavor Flavor) []byte {
 			buf = append(buf, "\\Z"...)
 
 		case '\'':
-			buf = append(buf, "\\'"...)
+			if flavor == CQL {
+				buf = append(buf, "''"...)
+			} else {
+				buf = append(buf, "\\'"...)
+			}
 
 		case '"':
 			buf = append(buf, "\\\""...)

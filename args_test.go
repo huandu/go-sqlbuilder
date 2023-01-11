@@ -77,6 +77,21 @@ func TestArgs(t *testing.T) {
 
 		a.Equal(actual, expected)
 	}
+
+	DefaultFlavor = CQL
+
+	for expected, c := range cases {
+		args := new(Args)
+
+		for i := 1; i < len(c); i++ {
+			args.Add(c[i])
+		}
+
+		sql, values := args.Compile(c[0].(string))
+		actual := fmt.Sprintf("%v\n%v", sql, values)
+
+		a.Equal(actual, expected)
+	}
 }
 
 func toPostgreSQL(sql string) string {

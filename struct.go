@@ -127,8 +127,10 @@ func (s *Struct) SelectFromForTag(table string, tag string) (sb *SelectBuilder) 
 	cols := make([]string, 0, len(tagged.ForRead))
 
 	for _, sf := range tagged.ForRead {
-		buf.WriteString(table)
-		buf.WriteRune('.')
+		if s.Flavor != CQL {
+			buf.WriteString(table)
+			buf.WriteRune('.')
+		}
 		buf.WriteString(sf.NameForSelect(s.Flavor))
 
 		cols = append(cols, buf.String())

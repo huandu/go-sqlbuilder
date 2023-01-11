@@ -103,3 +103,24 @@ func TestBuildWithPostgreSQL(t *testing.T) {
 	a.Equal(sql, "SELECT $1 AS col5 LEFT JOIN SELECT col1, col2 FROM t1 WHERE id = $2 AND level > $3 LEFT JOIN SELECT col3, col4 FROM t2 WHERE id = $4 AND level <= $5")
 	a.Equal(args, []interface{}{7890, 1234, 2, 4567, 5})
 }
+
+func TestBuildWithCQL(t *testing.T) {
+	a := assert.New(t)
+
+	ib1 := CQL.NewInsertBuilder()
+	ib1.InsertInto("t1").Cols("col1", "col2").Values(1, 2)
+
+	ib2 := CQL.NewInsertBuilder()
+	ib2.InsertInto("t2").Cols("col3", "col4").Values(3, 4)
+
+	old := DefaultFlavor
+	DefaultFlavor = CQL
+	defer func() {
+		DefaultFlavor = old
+	}()
+
+	sql, args := Build("BEGIN BATCH USING TIMESTAMP $0 $1; $2; APPLY BATCH;", 1481124356754405, ib1, ib2).Build()
+
+	a.Equal(sql, "BEGIN BATCH USING TIMESTAMP ? INSERT INTO t1 (col1, col2) VALUES (?, ?); INSERT INTO t2 (col3, col4) VALUES (?, ?); APPLY BATCH;")
+	a.Equal(args, []interface{}{1481124356754405, 1, 2, 3, 4})
+}
