@@ -110,7 +110,8 @@ func (sb *SelectBuilder) From(table ...string) *SelectBuilder {
 // Join sets expressions of JOIN in SELECT.
 //
 // It builds a JOIN expression like
-//     JOIN table ON onExpr[0] AND onExpr[1] ...
+//
+//	JOIN table ON onExpr[0] AND onExpr[1] ...
 func (sb *SelectBuilder) Join(table string, onExpr ...string) *SelectBuilder {
 	sb.marker = selectMarkerAfterJoin
 	return sb.JoinWithOption("", table, onExpr...)
@@ -119,16 +120,17 @@ func (sb *SelectBuilder) Join(table string, onExpr ...string) *SelectBuilder {
 // JoinWithOption sets expressions of JOIN with an option.
 //
 // It builds a JOIN expression like
-//     option JOIN table ON onExpr[0] AND onExpr[1] ...
+//
+//	option JOIN table ON onExpr[0] AND onExpr[1] ...
 //
 // Here is a list of supported options.
-//     - FullJoin: FULL JOIN
-//     - FullOuterJoin: FULL OUTER JOIN
-//     - InnerJoin: INNER JOIN
-//     - LeftJoin: LEFT JOIN
-//     - LeftOuterJoin: LEFT OUTER JOIN
-//     - RightJoin: RIGHT JOIN
-//     - RightOuterJoin: RIGHT OUTER JOIN
+//   - FullJoin: FULL JOIN
+//   - FullOuterJoin: FULL OUTER JOIN
+//   - InnerJoin: INNER JOIN
+//   - LeftJoin: LEFT JOIN
+//   - LeftOuterJoin: LEFT OUTER JOIN
+//   - RightJoin: RIGHT JOIN
+//   - RightOuterJoin: RIGHT OUTER JOIN
 func (sb *SelectBuilder) JoinWithOption(option JoinOption, table string, onExpr ...string) *SelectBuilder {
 	sb.joinOptions = append(sb.joinOptions, option)
 	sb.joinTables = append(sb.joinTables, table)

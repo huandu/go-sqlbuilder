@@ -9,7 +9,7 @@
 - [Usage](#usage)
   - [Basic usage](#basic-usage)
   - [Pre-defined SQL builders](#pre-defined-sql-builders)
-  - [Build SQL for MySQL, PostgreSQL, SQLServer, SQLite, CQL, or ClickHouse](#build-sql-for-mysql-postgresql-sqlserve-sqlite-or-clickhouse)
+  - [Build SQL for different systems](#build-sql-for-different-systems)
   - [Using `Struct` as a light weight ORM](#using-struct-as-a-light-weight-orm)
   - [Nested SQL](#nested-sql)
   - [Use `sql.Named` in a builder](#use-sqlnamed-in-a-builder)
@@ -110,9 +110,11 @@ Following are some utility methods to deal with special cases.
 
 To learn how to use builders, check out [examples on GoDoc](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#pkg-examples).
 
-### Build SQL for MySQL, PostgreSQL, SQLServer, SQLite, CQL, or ClickHouse
+### Build SQL for different systems
 
-Parameter markers are different in MySQL, PostgreSQL, SQLServer and SQLite. This package provides some methods to set the type of markers (we call it "flavor") in all builders.
+SQL syntax and parameter marks vary in different systems. In this package, we introduce a concept called "flavor" to smooth out these difference.
+
+Right now, MySQL, PostgreSQL, SQLServer, SQLite, CQL and ClickHouse are defined in flavor list. Feel free to open issue or send pull request if anyone asks for a new flavor.
 
 By default, all builders uses `DefaultFlavor` to build SQL. The default value is `MySQL`.
 
