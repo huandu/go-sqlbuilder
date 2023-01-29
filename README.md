@@ -374,6 +374,30 @@ fmt.Println(err)
 // <nil>
 ```
 
+## Performance
+
+There are some benchmark cases in [./internal/benchmark](./internal/benchmark/). We can enter this directory and run `go test -bench . -benchmem` to see results.
+
+Here is the result running on my dev machine with v1.19.0 as a sample.
+
+```text
+Benchmark_SelectBasic_SQLBuilder-12        1406461      848.1 ns/op     1064 B/op       18 allocs/op
+Benchmark_SelectComplex_SQLBuilder-12       294868       4087 ns/op     3537 B/op       71 allocs/op
+Benchmark_Update_SQLBuilder-12              351915       3172 ns/op     2937 B/op       49 allocs/op
+Benchmark_Delete_SqlBuilder-12              473796       2569 ns/op     2008 B/op       38 allocs/op
+```
+
+As a comparasion, there are cases implemented by [squirrel v1.5.3](https://github.com/Masterminds/squirrel). Here is the result on my dev machine.
+
+```text
+Benchmark_SelectBasic_Squirrel-12           210292       5740 ns/op     3281 B/op       70 allocs/op
+Benchmark_SelectComplex_Squirrel-12         118238      10283 ns/op     6027 B/op      121 allocs/op
+Benchmark_Update_Squirrel-12                 94173      12899 ns/op     7691 B/op      165 allocs/op
+Benchmark_Delete_Squirrel-12                153379       7869 ns/op     4858 B/op      102 allocs/op
+```
+
+It's highly appreciated to contribute more and representive cases.
+
 ## FAQ
 
 ### What's the difference between this package and `squirrel`
