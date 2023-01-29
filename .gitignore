@@ -33,3 +33,7 @@ debug_test
 
 # Mac
 .DS_Store
+
+# ignore local work file
+go.work
+go.work.sum
