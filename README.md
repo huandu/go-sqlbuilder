@@ -396,7 +396,7 @@ Benchmark_Update_Squirrel-12                 94173      12899 ns/op     7691 B/o
 Benchmark_Delete_Squirrel-12                153379       7869 ns/op     4858 B/op      102 allocs/op
 ```
 
-It's highly appreciated to contribute more and representive cases.
+It's highly appreciated to contribute more and representative cases.
 
 ## FAQ
 
