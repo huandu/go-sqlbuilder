@@ -9,6 +9,7 @@ import (
 	"math"
 	"reflect"
 	"regexp"
+	"sort"
 )
 
 var (
@@ -48,7 +49,8 @@ type Struct struct {
 
 	structType         reflect.Type
 	structFieldsParser structFieldsParser
-	structTag          string
+	withTags           []string
+	withoutTags        []string
 }
 
 var emptyStruct Struct
@@ -91,12 +93,185 @@ func (s *Struct) WithFieldMapper(mapper FieldMapperFunc) *Struct {
 	return &c
 }
 
-// WithTag sets default tag for all builder methods.
-// For instance, calling s.WithTag("tag").SelectFrom("t") is the same as calling s.SelectFromForTag("t", "tag").
-func (s *Struct) WithTag(tag string) *Struct {
+// WithTag sets included tag(s) for all builder methods.
+// For instance, calling s.WithTag("tag").SelectFrom("t") is to select all fields tagged with "tag" from table "t".
+//
+// If multiple tags are provided, fields tagged with any of them are included.
+// That is, s.WithTag("tag1", "tag2").SelectFrom("t") is to select all fields tagged with "tag1" or "tag2" from table "t".
+func (s *Struct) WithTag(tags ...string) *Struct {
+	if len(tags) == 0 {
+		return s
+	}
+
 	c := *s
-	c.structTag = tag
+	c.mergeWithTags(tags)
 	return &c
+}
+
+func (s *Struct) mergeWithTags(with []string) {
+	newTags := make([]int, 0, len(with))
+	withTags := s.withTags
+	withoutTags := s.withoutTags
+
+	if len(withoutTags) == 0 {
+		for i, tag := range with {
+			if tag == "" {
+				continue
+			}
+
+			if !hasTag(withTags, tag) {
+				newTags = append(newTags, i)
+			}
+		}
+	} else {
+		for i, tag := range with {
+			if tag == "" {
+				continue
+			}
+
+			if !hasTag(withTags, tag) {
+				if !hasTag(withoutTags, tag) {
+					newTags = append(newTags, i)
+				}
+			}
+		}
+	}
+
+	if len(newTags) == 0 {
+		return
+	}
+
+	// Merge with tags.
+	withTags = make([]string, 0, len(s.withTags)+len(newTags))
+	withTags = append(withTags, s.withTags...)
+
+	for _, idx := range newTags {
+		withTags = append(withTags, with[idx])
+	}
+
+	sort.Strings(withTags)
+	withTags = removeDuplicatedTags(withTags)
+	s.withTags = withTags
+}
+
+// WithoutTag sets excluded tag(s) for all builder methods.
+// For instance, calling s.WithoutTag("tag").SelectFrom("t") is to select all fields except those tagged with "tag" from table "t".
+//
+// If multiple tags are provided, fields tagged with any of them are excluded.
+// That is, s.WithoutTag("tag1", "tag2").SelectFrom("t") is to exclude any field tagged with "tag1" or "tag2" from table "t".
+func (s *Struct) WithoutTag(tags ...string) *Struct {
+	if len(tags) == 0 {
+		return s
+	}
+
+	c := *s
+	c.mergeWithoutTags(tags)
+	return &c
+}
+
+func (s *Struct) mergeWithoutTags(without []string) {
+	withTags := s.withTags
+	withoutTags := s.withoutTags
+
+	if len(withoutTags) == 0 {
+		withoutTags = make([]string, len(without))
+		copy(withoutTags, without)
+	} else {
+		newTags := make([]int, 0, len(without))
+
+		for i, tag := range without {
+			if tag == "" {
+				continue
+			}
+
+			if !hasTag(withoutTags, tag) {
+				newTags = append(newTags, i)
+			}
+		}
+
+		if len(newTags) == 0 {
+			return
+
+		}
+
+		// Merge without tags.
+		tags := make([]string, 0, len(withoutTags)+len(newTags))
+		tags = append(tags, withoutTags...)
+
+		for _, idx := range newTags {
+			tags = append(tags, without[idx])
+		}
+
+		withoutTags = tags
+	}
+
+	sort.Strings(withoutTags)
+	withoutTags = removeDuplicatedTags(withoutTags)
+
+	// Filter out useless tags in s.withTags.
+	kept := make([]int, 0, len(withTags))
+
+	for i, tag := range withTags {
+		if !hasTag(withoutTags, tag) {
+			kept = append(kept, i)
+		}
+	}
+
+	if len(kept) > 0 {
+		filteredTags := make([]string, 0, len(kept))
+
+		for _, i := range kept {
+			filteredTags = append(filteredTags, withTags[i])
+		}
+
+		withTags = filteredTags
+	} else {
+		withTags = nil
+	}
+
+	// Update with and without tags.
+	s.withTags = withTags
+	s.withoutTags = withoutTags
+}
+
+func hasTag(tags []string, tag string) bool {
+	if len(tags) == 0 {
+		return false
+	}
+
+	i := sort.SearchStrings(tags, tag)
+	return i < len(tags) && tags[i] == tag
+}
+
+func removeDuplicatedTags(tags []string) []string {
+	if len(tags) <= 1 {
+		return tags
+	}
+
+	// Unlikely to find any duplicates.
+	hasDupes := false
+
+	for i := 1; i < len(tags); i++ {
+		if tags[i] == tags[i-1] {
+			hasDupes = true
+			break
+		}
+	}
+
+	if !hasDupes {
+		return tags
+	}
+
+	unique := make([]string, 0, len(tags))
+	unique = append(unique, tags[0])
+
+	for i := 1; i < len(tags); i++ {
+		if tags[i] != tags[i-1] {
+			unique = append(unique, tags[i])
+		}
+	}
+
+	return unique
 }
 
 // SelectFrom creates a new `SelectBuilder` with table name.
@@ -104,16 +279,23 @@ func (s *Struct) WithTag(tag string) *Struct {
 //
 // Caller is responsible to set WHERE condition to find right record.
 func (s *Struct) SelectFrom(table string) *SelectBuilder {
-	return s.SelectFromForTag(table, s.structTag)
+	return s.selectFromWithTags(table, s.withTags, s.withoutTags)
 }
 
 // SelectFromForTag creates a new `SelectBuilder` with table name for a specified tag.
 // By default, all fields of the s tagged with tag are listed as columns in SELECT.
 //
 // Caller is responsible to set WHERE condition to find right record.
+//
+// Deprecated: It's recommended to use s.WithTag(tag).SelectFrom(...) instead of calling this method.
+// The former one is more readable and can be chained with other methods.
 func (s *Struct) SelectFromForTag(table string, tag string) (sb *SelectBuilder) {
+	return s.selectFromWithTags(table, []string{tag}, nil)
+}
+
+func (s *Struct) selectFromWithTags(table string, with, without []string) (sb *SelectBuilder) {
 	sfs := s.structFieldsParser()
-	tagged := sfs.Tag(tag)
+	tagged := sfs.FilterTags(with, without)
 
 	sb = s.Flavor.NewSelectBuilder()
 	sb.From(table)
@@ -147,7 +329,7 @@ func (s *Struct) SelectFromForTag(table string, tag string) (sb *SelectBuilder) 
 //
 // Caller is responsible to set WHERE condition to match right record.
 func (s *Struct) Update(table string, value interface{}) *UpdateBuilder {
-	return s.UpdateForTag(table, s.structTag, value)
+	return s.updateWithTags(table, s.withTags, s.withoutTags, value)
 }
 
 // UpdateForTag creates a new `UpdateBuilder` with table name.
@@ -155,9 +337,16 @@ func (s *Struct) Update(table string, value interface{}) *UpdateBuilder {
 // If value's type is not the same as that of s, UpdateForTag returns a dummy `UpdateBuilder` with table name.
 //
 // Caller is responsible to set WHERE condition to match right record.
+//
+// Deprecated: It's recommended to use s.WithTag(tag).Update(...) instead of calling this method.
+// The former one is more readable and can be chained with other methods.
 func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *UpdateBuilder {
+	return s.updateWithTags(table, []string{tag}, nil, value)
+}
+
+func (s *Struct) updateWithTags(table string, with, without []string, value interface{}) *UpdateBuilder {
 	sfs := s.structFieldsParser()
-	tagged := sfs.Tag(tag)
+	tagged := sfs.FilterTags(with, without)
 
 	ub := s.Flavor.NewUpdateBuilder()
 	ub.Update(table)
@@ -180,7 +369,7 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 		val := v.FieldByName(name)
 
 		if isEmptyValue(val) {
-			if sf.ShouldOmitEmpty("", tag) {
+			if sf.ShouldOmitEmpty(with...) {
 				continue
 			}
 		} else {
@@ -203,7 +392,11 @@ func (s *Struct) UpdateForTag(table string, tag string, value interface{}) *Upda
 // If the type of any item in value is not expected, it will be ignored.
 // If value is an empty slice, `InsertBuilder#Values` will not be called.
 func (s *Struct) InsertInto(table string, value ...interface{}) *InsertBuilder {
-	return s.InsertIntoForTag(table, s.structTag, value...)
+	ib := s.Flavor.NewInsertBuilder()
+	ib.InsertInto(table)
+
+	s.buildColsAndValuesForTag(ib, s.withTags, s.withoutTags, value...)
+	return ib
 }
 
 // InsertIgnoreInto creates a new `InsertBuilder` with table name using verb INSERT IGNORE INTO.
@@ -214,7 +407,11 @@ func (s *Struct) InsertInto(table string, value ...interface{}) *InsertBuilder {
 // If the type of any item in value is not expected, it will be ignored.
 // If value is an empty slice, `InsertBuilder#Values` will not be called.
 func (s *Struct) InsertIgnoreInto(table string, value ...interface{}) *InsertBuilder {
-	return s.InsertIgnoreIntoForTag(table, s.structTag, value...)
+	ib := s.Flavor.NewInsertBuilder()
+	ib.InsertIgnoreInto(table)
+
+	s.buildColsAndValuesForTag(ib, s.withTags, s.withoutTags, value...)
+	return ib
 }
 
 // ReplaceInto creates a new `InsertBuilder` with table name using verb REPLACE INTO.
@@ -225,14 +422,18 @@ func (s *Struct) InsertIgnoreInto(table string, value ...interface{}) *InsertBui
 // If the type of any item in value is not expected, it will be ignored.
 // If value is an empty slice, `InsertBuilder#Values` will not be called.
 func (s *Struct) ReplaceInto(table string, value ...interface{}) *InsertBuilder {
-	return s.ReplaceIntoForTag(table, s.structTag, value...)
+	ib := s.Flavor.NewInsertBuilder()
+	ib.ReplaceInto(table)
+
+	s.buildColsAndValuesForTag(ib, s.withTags, s.withoutTags, value...)
+	return ib
 }
 
 // buildColsAndValuesForTag uses ib to set exported fields tagged with tag as columns
 // and add value as a list of values.
-func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, tag string, value ...interface{}) {
+func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, with, without []string, value ...interface{}) {
 	sfs := s.structFieldsParser()
-	tagged := sfs.Tag(tag)
+	tagged := sfs.FilterTags(with, without)
 
 	if tagged == nil {
 		return
@@ -260,7 +461,7 @@ func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, tag string, value .
 	for _, sf := range tagged.ForWrite {
 		cols = append(cols, sf.Quote(s.Flavor))
 		name := sf.Name
-		shouldOmitEmpty := sf.ShouldOmitEmpty("", tag)
+		shouldOmitEmpty := sf.ShouldOmitEmpty(with...)
 		nilCnt := 0
 
 		for i, v := range vs {
@@ -313,11 +514,14 @@ func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, tag string, value .
 // InsertIntoForTag never returns any error.
 // If the type of any item in value is not expected, it will be ignored.
 // If value is an empty slice, `InsertBuilder#Values` will not be called.
+//
+// Deprecated: It's recommended to use s.WithTag(tag).InsertInto(...) instead of calling this method.
+// The former one is more readable and can be chained with other methods.
 func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
 	ib := s.Flavor.NewInsertBuilder()
 	ib.InsertInto(table)
 
-	s.buildColsAndValuesForTag(ib, tag, value...)
+	s.buildColsAndValuesForTag(ib, []string{tag}, nil, value...)
 	return ib
 }
 
@@ -328,11 +532,14 @@ func (s *Struct) InsertIntoForTag(table string, tag string, value ...interface{}
 // InsertIgnoreIntoForTag never returns any error.
 // If the type of any item in value is not expected, it will be ignored.
 // If value is an empty slice, `InsertBuilder#Values` will not be called.
+//
+// Deprecated: It's recommended to use s.WithTag(tag).InsertIgnoreInto(...) instead of calling this method.
+// The former one is more readable and can be chained with other methods.
 func (s *Struct) InsertIgnoreIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
 	ib := s.Flavor.NewInsertBuilder()
 	ib.InsertIgnoreInto(table)
 
-	s.buildColsAndValuesForTag(ib, tag, value...)
+	s.buildColsAndValuesForTag(ib, []string{tag}, nil, value...)
 	return ib
 }
 
@@ -343,11 +550,14 @@ func (s *Struct) InsertIgnoreIntoForTag(table string, tag string, value ...inter
 // ReplaceIntoForTag never returns any error.
 // If the type of any item in value is not expected, it will be ignored.
 // If value is an empty slice, `InsertBuilder#Values` will not be called.
+//
+// Deprecated: It's recommended to use s.WithTag(tag).ReplaceInto(...) instead of calling this method.
+// The former one is more readable and can be chained with other methods.
 func (s *Struct) ReplaceIntoForTag(table string, tag string, value ...interface{}) *InsertBuilder {
 	ib := s.Flavor.NewInsertBuilder()
 	ib.ReplaceInto(table)
 
-	s.buildColsAndValuesForTag(ib, tag, value...)
+	s.buildColsAndValuesForTag(ib, []string{tag}, nil, value...)
 	return ib
 }
 
@@ -363,16 +573,23 @@ func (s *Struct) DeleteFrom(table string) *DeleteBuilder {
 // Addr takes address of all exported fields of the s from the st.
 // The returned result can be used in `Row#Scan` directly.
 func (s *Struct) Addr(st interface{}) []interface{} {
-	return s.AddrForTag(s.structTag, st)
+	return s.addrWithTags(s.withTags, s.withoutTags, st)
 }
 
 // AddrForTag takes address of all fields of the s tagged with tag from the st.
 // The returned value can be used in `Row#Scan` directly.
 //
 // If tag is not defined in s in advance, returns nil.
+//
+// Deprecated: It's recommended to use s.WithTag(tag).Addr(...) instead of calling this method.
+// The former one is more readable and can be chained with other methods.
 func (s *Struct) AddrForTag(tag string, st interface{}) []interface{} {
+	return s.addrWithTags([]string{tag}, nil, st)
+}
+
+func (s *Struct) addrWithTags(with, without []string, st interface{}) []interface{} {
 	sfs := s.structFieldsParser()
-	tagged := sfs.Tag(tag)
+	tagged := sfs.FilterTags(with, without)
 
 	if tagged == nil {
 		return nil
@@ -385,7 +602,7 @@ func (s *Struct) AddrForTag(tag string, st interface{}) []interface{} {
 // The returned value can be used in `Row#Scan` directly.
 func (s *Struct) AddrWithCols(cols []string, st interface{}) []interface{} {
 	sfs := s.structFieldsParser()
-	tagged := sfs.Tag(s.structTag)
+	tagged := sfs.FilterTags(s.withTags, s.withoutTags)
 
 	if tagged == nil {
 		return nil
@@ -421,13 +638,20 @@ func (s *Struct) addrWithFields(fields []*structField, st interface{}) []interfa
 
 // Columns returns column names of s for all exported struct fields.
 func (s *Struct) Columns() []string {
-	return s.ColumnsForTag(s.structTag)
+	return s.columnsWithTags(s.withTags, s.withoutTags)
 }
 
 // ColumnsForTag returns column names of the s tagged with tag.
+//
+// Deprecated: It's recommended to use s.WithTag(tag).Columns(...) instead of calling this method.
+// The former one is more readable and can be chained with other methods.
 func (s *Struct) ColumnsForTag(tag string) (cols []string) {
+	return s.columnsWithTags([]string{tag}, nil)
+}
+
+func (s *Struct) columnsWithTags(with, without []string) (cols []string) {
 	sfs := s.structFieldsParser()
-	tagged := sfs.Tag(tag)
+	tagged := sfs.FilterTags(with, without)
 
 	if tagged == nil {
 		return
@@ -444,13 +668,20 @@ func (s *Struct) ColumnsForTag(tag string) (cols []string) {
 
 // Values returns a shadow copy of all exported fields in st.
 func (s *Struct) Values(st interface{}) []interface{} {
-	return s.ValuesForTag(s.structTag, st)
+	return s.valuesWithTags(s.withTags, s.withoutTags, st)
 }
 
 // ValuesForTag returns a shadow copy of all fields tagged with tag in st.
+//
+// Deprecated: It's recommended to use s.WithTag(tag).Values(...) instead of calling this method.
+// The former one is more readable and can be chained with other methods.
 func (s *Struct) ValuesForTag(tag string, value interface{}) (values []interface{}) {
+	return s.valuesWithTags([]string{tag}, nil, value)
+}
+
+func (s *Struct) valuesWithTags(with, without []string, value interface{}) (values []interface{}) {
 	sfs := s.structFieldsParser()
-	tagged := sfs.Tag(tag)
+	tagged := sfs.FilterTags(with, without)
 
 	if tagged == nil {
 		return

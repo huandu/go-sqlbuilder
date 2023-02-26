@@ -154,13 +154,51 @@ func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix st
 	}
 }
 
-// Tag returns the fields with tag.
-func (sfs *structFields) Tag(tag string) *structTaggedFields {
-	if tag == "" {
+func (sfs *structFields) FilterTags(with, without []string) *structTaggedFields {
+	if len(with) == 0 && len(without) == 0 {
 		return sfs.noTag
 	}
 
-	return sfs.tagged[tag]
+	// Simply return the tagged fields.
+	if len(with) == 1 && len(without) == 0 {
+		return sfs.tagged[with[0]]
+	}
+
+	// Find out all with and without fields.
+	taggedFields := makeStructTaggedFields()
+	filteredReadFields := make(map[string]struct{}, len(sfs.noTag.colsForRead))
+
+	for _, tag := range without {
+		if field, ok := sfs.tagged[tag]; ok {
+			for k := range field.colsForRead {
+				filteredReadFields[k] = struct{}{}
+			}
+		}
+	}
+
+	if len(with) == 0 {
+		for _, field := range sfs.noTag.ForRead {
+			k := field.Key()
+
+			if _, ok := filteredReadFields[k]; !ok {
+				taggedFields.Add(field)
+			}
+		}
+	} else {
+		for _, tag := range with {
+			if fields, ok := sfs.tagged[tag]; ok {
+				for _, field := range fields.ForRead {
+					k := field.Key()
+
+					if _, ok := filteredReadFields[k]; !ok {
+						taggedFields.Add(field)
+					}
+				}
+			}
+		}
+	}
+
+	return taggedFields
 }
 
 func (sfs *structFields) taggedFields(tag string) *structTaggedFields {
@@ -253,6 +291,11 @@ func (sf *structField) ShouldOmitEmpty(tags ...string) (ret bool) {
 	omit := sf.omitEmptyTags
 
 	if len(omit) == 0 {
+		return
+	}
+
+	// Always check default tag.
+	if _, ret = omit[""]; ret {
 		return
 	}
 
