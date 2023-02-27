@@ -158,7 +158,7 @@ Here is a sample to use `Struct` as ORM. It should be quite straight forward for
 
 ```go
 type User struct {
-    ID     int64  `db:"id"`
+    ID     int64  `db:"id" fieldtag:"pk"`
     Name   string `db:"name"`
     Status int    `db:"status"`
 }

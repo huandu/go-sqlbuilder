@@ -274,6 +274,11 @@ func TestWithAndWithoutTags(t *testing.T) {
 	a := assert.New(t)
 
 	a.Equal(structTags.Columns(), []string{"a", "b", "c", "d", "e", "f", "g", "h"})
+	a.Equal(structTags.WithTag().Columns(), []string{"a", "b", "c", "d", "e", "f", "g", "h"})
+	a.Equal(structTags.WithoutTag().Columns(), []string{"a", "b", "c", "d", "e", "f", "g", "h"})
+	a.Equal(structTags.WithTag("").Columns(), []string{"a", "b", "c", "d", "e", "f", "g", "h"})
+	a.Equal(structTags.WithoutTag("").Columns(), []string{"a", "b", "c", "d", "e", "f", "g", "h"})
+
 	a.Equal(structTags.WithTag("tag1").Columns(), []string{"a", "d", "f", "g"})
 	a.Equal(structTags.WithTag("tag2").Columns(), []string{"b", "d", "e", "g"})
 	a.Equal(structTags.WithTag("tag3").Columns(), []string{"c", "e", "f", "g"})
@@ -281,11 +286,11 @@ func TestWithAndWithoutTags(t *testing.T) {
 	a.Equal(structTags.WithTag("tag1", "tag2").Columns(), []string{"a", "d", "f", "g", "b", "e"})
 	a.Equal(structTags.WithTag("tag1", "tag3").Columns(), []string{"a", "d", "f", "g", "c", "e"})
 	a.Equal(structTags.WithTag("tag2", "tag3").Columns(), []string{"b", "d", "e", "g", "c", "f"})
-	a.Equal(structTags.WithTag("tag2", "tag3", "tag2", "tag3").Columns(), []string{"b", "d", "e", "g", "c", "f"})
+	a.Equal(structTags.WithTag("tag2", "tag3", "tag2", "", "tag3").Columns(), []string{"b", "d", "e", "g", "c", "f"})
 
 	a.Equal(structTags.WithoutTag("tag3").Columns(), []string{"a", "b", "d", "h"})
 	a.Equal(structTags.WithoutTag("tag3", "tag2").Columns(), []string{"a", "h"})
-	a.Equal(structTags.WithoutTag("tag3", "tag2", "tag3", "tag2").Columns(), []string{"a", "h"})
+	a.Equal(structTags.WithoutTag("tag3", "tag2", "tag3", "", "tag2").Columns(), []string{"a", "h"})
 
 	a.Equal(structTags.WithTag("tag1", "tag2").WithoutTag("tag3").Columns(), []string{"a", "d", "b"})
 	a.Equal(structTags.WithoutTag("tag3").WithTag("tag1", "tag2").Columns(), []string{"a", "d", "b"})
@@ -293,14 +298,8 @@ func TestWithAndWithoutTags(t *testing.T) {
 	a.Equal(structTags.WithoutTag("tag3", "tag1").WithTag("tag1", "tag2", "tag3").Columns(), []string{"b"})
 
 	a.Equal(structTags.WithTag("tag2").WithTag("tag1").Columns(), []string{"a", "d", "f", "g", "b", "e"})
-	a.Equal(structTags.WithoutTag("tag3").WithTag("tag1").WithTag("tag3", "tag2").Columns(), []string{"a", "d", "b"})
-	a.Equal(structTags.WithoutTag("tag3").WithTag("tag1").WithTag("tag3", "tag2").WithoutTag("tag1", "tag3").Columns(), []string{"b"})
-}
-
-type User struct {
-	ID     int64  `db:"id"`
-	Name   string `db:"name"`
-	Status int    `db:"status"`
+	a.Equal(structTags.WithoutTag("tag3").WithTag("tag1").WithTag("tag3", "", "tag2").Columns(), []string{"a", "d", "b"})
+	a.Equal(structTags.WithoutTag("tag3").WithTag("tag1").WithTag("tag3", "tag2").WithoutTag("tag1", "", "tag3").Columns(), []string{"b"})
 }
 
 type State int
@@ -334,7 +333,6 @@ func (rows testRows) Scan(dest ...interface{}) error {
 	return nil
 }
 
-var userStruct = NewStruct(new(User))
 var userDB testDB = 0
 
 const (
@@ -344,19 +342,20 @@ const (
 )
 
 func ExampleStruct_useStructAsORM() {
-	// Suppose we defined following type and global variable.
-	//
-	//     type User struct {
-	//         ID     int64  `db:"id"`
-	//         Name   string `db:"name"`
-	//         Status int    `db:"status"`
-	//     }
-	//
-	//     var userStruct = NewStruct(new(User))
+	// Suppose we defined following type for user db.
+	type User struct {
+		ID     int64  `db:"id" fieldtag:"pk"`
+		Name   string `db:"name"`
+		Status int    `db:"status"`
+	}
+
+	// Parse user struct. The userStruct can be a global variable.
+	// It's guraanteed to be thread-safe.
+	var userStruct = NewStruct(new(User))
 
 	// Prepare SELECT query.
 	sb := userStruct.SelectFrom("user")
-	sb.Where(sb.E("id", 1234))
+	sb.Where(sb.Equal("id", 1234))
 
 	// Execute the query.
 	sql, args := sb.Build()
@@ -521,24 +520,26 @@ func ExampleStruct_WithoutTag() {
 }
 
 func ExampleStruct_buildUPDATE() {
-	// Suppose we defined following type and global variable.
-	//
-	//     type User struct {
-	//         ID     int64  `db:"id"`
-	//         Name   string `db:"name"`
-	//         Status int    `db:"status"`
-	//     }
-	//
-	//     var userStruct = NewStruct(new(User))
+	// Suppose we defined following type for user db.
+	type User struct {
+		ID     int64  `db:"id" fieldtag:"pk"`
+		Name   string `db:"name"`
+		Status int    `db:"status"`
+	}
+
+	// Parse user struct. The userStruct can be a global variable.
+	// It's guraanteed to be thread-safe.
+	var userStruct = NewStruct(new(User))
 
 	// Prepare UPDATE query.
+	// We should not update the primary key field.
 	user := &User{
 		ID:     1234,
 		Name:   "Huan Du",
 		Status: 1,
 	}
-	ub := userStruct.Update("user", user)
-	ub.Where(ub.E("id", user.ID))
+	ub := userStruct.WithoutTag("pk").Update("user", user)
+	ub.Where(ub.Equal("id", user.ID))
 
 	// Execute the query.
 	sql, args := ub.Build()
@@ -548,28 +549,29 @@ func ExampleStruct_buildUPDATE() {
 	fmt.Println(args)
 
 	// Output:
-	// UPDATE user SET id = ?, name = ?, status = ? WHERE id = ?
-	// [1234 Huan Du 1 1234]
+	// UPDATE user SET name = ?, status = ? WHERE id = ?
+	// [Huan Du 1 1234]
 }
 
 func ExampleStruct_buildINSERT() {
-	// Suppose we defined following type and global variable.
-	//
-	//     type User struct {
-	//         ID     int64  `db:"id"`
-	//         Name   string `db:"name"`
-	//         Status int    `db:"status"`
-	//     }
-	//
-	//     var userStruct = NewStruct(new(User))
+	// Suppose we defined following type for user db.
+	type User struct {
+		ID     int64  `db:"id" fieldtag:"pk"`
+		Name   string `db:"name"`
+		Status int    `db:"status"`
+	}
+
+	// Parse user struct. The userStruct can be a global variable.
+	// It's guraanteed to be thread-safe.
+	var userStruct = NewStruct(new(User))
 
 	// Prepare INSERT query.
+	// Suppose that user id is generated by database.
 	user := &User{
-		ID:     1234,
 		Name:   "Huan Du",
 		Status: 1,
 	}
-	ib := userStruct.InsertInto("user", user)
+	ib := userStruct.WithoutTag("pk").InsertInto("user", user)
 
 	// Execute the query.
 	sql, args := ib.Build()
@@ -579,20 +581,21 @@ func ExampleStruct_buildINSERT() {
 	fmt.Println(args)
 
 	// Output:
-	// INSERT INTO user (id, name, status) VALUES (?, ?, ?)
-	// [1234 Huan Du 1]
+	// INSERT INTO user (name, status) VALUES (?, ?)
+	// [Huan Du 1]
 }
 
 func ExampleStruct_buildDELETE() {
-	// Suppose we defined following type and global variable.
-	//
-	//     type User struct {
-	//         ID     int64  `db:"id"`
-	//         Name   string `db:"name"`
-	//         Status int    `db:"status"`
-	//     }
-	//
-	//     var userStruct = NewStruct(new(User))
+	// Suppose we defined following type for user db.
+	type User struct {
+		ID     int64  `db:"id" fieldtag:"pk"`
+		Name   string `db:"name"`
+		Status int    `db:"status"`
+	}
+
+	// Parse user struct. The userStruct can be a global variable.
+	// It's guraanteed to be thread-safe.
+	var userStruct = NewStruct(new(User))
 
 	// Prepare DELETE query.
 	user := &User{
@@ -601,7 +604,7 @@ func ExampleStruct_buildDELETE() {
 		Status: 1,
 	}
 	b := userStruct.DeleteFrom("user")
-	b.Where(b.E("id", user.ID))
+	b.Where(b.Equal("id", user.ID))
 
 	// Execute the query.
 	sql, args := b.Build()
@@ -616,10 +619,19 @@ func ExampleStruct_buildDELETE() {
 }
 
 func ExampleStruct_forPostgreSQL() {
-	userStruct := NewStruct(new(User)).For(PostgreSQL)
+	// Suppose we defined following type for user db.
+	type User struct {
+		ID     int64  `db:"id" fieldtag:"pk"`
+		Name   string `db:"name"`
+		Status int    `db:"status"`
+	}
+
+	// Parse user struct. The userStruct can be a global variable.
+	// It's guraanteed to be thread-safe.
+	var userStruct = NewStruct(new(User)).For(PostgreSQL)
 
 	sb := userStruct.SelectFrom("user")
-	sb.Where(sb.E("id", 1234))
+	sb.Where(sb.Equal("id", 1234))
 	sql, args := sb.Build()
 
 	fmt.Println(sql)
@@ -631,10 +643,19 @@ func ExampleStruct_forPostgreSQL() {
 }
 
 func ExampleStruct_forCQL() {
+	// Suppose we defined following type for user db.
+	type User struct {
+		ID     int64  `db:"id" fieldtag:"pk"`
+		Name   string `db:"name"`
+		Status int    `db:"status"`
+	}
+
+	// Parse user struct. The userStruct can be a global variable.
+	// It's guraanteed to be thread-safe.
 	userStruct := NewStruct(new(User)).For(CQL)
 
 	sb := userStruct.SelectFrom("user")
-	sb.Where(sb.E("id", 1234))
+	sb.Where(sb.Equal("id", 1234))
 	sql, args := sb.Build()
 
 	fmt.Println(sql)
