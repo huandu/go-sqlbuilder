@@ -136,7 +136,7 @@ We can define a struct type and use field tags to let `Struct` know how to creat
 type ATable struct {
     Field1     string                                    // If a field doesn't has a tag, use "Field1" as column name in SQL.
     Field2     int    `db:"field2"`                      // Use "db" in field tag to set column name used in SQL.
-    Field3     int64  `db:"field3" fieldtag:"foo,bar"`   // Set fieldtag to a field. We can call `WithTag` to change default tag or call methods like `Struct#SelectForTag` to set tag explicitly.
+    Field3     int64  `db:"field3" fieldtag:"foo,bar"`   // Set fieldtag to a field. We can call `WithTag` to include fields with tag or `WithoutTag` to exclude fields with tag.
     Field4     int64  `db:"field4" fieldtag:"foo"`       // If we use `s.WithTag("foo").Select(table)`, columnes of SELECT are field3 and field4.
     Field5     string `db:"field5" fieldas:"f5_alias"`   // Use "fieldas" in field tag to set a column alias (AS) used in SELECT.
     Ignored    int32  `db:"-"`                           // If we set field name as "-", Struct will ignore it.
@@ -158,7 +158,7 @@ Here is a sample to use `Struct` as ORM. It should be quite straight forward for
 
 ```go
 type User struct {
-    ID     int64  `db:"id"`
+    ID     int64  `db:"id" fieldtag:"pk"`
     Name   string `db:"name"`
     Status int    `db:"status"`
 }

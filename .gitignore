@@ -33,3 +33,7 @@ debug_test
 
 # Mac
 .DS_Store
+
+# go work
+go.work
+go.work.sum
