@@ -317,7 +317,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			buf.WriteString(" LIMIT ")
 			buf.WriteString(strconv.Itoa(sb.limit))
 		}
-	case PostgreSQL:
+	case PostgreSQL, Presto:
 		if sb.limit >= 0 {
 			buf.WriteString(" LIMIT ")
 			buf.WriteString(strconv.Itoa(sb.limit))

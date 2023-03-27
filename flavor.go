@@ -18,6 +18,7 @@ const (
 	SQLServer
 	CQL
 	ClickHouse
+	Presto
 )
 
 var (
@@ -55,6 +56,8 @@ func (f Flavor) String() string {
 		return "CQL"
 	case ClickHouse:
 		return "ClickHouse"
+	case Presto:
+		return "Presto"
 	}
 
 	return "<invalid>"
@@ -79,6 +82,8 @@ func (f Flavor) Interpolate(sql string, args []interface{}) (string, error) {
 		return cqlInterpolate(sql, args...)
 	case ClickHouse:
 		return clickhouseInterpolate(sql, args...)
+	case Presto:
+		return prestoInterpolate(sql, args...)
 	}
 
 	return "", ErrInterpolateNotImplemented
@@ -135,7 +140,7 @@ func (f Flavor) Quote(name string) string {
 	switch f {
 	case MySQL, ClickHouse:
 		return fmt.Sprintf("`%s`", name)
-	case PostgreSQL, SQLServer, SQLite:
+	case PostgreSQL, SQLServer, SQLite, Presto:
 		return fmt.Sprintf(`"%s"`, name)
 	case CQL:
 		return fmt.Sprintf("'%s'", name)
@@ -149,18 +154,22 @@ func (f Flavor) PrepareInsertIgnore(table string, ib *InsertBuilder) {
 	switch ib.args.Flavor {
 	case MySQL:
 		ib.verb = "INSERT IGNORE"
+
 	case PostgreSQL:
 		// see https://www.postgresql.org/docs/current/sql-insert.html
 		ib.verb = "INSERT"
 		// add sql statement at the end after values, i.e. INSERT INTO ... ON CONFLICT DO NOTHING
 		ib.marker = insertMarkerAfterValues
 		ib.SQL("ON CONFLICT DO NOTHING")
+
 	case SQLite:
 		// see https://www.sqlite.org/lang_insert.html
 		ib.verb = "INSERT OR IGNORE"
-	case ClickHouse:
-		// see https://clickhouse.tech/docs/en/sql-reference/statements/insert-into/
+
+	case ClickHouse, CQL, SQLServer, Presto:
+		// All other databases do not support insert ignore
 		ib.verb = "INSERT"
+
 	default:
 		// panic if the db flavor is not supported
 		panic(fmt.Errorf("unsupported db flavor: %s", ib.args.Flavor.String()))

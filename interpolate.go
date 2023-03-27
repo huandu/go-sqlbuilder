@@ -395,6 +395,10 @@ func clickhouseInterpolate(query string, args ...interface{}) (string, error) {
 	return mysqlLikeInterpolate(ClickHouse, query, args...)
 }
 
+func prestoInterpolate(query string, args ...interface{}) (string, error) {
+	return mysqlLikeInterpolate(Presto, query, args...)
+}
+
 func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 	switch v := arg.(type) {
 	case nil:
@@ -436,6 +440,9 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 
 		case ClickHouse:
 			buf = append(buf, v.Format("2006-01-02 15:04:05.999999")...)
+
+		case Presto:
+			buf = append(buf, v.Format("2006-01-02 15:04:05.000")...)
 		}
 
 		buf = append(buf, '\'')
@@ -539,6 +546,11 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 
 			case ClickHouse:
 				buf = append(buf, "unhex('"...)
+				buf = appendHex(buf, data)
+				buf = append(buf, "')"...)
+
+			case Presto:
+				buf = append(buf, "from_hex('"...)
 				buf = appendHex(buf, data)
 				buf = append(buf, "')"...)
 			}
