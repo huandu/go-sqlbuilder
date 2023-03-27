@@ -124,8 +124,6 @@ We can wrap any `Builder` with a default flavor through `WithFlavor`.
 
 To be more verbose, we can use `PostgreSQL.NewSelectBuilder()` to create a `SelectBuilder` with the `PostgreSQL` flavor. All builders can be created in this way.
 
-Right now, there are five flavors, `MySQL`, `PostgreSQL`, `SQLServer`, `SQLite`, and `CQL`. Open new issue to me to ask for a new flavor if you find it necessary.
-
 ### Using `Struct` as a light weight ORM
 
 `Struct` stores type information and struct fields of a struct. It's a factory of builders. We can use `Struct` methods to create initialized SELECT/INSERT/UPDATE/DELETE builders to work with the struct. It can help us to save time and avoid human-error on writing column names.
