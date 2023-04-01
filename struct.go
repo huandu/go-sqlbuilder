@@ -4,12 +4,12 @@
 package sqlbuilder
 
 import (
-	"bytes"
 	"database/sql/driver"
 	"math"
 	"reflect"
 	"regexp"
 	"sort"
+	"strings"
 )
 
 var (
@@ -305,7 +305,7 @@ func (s *Struct) selectFromWithTags(table string, with, without []string) (sb *S
 		return
 	}
 
-	buf := &bytes.Buffer{}
+	buf := &strings.Builder{}
 	cols := make([]string, 0, len(tagged.ForRead))
 
 	for _, sf := range tagged.ForRead {

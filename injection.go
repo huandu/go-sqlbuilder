@@ -4,7 +4,6 @@
 package sqlbuilder
 
 import (
-	"bytes"
 	"strings"
 )
 
@@ -30,7 +29,7 @@ func (injection *injection) SQL(marker injectionMarker, sql string) {
 
 // WriteTo joins all SQL strings at the same marker value with blank (" ")
 // and writes the joined value to buf.
-func (injection *injection) WriteTo(buf *bytes.Buffer, marker injectionMarker) {
+func (injection *injection) WriteTo(buf *strings.Builder, marker injectionMarker) {
 	sqls := injection.markerSQLs[marker]
 	notEmpty := buf.Len() > 0
 

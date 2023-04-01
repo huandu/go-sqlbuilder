@@ -4,7 +4,6 @@
 package sqlbuilder
 
 import (
-	"bytes"
 	"strconv"
 	"strings"
 )
@@ -130,7 +129,7 @@ func (ub *UnionBuilder) Build() (sql string, args []interface{}) {
 // BuildWithFlavor returns compiled SELECT string and args with flavor and initial args.
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
-	buf := &bytes.Buffer{}
+	buf := &strings.Builder{}
 	ub.injection.WriteTo(buf, unionMarkerInit)
 
 	if len(ub.builders) > 0 {

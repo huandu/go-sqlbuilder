@@ -4,7 +4,6 @@
 package sqlbuilder
 
 import (
-	"bytes"
 	"strings"
 )
 
@@ -101,7 +100,7 @@ func (ctb *CreateTableBuilder) Build() (sql string, args []interface{}) {
 // BuildWithFlavor returns compiled CREATE TABLE string and args with flavor and initial args.
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (ctb *CreateTableBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
-	buf := &bytes.Buffer{}
+	buf := &strings.Builder{}
 	ctb.injection.WriteTo(buf, createTableMarkerInit)
 	buf.WriteString(ctb.verb)
 
