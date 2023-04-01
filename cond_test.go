@@ -34,6 +34,11 @@ func TestCond(t *testing.T) {
 		"$$a NOT BETWEEN $0 AND $1":   func() string { return newTestCond().NotBetween("$a", 123, 456) },
 		"(1 = 1 OR 2 = 2 OR 3 = 3)":   func() string { return newTestCond().Or("1 = 1", "2 = 2", "3 = 3") },
 		"(1 = 1 AND 2 = 2 AND 3 = 3)": func() string { return newTestCond().And("1 = 1", "2 = 2", "3 = 3") },
+		"EXISTS ($0)":                 func() string { return newTestCond().Exists(1) },
+		"NOT EXISTS ($0)":             func() string { return newTestCond().NotExists(1) },
+		"$$a > ANY ($0, $1)":          func() string { return newTestCond().Any("$a", ">", 1, 2) },
+		"$$a < ALL ($0)":              func() string { return newTestCond().All("$a", "<", 1) },
+		"$$a > SOME ($0, $1, $2)":     func() string { return newTestCond().Some("$a", ">", 1, 2, 3) },
 		"$0":                          func() string { return newTestCond().Var(123) },
 	}
 

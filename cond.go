@@ -4,7 +4,6 @@
 package sqlbuilder
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -15,7 +14,11 @@ type Cond struct {
 
 // Equal represents "field = value".
 func (c *Cond) Equal(field string, value interface{}) string {
-	return fmt.Sprintf("%s = %s", Escape(field), c.Args.Add(value))
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" = ")
+	buf.WriteString(c.Args.Add(value))
+	return buf.String()
 }
 
 // E is an alias of Equal.
@@ -23,9 +26,13 @@ func (c *Cond) E(field string, value interface{}) string {
 	return c.Equal(field, value)
 }
 
-// NotEqual represents "field != value".
+// NotEqual represents "field <> value".
 func (c *Cond) NotEqual(field string, value interface{}) string {
-	return fmt.Sprintf("%s <> %s", Escape(field), c.Args.Add(value))
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" <> ")
+	buf.WriteString(c.Args.Add(value))
+	return buf.String()
 }
 
 // NE is an alias of NotEqual.
@@ -35,7 +42,11 @@ func (c *Cond) NE(field string, value interface{}) string {
 
 // GreaterThan represents "field > value".
 func (c *Cond) GreaterThan(field string, value interface{}) string {
-	return fmt.Sprintf("%s > %s", Escape(field), c.Args.Add(value))
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" > ")
+	buf.WriteString(c.Args.Add(value))
+	return buf.String()
 }
 
 // G is an alias of GreaterThan.
@@ -45,7 +56,11 @@ func (c *Cond) G(field string, value interface{}) string {
 
 // GreaterEqualThan represents "field >= value".
 func (c *Cond) GreaterEqualThan(field string, value interface{}) string {
-	return fmt.Sprintf("%s >= %s", Escape(field), c.Args.Add(value))
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" >= ")
+	buf.WriteString(c.Args.Add(value))
+	return buf.String()
 }
 
 // GE is an alias of GreaterEqualThan.
@@ -55,7 +70,11 @@ func (c *Cond) GE(field string, value interface{}) string {
 
 // LessThan represents "field < value".
 func (c *Cond) LessThan(field string, value interface{}) string {
-	return fmt.Sprintf("%s < %s", Escape(field), c.Args.Add(value))
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" < ")
+	buf.WriteString(c.Args.Add(value))
+	return buf.String()
 }
 
 // L is an alias of LessThan.
@@ -65,7 +84,11 @@ func (c *Cond) L(field string, value interface{}) string {
 
 // LessEqualThan represents "field <= value".
 func (c *Cond) LessEqualThan(field string, value interface{}) string {
-	return fmt.Sprintf("%s <= %s", Escape(field), c.Args.Add(value))
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" <= ")
+	buf.WriteString(c.Args.Add(value))
+	return buf.String()
 }
 
 // LE is an alias of LessEqualThan.
@@ -81,7 +104,12 @@ func (c *Cond) In(field string, value ...interface{}) string {
 		vs = append(vs, c.Args.Add(v))
 	}
 
-	return fmt.Sprintf("%s IN (%s)", Escape(field), strings.Join(vs, ", "))
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" IN (")
+	buf.WriteString(strings.Join(vs, ", "))
+	buf.WriteString(")")
+	return buf.String()
 }
 
 // NotIn represents "field NOT IN (value...)".
@@ -92,47 +120,158 @@ func (c *Cond) NotIn(field string, value ...interface{}) string {
 		vs = append(vs, c.Args.Add(v))
 	}
 
-	return fmt.Sprintf("%s NOT IN (%s)", Escape(field), strings.Join(vs, ", "))
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" NOT IN (")
+	buf.WriteString(strings.Join(vs, ", "))
+	buf.WriteString(")")
+	return buf.String()
 }
 
 // Like represents "field LIKE value".
 func (c *Cond) Like(field string, value interface{}) string {
-	return fmt.Sprintf("%s LIKE %s", Escape(field), c.Args.Add(value))
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" LIKE ")
+	buf.WriteString(c.Args.Add(value))
+	return buf.String()
 }
 
 // NotLike represents "field NOT LIKE value".
 func (c *Cond) NotLike(field string, value interface{}) string {
-	return fmt.Sprintf("%s NOT LIKE %s", Escape(field), c.Args.Add(value))
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" NOT LIKE ")
+	buf.WriteString(c.Args.Add(value))
+	return buf.String()
 }
 
 // IsNull represents "field IS NULL".
 func (c *Cond) IsNull(field string) string {
-	return fmt.Sprintf("%s IS NULL", Escape(field))
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" IS NULL")
+	return buf.String()
 }
 
 // IsNotNull represents "field IS NOT NULL".
 func (c *Cond) IsNotNull(field string) string {
-	return fmt.Sprintf("%s IS NOT NULL", Escape(field))
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" IS NOT NULL")
+	return buf.String()
 }
 
 // Between represents "field BETWEEN lower AND upper".
 func (c *Cond) Between(field string, lower, upper interface{}) string {
-	return fmt.Sprintf("%s BETWEEN %s AND %s", Escape(field), c.Args.Add(lower), c.Args.Add(upper))
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" BETWEEN ")
+	buf.WriteString(c.Args.Add(lower))
+	buf.WriteString(" AND ")
+	buf.WriteString(c.Args.Add(upper))
+	return buf.String()
 }
 
 // NotBetween represents "field NOT BETWEEN lower AND upper".
 func (c *Cond) NotBetween(field string, lower, upper interface{}) string {
-	return fmt.Sprintf("%s NOT BETWEEN %s AND %s", Escape(field), c.Args.Add(lower), c.Args.Add(upper))
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" NOT BETWEEN ")
+	buf.WriteString(c.Args.Add(lower))
+	buf.WriteString(" AND ")
+	buf.WriteString(c.Args.Add(upper))
+	return buf.String()
 }
 
 // Or represents OR logic like "expr1 OR expr2 OR expr3".
 func (c *Cond) Or(orExpr ...string) string {
-	return fmt.Sprintf("(%s)", strings.Join(orExpr, " OR "))
+	buf := &strings.Builder{}
+	buf.WriteString("(")
+	buf.WriteString(strings.Join(orExpr, " OR "))
+	buf.WriteString(")")
+	return buf.String()
 }
 
 // And represents AND logic like "expr1 AND expr2 AND expr3".
 func (c *Cond) And(andExpr ...string) string {
-	return fmt.Sprintf("(%s)", strings.Join(andExpr, " AND "))
+	buf := &strings.Builder{}
+	buf.WriteString("(")
+	buf.WriteString(strings.Join(andExpr, " AND "))
+	buf.WriteString(")")
+	return buf.String()
+}
+
+// Exists represents "EXISTS (subquery)".
+func (c *Cond) Exists(subquery interface{}) string {
+	buf := &strings.Builder{}
+	buf.WriteString("EXISTS (")
+	buf.WriteString(c.Args.Add(subquery))
+	buf.WriteString(")")
+	return buf.String()
+}
+
+// NotExists represents "NOT EXISTS (subquery)".
+func (c *Cond) NotExists(subquery interface{}) string {
+	buf := &strings.Builder{}
+	buf.WriteString("NOT EXISTS (")
+	buf.WriteString(c.Args.Add(subquery))
+	buf.WriteString(")")
+	return buf.String()
+}
+
+// Any represents "field op ANY (value...)".
+func (c *Cond) Any(field, op string, value ...interface{}) string {
+	vs := make([]string, 0, len(value))
+
+	for _, v := range value {
+		vs = append(vs, c.Args.Add(v))
+	}
+
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" ")
+	buf.WriteString(op)
+	buf.WriteString(" ANY (")
+	buf.WriteString(strings.Join(vs, ", "))
+	buf.WriteString(")")
+	return buf.String()
+}
+
+// All represents "field op ALL (value...)".
+func (c *Cond) All(field, op string, value ...interface{}) string {
+	vs := make([]string, 0, len(value))
+
+	for _, v := range value {
+		vs = append(vs, c.Args.Add(v))
+	}
+
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" ")
+	buf.WriteString(op)
+	buf.WriteString(" ALL (")
+	buf.WriteString(strings.Join(vs, ", "))
+	buf.WriteString(")")
+	return buf.String()
+}
+
+// Some represents "field op SOME (value...)".
+func (c *Cond) Some(field, op string, value ...interface{}) string {
+	vs := make([]string, 0, len(value))
+
+	for _, v := range value {
+		vs = append(vs, c.Args.Add(v))
+	}
+
+	buf := &strings.Builder{}
+	buf.WriteString(Escape(field))
+	buf.WriteString(" ")
+	buf.WriteString(op)
+	buf.WriteString(" SOME (")
+	buf.WriteString(strings.Join(vs, ", "))
+	buf.WriteString(")")
+	return buf.String()
 }
 
 // Var returns a placeholder for value.

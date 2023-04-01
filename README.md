@@ -9,6 +9,7 @@
 - [Usage](#usage)
   - [Basic usage](#basic-usage)
   - [Pre-defined SQL builders](#pre-defined-sql-builders)
+  - [Build `WHERE` clause](#build-where-clause)
   - [Build SQL for different systems](#build-sql-for-different-systems)
   - [Using `Struct` as a light weight ORM](#using-struct-as-a-light-weight-orm)
   - [Nested SQL](#nested-sql)
@@ -109,6 +110,58 @@ Following are some utility methods to deal with special cases.
 - [Raw](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Raw) marks a string as "raw string" in args. For instance, calling `Buildf("SELECT %v", Raw("NOW()")).Build()` returns SQL `SELECT NOW()`.
 
 To learn how to use builders, check out [examples on GoDoc](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#pkg-examples).
+
+### Build `WHERE` clause
+
+`WHERE` clause is the most important part of a SQL. We can use `Where` method to add one or more conditions to a builder.
+
+To make building `WHERE` clause easier, there is an utility type called `Cond` to build condition. All builders which support `WHERE` clause have an anonymous `Cond` field so that we can call methods implemented by `Cond` on these builders.
+
+```go
+sb := sqlbuilder.Select("id").From("user")
+sb.Where(
+    sb.In("status", 1, 2, 5),
+    sb.Or(
+        sb.Equal("name", "foo"),
+        sb.Like("email", "foo@%"),
+    ),
+)
+
+sql, args := sb.Build()
+fmt.Println(sql, args)
+
+// Output:
+// SELECT id FROM user WHERE status IN (?, ?, ?) AND (name = ? OR email LIKE ?)
+// [1 2 5 foo foo@%]
+```
+
+There are many methods for building conditions.
+
+- [Cond.Equal](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Equal)/[Cond.E](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.E): `field = value`.
+- [Cond.NotEqual](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NotEqual)/[Cond.NE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NE): `field <> value`.
+- [Cond.GreaterThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GreaterThan)/[Cond.G](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.G): `field > value`.
+- [Cond.GreaterEqualThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GreaterEqualThan)/[Cond.GE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GE): `field >= value`.
+- [Cond.LessThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LessThan)/[Cond.L](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.L): `field < value`.
+- [Cond.LessEqualThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LessEqualThan)/[Cond.LE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LE): `field <= value`.
+- [Cond.In](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.In): `field IN (value1, value2, ...)`.
+- [Cond.NotIn](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NotIn): `field NOT IN (value1, value2, ...)`.
+- [Cond.Like](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Like): `field LIKE value`.
+- [Cond.NotLike](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NotLike): `field NOT LIKE value`.
+- [Cond.Between](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Between): `field BETWEEN lower AND upper`.
+- [Cond.NotBetween](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NotBetween): `field NOT BETWEEN lower AND upper`.
+- [Cond.IsNull](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.IsNull): `field IS NULL`.
+- [Cond.IsNotNull](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.IsNotNull): `field IS NOT NULL`.
+- [Cond.Exists](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Exists): `EXISTS (subquery)`.
+- [Cond.NotExists](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NotExists): `NOT EXISTS (subquery)`.
+- [Cond.Any](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Any): `field op ANY (value1, value2, ...)`.
+- [Cond.All](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.All): `field op ALL (value1, value2, ...)`.
+- [Cond.Some](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Some): `field op SOME (value1, value2, ...)`.
+- [Cond.Var](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Var): A placeholder for any value.
+
+There are also some methods to combine conditions.
+
+- [Cond.And](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.And): Combine conditions with `AND` operator.
+- [Cond.Or](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Or): Combine conditions with `OR` operator.
 
 ### Build SQL for different systems
 
