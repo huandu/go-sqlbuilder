@@ -128,7 +128,8 @@ sb.Where(
 )
 
 sql, args := sb.Build()
-fmt.Println(sql, args)
+fmt.Println(sql)
+fmt.Println(args)
 
 // Output:
 // SELECT id FROM user WHERE status IN (?, ?, ?) AND (name = ? OR email LIKE ?)
