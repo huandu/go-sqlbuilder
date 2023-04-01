@@ -114,7 +114,7 @@ To learn how to use builders, check out [examples on GoDoc](https://pkg.go.dev/g
 
 SQL syntax and parameter marks vary in different systems. In this package, we introduce a concept called "flavor" to smooth out these difference.
 
-Right now, MySQL, PostgreSQL, SQLServer, SQLite, CQL and ClickHouse are defined in flavor list. Feel free to open issue or send pull request if anyone asks for a new flavor.
+Right now, `MySQL`, `PostgreSQL`, `SQLServer`, `SQLite`, `CQL`, `ClickHouse` and `Presto` are defined in flavor list. Feel free to open issue or send pull request if anyone asks for a new flavor.
 
 By default, all builders uses `DefaultFlavor` to build SQL. The default value is `MySQL`.
 
@@ -123,8 +123,6 @@ There is a `BuildWithFlavor` method in `Builder` interface. We can use it to bui
 We can wrap any `Builder` with a default flavor through `WithFlavor`.
 
 To be more verbose, we can use `PostgreSQL.NewSelectBuilder()` to create a `SelectBuilder` with the `PostgreSQL` flavor. All builders can be created in this way.
-
-Right now, there are five flavors, `MySQL`, `PostgreSQL`, `SQLServer`, `SQLite`, and `CQL`. Open new issue to me to ask for a new flavor if you find it necessary.
 
 ### Using `Struct` as a light weight ORM
 

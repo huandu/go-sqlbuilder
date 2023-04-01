@@ -238,6 +238,51 @@ func TestFlavorInterpolate(t *testing.T) {
 			"SELECT ?", []interface{}{errorValuer(1)},
 			"", ErrErrorValuer,
 		},
+		{
+			Presto,
+			"SELECT * FROM a WHERE name = ? AND state IN (?, ?, ?, ?, ?)", []interface{}{"I'm fine", 42, int8(8), int16(-16), int32(32), int64(64)},
+			"SELECT * FROM a WHERE name = 'I\\'m fine' AND state IN (42, 8, -16, 32, 64)", nil,
+		},
+		{
+			Presto,
+			"SELECT * FROM `a?` WHERE name = \"?\" AND state IN (?, '?', ?, ?, ?, ?, ?)", []interface{}{"\r\n\b\t\x1a\x00\\\"'", uint(42), uint8(8), uint16(16), uint32(32), uint64(64), "useless"},
+			"SELECT * FROM `a?` WHERE name = \"?\" AND state IN ('\\r\\n\\b\\t\\Z\\0\\\\\\\"\\'', '?', 42, 8, 16, 32, 64)", nil,
+		},
+		{
+			Presto,
+			"SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?", []interface{}{true, false, float32(1.234567), 9.87654321, []byte(nil), []byte("I'm bytes"), dt, time.Time{}, nil},
+			"SELECT TRUE, FALSE, 1.234567, 9.87654321, NULL, from_hex('49276D206279746573'), '2019-04-24 12:23:34.123', '0000-00-00', NULL", nil,
+		},
+		{
+			Presto,
+			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\?", []interface{}{MySQL},
+			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\'MySQL'", nil,
+		},
+		{
+			Presto,
+			"SELECT ?", []interface{}{byteArr},
+			"SELECT from_hex('666F6F')", nil,
+		},
+		{
+			Presto,
+			"SELECT ?", nil,
+			"", ErrInterpolateMissingArgs,
+		},
+		{
+			Presto,
+			"SELECT ?", []interface{}{complex(1, 2)},
+			"", ErrInterpolateUnsupportedArgs,
+		},
+		{
+			Presto,
+			"SELECT ?", []interface{}{[]complex128{complex(1, 2)}},
+			"", ErrInterpolateUnsupportedArgs,
+		},
+		{
+			Presto,
+			"SELECT ?", []interface{}{errorValuer(1)},
+			"", ErrErrorValuer,
+		},
 	}
 
 	for idx, c := range cases {
