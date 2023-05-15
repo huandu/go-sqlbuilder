@@ -211,6 +211,39 @@ func ExampleSelectBuilder_limit_offset() {
 	// #4: SELECT * FROM user LIMIT 1
 }
 
+func ExampleSelectBuilder_limit_by() {
+	flavors := []Flavor{ClickHouse}
+	results := make([][]string, len(flavors))
+	sb := NewSelectBuilder()
+	saveResults := func() {
+		for i, f := range flavors {
+			s, _ := sb.BuildWithFlavor(f)
+			results[i] = append(results[i], s)
+		}
+	}
+
+	sb.Select("*")
+	sb.From("user")
+
+	// Case #1: limit by
+	sb.LimitBy(10, 20, "expression")
+	saveResults()
+
+	for i, result := range results {
+		fmt.Println()
+		fmt.Println(flavors[i])
+
+		for n, s := range result {
+			fmt.Printf("#%d: %s\n", n+1, s)
+		}
+	}
+
+	// Output:
+	// ClickHouse
+	// #1: SELECT * FROM user LIMIT 10 OFFSET 20 BY expression
+
+}
+
 func ExampleSelectBuilder_ForUpdate() {
 	sb := newSelectBuilder()
 	sb.Select("*").From("user").Where(

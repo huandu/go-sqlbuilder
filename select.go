@@ -53,6 +53,12 @@ func newSelectBuilder() *SelectBuilder {
 	}
 }
 
+type LimitBy struct {
+	limit  int
+	offset int
+	by     string
+}
+
 // SelectBuilder is a builder to build SELECT.
 type SelectBuilder struct {
 	Cond
@@ -70,6 +76,7 @@ type SelectBuilder struct {
 	order       string
 	limit       int
 	offset      int
+	limitBy     *LimitBy
 	forWhat     string
 
 	args *Args
@@ -194,6 +201,17 @@ func (sb *SelectBuilder) Offset(offset int) *SelectBuilder {
 	return sb
 }
 
+// LimitBy sets the LIMIT BY... in SELECT.
+func (sb *SelectBuilder) LimitBy(limit int, offset int, by string) *SelectBuilder {
+	sb.limitBy = &LimitBy{
+		limit:  limit,
+		offset: offset,
+		by:     by,
+	}
+	sb.marker = selectMarkerAfterLimit
+	return sb
+}
+
 // ForUpdate adds FOR UPDATE at the end of SELECT statement.
 func (sb *SelectBuilder) ForUpdate() *SelectBuilder {
 	sb.forWhat = "UPDATE"
@@ -302,6 +320,18 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 	switch flavor {
 	case MySQL, SQLite, ClickHouse:
+
+		if sb.limitBy != nil {
+			buf.WriteString(" LIMIT ")
+			buf.WriteString(strconv.Itoa(sb.limitBy.limit))
+			if sb.limitBy.offset >= 0 {
+				buf.WriteString(" OFFSET ")
+				buf.WriteString(strconv.Itoa(sb.limitBy.offset))
+			}
+			buf.WriteString(" BY ")
+			buf.WriteString(sb.limitBy.by)
+		}
+
 		if sb.limit >= 0 {
 			buf.WriteString(" LIMIT ")
 			buf.WriteString(strconv.Itoa(sb.limit))
