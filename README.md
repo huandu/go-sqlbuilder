@@ -321,6 +321,7 @@ fmt.Println(args)
 There are several modifiers for arguments.
 
 - `List(arg)` represents a list of arguments. If `arg` is a slice or array, e.g. a slice with 3 ints, it will be compiled to `?, ?, ?` and flattened in the final arguments as 3 ints. It's a tool for convenience. We can use it in the `IN` expression or `VALUES` of `INSERT INTO`.
+- `TupleNames(names)` and `Tuple(values)` represent the tuple syntax in SQL. See [Tuple](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#example-Tuple) for usage.
 - `Named(name, arg)` represents a named argument. It only works with `Build` or `BuildNamed` to define a named placeholder using syntax `${name}`.
 - `Raw(expr)` marks an `expr` as a plain string in SQL rather than an argument. When we build a builder, the value of raw expressions are copied in SQL string directly without leaving any `?` in SQL.
 
