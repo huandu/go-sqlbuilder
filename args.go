@@ -222,6 +222,10 @@ func (args *Args) compileArg(buf *stringBuilder, flavor Flavor, values []interfa
 	case rawArgs:
 		buf.WriteString(a.expr)
 	case listArgs:
+		if a.isTuple {
+			buf.WriteRune('(')
+		}
+
 		if len(a.args) > 0 {
 			values = args.compileArg(buf, flavor, values, a.args[0])
 		}
@@ -230,6 +234,11 @@ func (args *Args) compileArg(buf *stringBuilder, flavor Flavor, values []interfa
 			buf.WriteString(", ")
 			values = args.compileArg(buf, flavor, values, a.args[i])
 		}
+
+		if a.isTuple {
+			buf.WriteRune(')')
+		}
+
 	default:
 		switch flavor {
 		case MySQL, SQLite, CQL, ClickHouse, Presto:

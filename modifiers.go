@@ -47,7 +47,12 @@ func flatten(v reflect.Value) (elem interface{}, flattened []interface{}) {
 	}
 
 	if k != reflect.Slice && k != reflect.Array {
-		return v.Interface(), nil
+		if !v.IsValid() || !v.CanInterface() {
+			return
+		}
+
+		elem = v.Interface()
+		return elem, nil
 	}
 
 	for i, l := 0, v.Len(); i < l; i++ {
@@ -73,13 +78,35 @@ func Raw(expr string) interface{} {
 }
 
 type listArgs struct {
-	args []interface{}
+	args    []interface{}
+	isTuple bool
 }
 
 // List marks arg as a list of data.
 // If arg is `[]int{1, 2, 3}`, it will be compiled to `?, ?, ?` with args `[1 2 3]`.
 func List(arg interface{}) interface{} {
-	return listArgs{Flatten(arg)}
+	return listArgs{
+		args: Flatten(arg),
+	}
+}
+
+// Tuple wraps values into a tuple and can be used as a single value.
+func Tuple(values ...interface{}) interface{} {
+	return listArgs{
+		args:    values,
+		isTuple: true,
+	}
+}
+
+// TupleNames joins names with tuple format.
+// The names is not escaped. Use `EscapeAll` to escape them if necessary.
+func TupleNames(names ...string) string {
+	buf := &strings.Builder{}
+	buf.WriteRune('(')
+	buf.WriteString(strings.Join(names, ", "))
+	buf.WriteRune(')')
+
+	return buf.String()
 }
 
 type namedArgs struct {
