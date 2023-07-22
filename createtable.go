@@ -100,20 +100,25 @@ func (ctb *CreateTableBuilder) Build() (sql string, args []interface{}) {
 // BuildWithFlavor returns compiled CREATE TABLE string and args with flavor and initial args.
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (ctb *CreateTableBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	ctb.injection.WriteTo(buf, createTableMarkerInit)
-	buf.WriteString(ctb.verb)
 
-	if ctb.ifNotExists {
-		buf.WriteString(" IF NOT EXISTS")
+	if len(ctb.verb) > 0 {
+		buf.WriteLeadingString(ctb.verb)
 	}
 
-	buf.WriteRune(' ')
-	buf.WriteString(ctb.table)
+	if ctb.ifNotExists {
+		buf.WriteLeadingString("IF NOT EXISTS")
+	}
+
+	if len(ctb.table) > 0 {
+		buf.WriteLeadingString(ctb.table)
+	}
+
 	ctb.injection.WriteTo(buf, createTableMarkerAfterCreate)
 
 	if len(ctb.defs) > 0 {
-		buf.WriteString(" (")
+		buf.WriteLeadingString("(")
 
 		defs := make([]string, 0, len(ctb.defs))
 
@@ -128,15 +133,13 @@ func (ctb *CreateTableBuilder) BuildWithFlavor(flavor Flavor, initialArg ...inte
 	}
 
 	if len(ctb.options) > 0 {
-		buf.WriteRune(' ')
-
 		opts := make([]string, 0, len(ctb.options))
 
 		for _, opt := range ctb.options {
 			opts = append(opts, strings.Join(opt, " "))
 		}
 
-		buf.WriteString(strings.Join(opts, ", "))
+		buf.WriteLeadingString(strings.Join(opts, ", "))
 		ctb.injection.WriteTo(buf, createTableMarkerAfterOption)
 	}
 

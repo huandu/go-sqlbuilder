@@ -234,35 +234,40 @@ func (sb *SelectBuilder) Build() (sql string, args []interface{}) {
 // BuildWithFlavor returns compiled SELECT string and args with flavor and initial args.
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	sb.injection.WriteTo(buf, selectMarkerInit)
-	buf.WriteString("SELECT ")
 
-	if sb.distinct {
-		buf.WriteString("DISTINCT ")
+	if len(sb.selectCols) > 0 {
+		buf.WriteLeadingString("SELECT ")
+
+		if sb.distinct {
+			buf.WriteString("DISTINCT ")
+		}
+
+		buf.WriteString(strings.Join(sb.selectCols, ", "))
 	}
 
-	buf.WriteString(strings.Join(sb.selectCols, ", "))
 	sb.injection.WriteTo(buf, selectMarkerAfterSelect)
 
-	buf.WriteString(" FROM ")
-	buf.WriteString(strings.Join(sb.tables, ", "))
+	if len(sb.tables) > 0 {
+		buf.WriteLeadingString("FROM ")
+		buf.WriteString(strings.Join(sb.tables, ", "))
+	}
+
 	sb.injection.WriteTo(buf, selectMarkerAfterFrom)
 
 	for i := range sb.joinTables {
 		if option := sb.joinOptions[i]; option != "" {
-			buf.WriteRune(' ')
-			buf.WriteString(string(option))
+			buf.WriteLeadingString(string(option))
 		}
 
-		buf.WriteString(" JOIN ")
+		buf.WriteLeadingString("JOIN ")
 		buf.WriteString(sb.joinTables[i])
 
 		if exprs := sb.joinExprs[i]; len(exprs) > 0 {
 			buf.WriteString(" ON ")
 			buf.WriteString(strings.Join(sb.joinExprs[i], " AND "))
 		}
-
 	}
 
 	if len(sb.joinTables) > 0 {
@@ -270,14 +275,14 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	}
 
 	if len(sb.whereExprs) > 0 {
-		buf.WriteString(" WHERE ")
+		buf.WriteLeadingString("WHERE ")
 		buf.WriteString(strings.Join(sb.whereExprs, " AND "))
 
 		sb.injection.WriteTo(buf, selectMarkerAfterWhere)
 	}
 
 	if len(sb.groupByCols) > 0 {
-		buf.WriteString(" GROUP BY ")
+		buf.WriteLeadingString("GROUP BY ")
 		buf.WriteString(strings.Join(sb.groupByCols, ", "))
 
 		if len(sb.havingExprs) > 0 {
@@ -289,7 +294,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	}
 
 	if len(sb.orderByCols) > 0 {
-		buf.WriteString(" ORDER BY ")
+		buf.WriteLeadingString("ORDER BY ")
 		buf.WriteString(strings.Join(sb.orderByCols, ", "))
 
 		if sb.order != "" {
@@ -303,27 +308,27 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	switch flavor {
 	case MySQL, SQLite, ClickHouse:
 		if sb.limit >= 0 {
-			buf.WriteString(" LIMIT ")
+			buf.WriteLeadingString("LIMIT ")
 			buf.WriteString(strconv.Itoa(sb.limit))
 
 			if sb.offset >= 0 {
-				buf.WriteString(" OFFSET ")
+				buf.WriteLeadingString("OFFSET ")
 				buf.WriteString(strconv.Itoa(sb.offset))
 			}
 		}
 	case CQL:
 		if sb.limit >= 0 {
-			buf.WriteString(" LIMIT ")
+			buf.WriteLeadingString("LIMIT ")
 			buf.WriteString(strconv.Itoa(sb.limit))
 		}
 	case PostgreSQL, Presto:
 		if sb.limit >= 0 {
-			buf.WriteString(" LIMIT ")
+			buf.WriteLeadingString("LIMIT ")
 			buf.WriteString(strconv.Itoa(sb.limit))
 		}
 
 		if sb.offset >= 0 {
-			buf.WriteString(" OFFSET ")
+			buf.WriteLeadingString("OFFSET ")
 			buf.WriteString(strconv.Itoa(sb.offset))
 		}
 
@@ -331,21 +336,21 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		// If ORDER BY is not set, sort column #1 by default.
 		// It's required to make OFFSET...FETCH work.
 		if len(sb.orderByCols) == 0 && (sb.limit >= 0 || sb.offset >= 0) {
-			buf.WriteString(" ORDER BY 1")
+			buf.WriteLeadingString("ORDER BY 1")
 		}
 
 		if sb.offset >= 0 {
-			buf.WriteString(" OFFSET ")
+			buf.WriteLeadingString("OFFSET ")
 			buf.WriteString(strconv.Itoa(sb.offset))
 			buf.WriteString(" ROWS")
 		}
 
 		if sb.limit >= 0 {
 			if sb.offset < 0 {
-				buf.WriteString(" OFFSET 0 ROWS")
+				buf.WriteLeadingString("OFFSET 0 ROWS")
 			}
 
-			buf.WriteString(" FETCH NEXT ")
+			buf.WriteLeadingString("FETCH NEXT ")
 			buf.WriteString(strconv.Itoa(sb.limit))
 			buf.WriteString(" ROWS ONLY")
 		}
@@ -356,7 +361,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	}
 
 	if sb.forWhat != "" {
-		buf.WriteString(" FOR ")
+		buf.WriteLeadingString("FOR ")
 		buf.WriteString(sb.forWhat)
 
 		sb.injection.WriteTo(buf, selectMarkerAfterFor)

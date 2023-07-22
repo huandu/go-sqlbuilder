@@ -129,20 +129,18 @@ func (ub *UnionBuilder) Build() (sql string, args []interface{}) {
 // BuildWithFlavor returns compiled SELECT string and args with flavor and initial args.
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	ub.injection.WriteTo(buf, unionMarkerInit)
 
 	if len(ub.builders) > 0 {
 		needParen := flavor != SQLite
 
 		if needParen {
-			buf.WriteRune('(')
-		}
-
-		buf.WriteString(ub.Var(ub.builders[0]))
-
-		if needParen {
+			buf.WriteLeadingString("(")
+			buf.WriteString(ub.Var(ub.builders[0]))
 			buf.WriteRune(')')
+		} else {
+			buf.WriteLeadingString(ub.Var(ub.builders[0]))
 		}
 
 		for _, b := range ub.builders[1:] {
@@ -163,7 +161,7 @@ func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 	ub.injection.WriteTo(buf, unionMarkerAfterUnion)
 
 	if len(ub.orderByCols) > 0 {
-		buf.WriteString(" ORDER BY ")
+		buf.WriteLeadingString("ORDER BY ")
 		buf.WriteString(strings.Join(ub.orderByCols, ", "))
 
 		if ub.order != "" {
@@ -175,14 +173,14 @@ func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 	}
 
 	if ub.limit >= 0 {
-		buf.WriteString(" LIMIT ")
+		buf.WriteLeadingString("LIMIT ")
 		buf.WriteString(strconv.Itoa(ub.limit))
 
 	}
 
 	if MySQL == flavor && ub.limit >= 0 || PostgreSQL == flavor {
 		if ub.offset >= 0 {
-			buf.WriteString(" OFFSET ")
+			buf.WriteLeadingString("OFFSET ")
 			buf.WriteString(strconv.Itoa(ub.offset))
 		}
 	}

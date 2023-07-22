@@ -14,7 +14,7 @@ type Cond struct {
 
 // Equal represents "field = value".
 func (c *Cond) Equal(field string, value interface{}) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" = ")
 	buf.WriteString(c.Args.Add(value))
@@ -28,7 +28,7 @@ func (c *Cond) E(field string, value interface{}) string {
 
 // NotEqual represents "field <> value".
 func (c *Cond) NotEqual(field string, value interface{}) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" <> ")
 	buf.WriteString(c.Args.Add(value))
@@ -42,7 +42,7 @@ func (c *Cond) NE(field string, value interface{}) string {
 
 // GreaterThan represents "field > value".
 func (c *Cond) GreaterThan(field string, value interface{}) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" > ")
 	buf.WriteString(c.Args.Add(value))
@@ -56,7 +56,7 @@ func (c *Cond) G(field string, value interface{}) string {
 
 // GreaterEqualThan represents "field >= value".
 func (c *Cond) GreaterEqualThan(field string, value interface{}) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" >= ")
 	buf.WriteString(c.Args.Add(value))
@@ -70,7 +70,7 @@ func (c *Cond) GE(field string, value interface{}) string {
 
 // LessThan represents "field < value".
 func (c *Cond) LessThan(field string, value interface{}) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" < ")
 	buf.WriteString(c.Args.Add(value))
@@ -84,7 +84,7 @@ func (c *Cond) L(field string, value interface{}) string {
 
 // LessEqualThan represents "field <= value".
 func (c *Cond) LessEqualThan(field string, value interface{}) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" <= ")
 	buf.WriteString(c.Args.Add(value))
@@ -104,7 +104,7 @@ func (c *Cond) In(field string, value ...interface{}) string {
 		vs = append(vs, c.Args.Add(v))
 	}
 
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" IN (")
 	buf.WriteString(strings.Join(vs, ", "))
@@ -120,7 +120,7 @@ func (c *Cond) NotIn(field string, value ...interface{}) string {
 		vs = append(vs, c.Args.Add(v))
 	}
 
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" NOT IN (")
 	buf.WriteString(strings.Join(vs, ", "))
@@ -130,7 +130,7 @@ func (c *Cond) NotIn(field string, value ...interface{}) string {
 
 // Like represents "field LIKE value".
 func (c *Cond) Like(field string, value interface{}) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" LIKE ")
 	buf.WriteString(c.Args.Add(value))
@@ -139,7 +139,7 @@ func (c *Cond) Like(field string, value interface{}) string {
 
 // NotLike represents "field NOT LIKE value".
 func (c *Cond) NotLike(field string, value interface{}) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" NOT LIKE ")
 	buf.WriteString(c.Args.Add(value))
@@ -148,7 +148,7 @@ func (c *Cond) NotLike(field string, value interface{}) string {
 
 // IsNull represents "field IS NULL".
 func (c *Cond) IsNull(field string) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" IS NULL")
 	return buf.String()
@@ -156,7 +156,7 @@ func (c *Cond) IsNull(field string) string {
 
 // IsNotNull represents "field IS NOT NULL".
 func (c *Cond) IsNotNull(field string) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" IS NOT NULL")
 	return buf.String()
@@ -164,7 +164,7 @@ func (c *Cond) IsNotNull(field string) string {
 
 // Between represents "field BETWEEN lower AND upper".
 func (c *Cond) Between(field string, lower, upper interface{}) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" BETWEEN ")
 	buf.WriteString(c.Args.Add(lower))
@@ -175,7 +175,7 @@ func (c *Cond) Between(field string, lower, upper interface{}) string {
 
 // NotBetween represents "field NOT BETWEEN lower AND upper".
 func (c *Cond) NotBetween(field string, lower, upper interface{}) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" NOT BETWEEN ")
 	buf.WriteString(c.Args.Add(lower))
@@ -186,7 +186,7 @@ func (c *Cond) NotBetween(field string, lower, upper interface{}) string {
 
 // Or represents OR logic like "expr1 OR expr2 OR expr3".
 func (c *Cond) Or(orExpr ...string) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString("(")
 	buf.WriteString(strings.Join(orExpr, " OR "))
 	buf.WriteString(")")
@@ -195,7 +195,7 @@ func (c *Cond) Or(orExpr ...string) string {
 
 // And represents AND logic like "expr1 AND expr2 AND expr3".
 func (c *Cond) And(andExpr ...string) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString("(")
 	buf.WriteString(strings.Join(andExpr, " AND "))
 	buf.WriteString(")")
@@ -204,7 +204,7 @@ func (c *Cond) And(andExpr ...string) string {
 
 // Exists represents "EXISTS (subquery)".
 func (c *Cond) Exists(subquery interface{}) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString("EXISTS (")
 	buf.WriteString(c.Args.Add(subquery))
 	buf.WriteString(")")
@@ -213,7 +213,7 @@ func (c *Cond) Exists(subquery interface{}) string {
 
 // NotExists represents "NOT EXISTS (subquery)".
 func (c *Cond) NotExists(subquery interface{}) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString("NOT EXISTS (")
 	buf.WriteString(c.Args.Add(subquery))
 	buf.WriteString(")")
@@ -228,7 +228,7 @@ func (c *Cond) Any(field, op string, value ...interface{}) string {
 		vs = append(vs, c.Args.Add(v))
 	}
 
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" ")
 	buf.WriteString(op)
@@ -246,7 +246,7 @@ func (c *Cond) All(field, op string, value ...interface{}) string {
 		vs = append(vs, c.Args.Add(v))
 	}
 
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" ")
 	buf.WriteString(op)
@@ -264,7 +264,7 @@ func (c *Cond) Some(field, op string, value ...interface{}) string {
 		vs = append(vs, c.Args.Add(v))
 	}
 
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" ")
 	buf.WriteString(op)

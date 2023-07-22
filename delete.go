@@ -113,21 +113,25 @@ func (db *DeleteBuilder) Build() (sql string, args []interface{}) {
 // BuildWithFlavor returns compiled DELETE string and args with flavor and initial args.
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (db *DeleteBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	db.injection.WriteTo(buf, deleteMarkerInit)
-	buf.WriteString("DELETE FROM ")
-	buf.WriteString(db.table)
+
+	if len(db.table) > 0 {
+		buf.WriteLeadingString("DELETE FROM ")
+		buf.WriteString(db.table)
+	}
+
 	db.injection.WriteTo(buf, deleteMarkerAfterDeleteFrom)
 
 	if len(db.whereExprs) > 0 {
-		buf.WriteString(" WHERE ")
+		buf.WriteLeadingString("WHERE ")
 		buf.WriteString(strings.Join(db.whereExprs, " AND "))
 
 		db.injection.WriteTo(buf, deleteMarkerAfterWhere)
 	}
 
 	if len(db.orderByCols) > 0 {
-		buf.WriteString(" ORDER BY ")
+		buf.WriteLeadingString("ORDER BY ")
 		buf.WriteString(strings.Join(db.orderByCols, ", "))
 
 		if db.order != "" {
@@ -139,7 +143,7 @@ func (db *DeleteBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	}
 
 	if db.limit >= 0 {
-		buf.WriteString(" LIMIT ")
+		buf.WriteLeadingString("LIMIT ")
 		buf.WriteString(strconv.Itoa(db.limit))
 
 		db.injection.WriteTo(buf, deleteMarkerAfterLimit)

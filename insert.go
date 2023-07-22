@@ -117,29 +117,36 @@ func (ib *InsertBuilder) Build() (sql string, args []interface{}) {
 // BuildWithFlavor returns compiled INSERT string and args with flavor and initial args.
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	ib.injection.WriteTo(buf, insertMarkerInit)
-	buf.WriteString(ib.verb)
-	buf.WriteString(" INTO ")
-	buf.WriteString(ib.table)
+
+	if len(ib.table) > 0 {
+		buf.WriteLeadingString(ib.verb)
+		buf.WriteString(" INTO ")
+		buf.WriteString(ib.table)
+	}
+
 	ib.injection.WriteTo(buf, insertMarkerAfterInsertInto)
 
 	if len(ib.cols) > 0 {
-		buf.WriteString(" (")
+		buf.WriteLeadingString("(")
 		buf.WriteString(strings.Join(ib.cols, ", "))
 		buf.WriteString(")")
 
 		ib.injection.WriteTo(buf, insertMarkerAfterCols)
 	}
 
-	buf.WriteString(" VALUES ")
-	values := make([]string, 0, len(ib.values))
+	if len(ib.values) > 0 {
+		buf.WriteLeadingString("VALUES ")
+		values := make([]string, 0, len(ib.values))
 
-	for _, v := range ib.values {
-		values = append(values, fmt.Sprintf("(%v)", strings.Join(v, ", ")))
+		for _, v := range ib.values {
+			values = append(values, fmt.Sprintf("(%v)", strings.Join(v, ", ")))
+		}
+
+		buf.WriteString(strings.Join(values, ", "))
 	}
 
-	buf.WriteString(strings.Join(values, ", "))
 	ib.injection.WriteTo(buf, insertMarkerAfterValues)
 
 	return ib.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
