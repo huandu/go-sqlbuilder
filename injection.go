@@ -29,22 +29,13 @@ func (injection *injection) SQL(marker injectionMarker, sql string) {
 
 // WriteTo joins all SQL strings at the same marker value with blank (" ")
 // and writes the joined value to buf.
-func (injection *injection) WriteTo(buf *strings.Builder, marker injectionMarker) {
+func (injection *injection) WriteTo(buf *stringBuilder, marker injectionMarker) {
 	sqls := injection.markerSQLs[marker]
-	notEmpty := buf.Len() > 0
 
 	if len(sqls) == 0 {
 		return
 	}
 
-	if notEmpty {
-		buf.WriteRune(' ')
-	}
-
 	s := strings.Join(sqls, " ")
-	buf.WriteString(s)
-
-	if !notEmpty {
-		buf.WriteRune(' ')
-	}
+	buf.WriteLeadingString(s)
 }

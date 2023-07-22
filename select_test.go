@@ -275,3 +275,21 @@ func ExampleSelectBuilder_SQL() {
 	// Output:
 	// /* before */ SELECT u.id, u.name, c.type, p.nickname /* after select */ FROM user u /* after from */ JOIN contract c ON u.id = c.user_id RIGHT OUTER JOIN person p ON u.id = p.user_id /* after join */ WHERE u.modified_at > u.created_at /* after where */ ORDER BY id /* after order by */ LIMIT 10 /* after limit */ FOR SHARE /* after for */
 }
+
+// Example for issue #115.
+func ExampleSelectBuilder_customSELECT() {
+	sb := NewSelectBuilder()
+
+	// Set a custom SELECT clause.
+	sb.SQL("SELECT id, name FROM user").Where(
+		sb.In("id", 1, 2, 3),
+	)
+
+	s, args := sb.Build()
+	fmt.Println(s)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT id, name FROM user WHERE id IN (?, ?, ?)
+	// [1 2 3]
+}

@@ -171,36 +171,42 @@ func (ub *UpdateBuilder) Build() (sql string, args []interface{}) {
 // BuildWithFlavor returns compiled UPDATE string and args with flavor and initial args.
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (ub *UpdateBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	ub.injection.WriteTo(buf, updateMarkerInit)
-	buf.WriteString("UPDATE ")
-	buf.WriteString(ub.table)
+
+	if len(ub.table) > 0 {
+		buf.WriteLeadingString("UPDATE ")
+		buf.WriteString(ub.table)
+	}
+
 	ub.injection.WriteTo(buf, updateMarkerAfterUpdate)
 
-	buf.WriteString(" SET ")
-	buf.WriteString(strings.Join(ub.assignments, ", "))
+	if len(ub.assignments) > 0 {
+		buf.WriteLeadingString("SET ")
+		buf.WriteString(strings.Join(ub.assignments, ", "))
+	}
+
 	ub.injection.WriteTo(buf, updateMarkerAfterSet)
 
 	if len(ub.whereExprs) > 0 {
-		buf.WriteString(" WHERE ")
+		buf.WriteLeadingString("WHERE ")
 		buf.WriteString(strings.Join(ub.whereExprs, " AND "))
 		ub.injection.WriteTo(buf, updateMarkerAfterWhere)
 	}
 
 	if len(ub.orderByCols) > 0 {
-		buf.WriteString(" ORDER BY ")
+		buf.WriteLeadingString("ORDER BY ")
 		buf.WriteString(strings.Join(ub.orderByCols, ", "))
 
 		if ub.order != "" {
-			buf.WriteRune(' ')
-			buf.WriteString(ub.order)
+			buf.WriteLeadingString(ub.order)
 		}
 
 		ub.injection.WriteTo(buf, updateMarkerAfterOrderBy)
 	}
 
 	if ub.limit >= 0 {
-		buf.WriteString(" LIMIT ")
+		buf.WriteLeadingString("LIMIT ")
 		buf.WriteString(strconv.Itoa(ub.limit))
 
 		ub.injection.WriteTo(buf, updateMarkerAfterLimit)
