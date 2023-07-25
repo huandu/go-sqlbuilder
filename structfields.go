@@ -28,6 +28,7 @@ type structField struct {
 	As       string
 	Tags     []string
 	IsQuoted bool
+	DBTag    string
 
 	omitEmptyTags omitEmptyTagMap
 }
@@ -95,10 +96,10 @@ func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix st
 
 		if dbtag == "" {
 			alias = field.Name
+		}
 
-			if mapper != nil {
-				alias = mapper(alias)
-			}
+		if mapper != nil {
+			alias = mapper(alias)
 		}
 
 		// Parse FieldOpt.
@@ -137,6 +138,7 @@ func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix st
 			As:            fieldas,
 			Tags:          tags,
 			IsQuoted:      isQuoted,
+			DBTag:         dbtag,
 			omitEmptyTags: omitEmptyTags,
 		}
 
