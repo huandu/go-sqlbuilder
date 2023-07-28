@@ -86,20 +86,17 @@ func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix st
 		}
 
 		// Parse DBTag.
-		dbtag := field.Tag.Get(DBTag)
+		alias, dbtag := DefaultGetAlias(&field)
 
-		if dbtag == "-" {
+		if alias == "-" {
 			continue
 		}
 
-		alias := dbtag
-
-		if dbtag == "" {
+		if alias == "" {
 			alias = field.Name
-		}
-
-		if mapper != nil {
-			alias = mapper(alias)
+			if mapper != nil {
+				alias = mapper(alias)
+			}
 		}
 
 		// Parse FieldOpt.

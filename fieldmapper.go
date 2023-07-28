@@ -1,6 +1,8 @@
 package sqlbuilder
 
 import (
+	"reflect"
+
 	"github.com/huandu/xstrings"
 )
 
@@ -13,7 +15,18 @@ var (
 	//
 	// Field mapper is called only once on a Struct when the Struct is used to create builder for the first time.
 	DefaultFieldMapper FieldMapperFunc
+
+	// DefaultGetAlias is the default alias and dbtag get func
+	DefaultGetAlias GetAliasFunc
 )
+
+func init() {
+	DefaultGetAlias = func(field *reflect.StructField) (alias string, dbtag string) {
+		dbtag = field.Tag.Get(DBTag)
+		alias = dbtag
+		return
+	}
+}
 
 // FieldMapperFunc is a func to map struct field names to column names,
 // which will be used in query as columns.
@@ -28,3 +41,6 @@ type FieldMapperFunc func(name string) string
 func SnakeCaseMapper(field string) string {
 	return xstrings.ToSnakeCase(field)
 }
+
+// GetAliasFunc is a func to get alias and dbtag
+type GetAliasFunc func(field *reflect.StructField) (alias string, dbtag string)
