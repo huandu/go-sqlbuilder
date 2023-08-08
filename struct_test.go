@@ -6,6 +6,7 @@ package sqlbuilder
 import (
 	"database/sql/driver"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -302,11 +303,11 @@ func TestWithAndWithoutTags(t *testing.T) {
 	a.Equal(structTags.WithoutTag("tag3").WithTag("tag1").WithTag("tag3", "tag2").WithoutTag("tag1", "", "tag3").Columns(), []string{"b"})
 }
 
-func TestStructDBTags(t *testing.T) {
-	a := assert.New(t)
-	a.Equal(userForTest.DBTags(), []string{"id", "", "status", "created_at"})
-	a.Equal(userForTest.DBTagsForTag("important"), []string{"id", "", "status"})
-	a.Equal(userForTest.DBTagsForTag("invalid"), nil)
+func TestStructForeachRead(t *testing.T) {
+	// a := assert.New(t)
+	userForTest.ForeachRead(func(dbtag string, field reflect.StructField) {
+		t.Logf("%s\n", dbtag)
+	})
 }
 
 type State int

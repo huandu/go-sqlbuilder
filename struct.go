@@ -704,28 +704,25 @@ func (s *Struct) valuesWithTags(with, without []string, value interface{}) (valu
 	return
 }
 
-// DBTags returns db tags of s for all exported struct fields.
-func (s *Struct) DBTags() (dbTags []string) {
-	return s.dbTagsWithTags(s.withTags, s.withoutTags)
+// ForeachRead foreach tags.
+func (s *Struct) ForeachRead(trans func(dbtag string, field reflect.StructField)) {
+	s.foreachReadWithTags(s.withTags, s.withoutTags, trans)
 }
 
-// DBTagsForTag returns db tags of the s tagged with tag.
-func (s *Struct) DBTagsForTag(tag string) (dbTags []string) {
-	return s.dbTagsWithTags([]string{tag}, nil)
+// ForeachReadForTag foreach tags with tag.
+func (s *Struct) ForeachReadForTag(tag string, trans func(dbtag string, field reflect.StructField)) {
+	s.foreachReadWithTags([]string{tag}, nil, trans)
 }
 
-func (s *Struct) dbTagsWithTags(with, without []string) (dbTags []string) {
+func (s *Struct) foreachReadWithTags(with, without []string, trans func(dbtag string, field reflect.StructField)) {
 	sfs := s.structFieldsParser()
 	tagged := sfs.FilterTags(with, without)
 	if tagged == nil {
 		return
 	}
-
-	dbTags = make([]string, 0, len(tagged.ForRead))
 	for _, sf := range tagged.ForRead {
-		dbTags = append(dbTags, sf.DBTag)
+		trans(sf.DBTag, sf.Field)
 	}
-	return
 }
 
 func dereferencedType(t reflect.Type) reflect.Type {

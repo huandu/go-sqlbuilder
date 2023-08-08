@@ -29,6 +29,7 @@ type structField struct {
 	Tags     []string
 	IsQuoted bool
 	DBTag    string
+	Field    reflect.StructField
 
 	omitEmptyTags omitEmptyTagMap
 }
@@ -136,6 +137,7 @@ func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix st
 			Tags:          tags,
 			IsQuoted:      isQuoted,
 			DBTag:         dbtag,
+			Field:         field,
 			omitEmptyTags: omitEmptyTags,
 		}
 
