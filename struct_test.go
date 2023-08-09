@@ -305,7 +305,7 @@ func TestWithAndWithoutTags(t *testing.T) {
 
 func TestStructForeachRead(t *testing.T) {
 	// a := assert.New(t)
-	userForTest.ForeachRead(func(dbtag string, field reflect.StructField) {
+	userForTest.ForeachRead(func(dbtag string, isQuoted bool, field reflect.StructField) {
 		t.Logf("%s\n", dbtag)
 	})
 }

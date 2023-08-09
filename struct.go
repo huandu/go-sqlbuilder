@@ -705,23 +705,23 @@ func (s *Struct) valuesWithTags(with, without []string, value interface{}) (valu
 }
 
 // ForeachRead foreach tags.
-func (s *Struct) ForeachRead(trans func(dbtag string, field reflect.StructField)) {
+func (s *Struct) ForeachRead(trans func(dbtag string, isQuoted bool, field reflect.StructField)) {
 	s.foreachReadWithTags(s.withTags, s.withoutTags, trans)
 }
 
 // ForeachReadForTag foreach tags with tag.
-func (s *Struct) ForeachReadForTag(tag string, trans func(dbtag string, field reflect.StructField)) {
+func (s *Struct) ForeachReadForTag(tag string, trans func(dbtag string, isQuoted bool, field reflect.StructField)) {
 	s.foreachReadWithTags([]string{tag}, nil, trans)
 }
 
-func (s *Struct) foreachReadWithTags(with, without []string, trans func(dbtag string, field reflect.StructField)) {
+func (s *Struct) foreachReadWithTags(with, without []string, trans func(dbtag string, isQuoted bool, field reflect.StructField)) {
 	sfs := s.structFieldsParser()
 	tagged := sfs.FilterTags(with, without)
 	if tagged == nil {
 		return
 	}
 	for _, sf := range tagged.ForRead {
-		trans(sf.DBTag, sf.Field)
+		trans(sf.DBTag, sf.IsQuoted, sf.Field)
 	}
 }
 
