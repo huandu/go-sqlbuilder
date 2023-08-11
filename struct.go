@@ -725,6 +725,27 @@ func (s *Struct) foreachReadWithTags(with, without []string, trans func(dbtag st
 	}
 }
 
+// ForeachWrite foreach tags.
+func (s *Struct) ForeachWrite(trans func(dbtag string, isQuoted bool, field reflect.StructField)) {
+	s.foreachWriteWithTags(s.withTags, s.withoutTags, trans)
+}
+
+// ForeachWriteForTag foreach tags with tag.
+func (s *Struct) ForeachWriteForTag(tag string, trans func(dbtag string, isQuoted bool, field reflect.StructField)) {
+	s.foreachWriteWithTags([]string{tag}, nil, trans)
+}
+
+func (s *Struct) foreachWriteWithTags(with, without []string, trans func(dbtag string, isQuoted bool, field reflect.StructField)) {
+	sfs := s.structFieldsParser()
+	tagged := sfs.FilterTags(with, without)
+	if tagged == nil {
+		return
+	}
+	for _, sf := range tagged.ForWrite {
+		trans(sf.DBTag, sf.IsQuoted, sf.Field)
+	}
+}
+
 func dereferencedType(t reflect.Type) reflect.Type {
 	for k := t.Kind(); k == reflect.Ptr || k == reflect.Interface; k = t.Kind() {
 		t = t.Elem()
