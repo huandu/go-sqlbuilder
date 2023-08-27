@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
+	"strings"
 )
 
 var (
@@ -308,7 +309,7 @@ func (s *Struct) selectFromWithTags(table string, with, without []string) (sb *S
 	cols := make([]string, 0, len(tagged.ForRead))
 
 	for _, sf := range tagged.ForRead {
-		if s.Flavor != CQL {
+		if s.Flavor != CQL && !strings.ContainsRune(sf.Alias, '.') {
 			buf.WriteString(table)
 			buf.WriteRune('.')
 		}

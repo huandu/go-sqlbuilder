@@ -138,3 +138,21 @@ func ExampleFlavor_Interpolate_cql() {
 	// SELECT name FROM user WHERE id = 1234 AND name = 'Charmy Liu'
 	// <nil>
 }
+
+func ExampleFlavor_Interpolate_oracle() {
+	sb := Oracle.NewSelectBuilder()
+	sb.Select("name").From("user").Where(
+		sb.E("id", 1234),
+		sb.E("name", "Charmy Liu"),
+		sb.E("enabled", true),
+	)
+	sql, args := sb.Build()
+	query, err := Oracle.Interpolate(sql, args)
+
+	fmt.Println(query)
+	fmt.Println(err)
+
+	// Output:
+	// SELECT name FROM user WHERE id = 1234 AND name = 'Charmy Liu' AND enabled = 1
+	// <nil>
+}

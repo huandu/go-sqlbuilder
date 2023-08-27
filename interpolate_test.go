@@ -283,6 +283,47 @@ func TestFlavorInterpolate(t *testing.T) {
 			"SELECT ?", []interface{}{errorValuer(1)},
 			"", ErrErrorValuer,
 		},
+
+		{
+			Oracle,
+			"SELECT * FROM a WHERE name = :3 AND state IN (:2, :4, :1, :6, :5)", []interface{}{"I'm fine", 42, int8(8), int16(-16), int32(32), int64(64)},
+			"SELECT * FROM a WHERE name = 8 AND state IN (42, -16, 'I\\'m fine', 64, 32)", nil,
+		},
+		{
+			Oracle,
+			"SELECT * FROM :abc::1:abc:1:1 WHERE name = \":1\" AND state IN (:2, ':1', :3, :6, :5, :4, :2) :3", []interface{}{"\r\n\b\t\x1a\x00\\\"'", uint(42), uint8(8), uint16(16), uint32(32), uint64(64), "useless"},
+			"SELECT * FROM :abc::1:abc:1'\\r\\n\\b\\t\\Z\\0\\\\\\\"\\'' WHERE name = \":1\" AND state IN (42, ':1', 8, 64, 32, 16, 42) 8", nil,
+		},
+		{
+			Oracle,
+			"SELECT :1, :2, :3, :4, :5, :6, :7, :8, :9, :11, :a", []interface{}{true, false, float32(1.234567), float64(9.87654321), []byte(nil), []byte("I'm bytes"), dt, time.Time{}, nil, 10, 11, 12},
+			"SELECT 1, 0, 1.234567, 9.87654321, NULL, hextoraw('49276D206279746573'), to_timestamp('2019-04-24 12:23:34.123457', 'YYYY-MM-DD HH24:MI:SS.FF'), '0000-00-00', NULL, 11, :a", nil,
+		},
+		{
+			Oracle,
+			"SELECT '\\':1', \"\\\":1\", `:1`, \\:1a, ::1::, :a :b: :a : :1:b:1:1 :a: :", []interface{}{Oracle},
+			"SELECT '\\':1', \"\\\":1\", `'Oracle'`, \\'Oracle'a, ::1::, :a :b: :a : :1:b:1'Oracle' :a: :", nil,
+		},
+		{
+			Oracle,
+			"SELECT * FROM a WHERE name = 'Huan''Du'':1' AND desc = :1", []interface{}{"c'mon"},
+			"SELECT * FROM a WHERE name = 'Huan''Du'':1' AND desc = 'c\\'mon'", nil,
+		},
+		{
+			Oracle,
+			"SELECT :1", nil,
+			"", ErrInterpolateMissingArgs,
+		},
+		{
+			Oracle,
+			"SELECT :1", []interface{}{complex(1, 2)},
+			"", ErrInterpolateUnsupportedArgs,
+		},
+		{
+			Oracle,
+			"SELECT :12345678901234567890", nil,
+			"", errOutOfRange,
+		},
 	}
 
 	for idx, c := range cases {
