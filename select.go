@@ -249,6 +249,21 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 	sb.injection.WriteTo(buf, selectMarkerAfterSelect)
 
+	if flavor == Oracle && sb.limit >= 0 && sb.offset > 0 {
+		if len(sb.selectCols) > 0 {
+			buf.WriteLeadingString("FROM ( SELECT ")
+
+			if sb.distinct {
+				buf.WriteString("DISTINCT ")
+			}
+
+			var selectCols = make([]string, 0, len(sb.selectCols)+1)
+			selectCols = append(selectCols, sb.selectCols...)
+			selectCols = append(selectCols, "ROWNUM r ")
+			buf.WriteString(strings.Join(selectCols, ", "))
+		}
+	}
+
 	if len(sb.tables) > 0 {
 		buf.WriteLeadingString("FROM ")
 		buf.WriteString(strings.Join(sb.tables, ", "))
@@ -272,6 +287,14 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 	if len(sb.joinTables) > 0 {
 		sb.injection.WriteTo(buf, selectMarkerAfterJoin)
+	}
+
+	if flavor == Oracle && sb.limit >= 0 {
+		upper := sb.limit
+		if sb.offset >= 0 {
+			upper += sb.offset
+		}
+		sb.whereExprs = append(sb.whereExprs, sb.LE("ROWNUM", upper))
 	}
 
 	if len(sb.whereExprs) > 0 {
@@ -353,6 +376,16 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			buf.WriteLeadingString("FETCH NEXT ")
 			buf.WriteString(strconv.Itoa(sb.limit))
 			buf.WriteString(" ROWS ONLY")
+		}
+
+	case Oracle:
+		if flavor == Oracle && sb.limit >= 0 && sb.offset > 0 {
+			buf.WriteString(" ) ")
+			if len(sb.tables) > 0 {
+				buf.WriteString(strings.Join(sb.tables, ", "))
+			}
+			buf.WriteString(" WHERE ")
+			buf.WriteString(sb.G("r", sb.offset))
 		}
 	}
 
