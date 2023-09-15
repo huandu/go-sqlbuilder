@@ -294,14 +294,20 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		if sb.offset >= 0 {
 			upper += sb.offset
 		}
-		sb.whereExprs = append(sb.whereExprs, sb.LE("ROWNUM", upper))
-	}
-
-	if len(sb.whereExprs) > 0 {
 		buf.WriteLeadingString("WHERE ")
-		buf.WriteString(strings.Join(sb.whereExprs, " AND "))
+		whereExprs := make([]string, 0, len(sb.whereExprs)+1)
+		whereExprs = append(whereExprs, sb.whereExprs...)
+		whereExprs = append(whereExprs, sb.LE("ROWNUM", upper))
+		buf.WriteString(strings.Join(whereExprs, " AND "))
 
 		sb.injection.WriteTo(buf, selectMarkerAfterWhere)
+	} else {
+		if len(sb.whereExprs) > 0 {
+			buf.WriteLeadingString("WHERE ")
+			buf.WriteString(strings.Join(sb.whereExprs, " AND "))
+
+			sb.injection.WriteTo(buf, selectMarkerAfterWhere)
+		}
 	}
 
 	if len(sb.groupByCols) > 0 {
