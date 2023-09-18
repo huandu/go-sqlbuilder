@@ -237,6 +237,9 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	buf := newStringBuilder()
 	sb.injection.WriteTo(buf, selectMarkerInit)
 
+	oraclePage1 := flavor == Oracle && sb.limit >= 0
+	oraclePage2 := oraclePage1 && sb.offset > 0
+
 	if len(sb.selectCols) > 0 {
 		buf.WriteLeadingString("SELECT ")
 
@@ -244,12 +247,25 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			buf.WriteString("DISTINCT ")
 		}
 
-		buf.WriteString(strings.Join(sb.selectCols, ", "))
+		if oraclePage2 {
+			var selectCols []string
+			for i := range sb.selectCols {
+				cols := strings.SplitN(sb.selectCols[i], ".", 2)
+				if len(cols) == 1 {
+					selectCols = append(selectCols, cols[0])
+				} else {
+					selectCols = append(selectCols, cols[1])
+				}
+			}
+			buf.WriteString(strings.Join(selectCols, ", "))
+		} else {
+			buf.WriteString(strings.Join(sb.selectCols, ", "))
+		}
 	}
 
 	sb.injection.WriteTo(buf, selectMarkerAfterSelect)
 
-	if flavor == Oracle && sb.limit >= 0 && sb.offset > 0 {
+	if oraclePage2 {
 		if len(sb.selectCols) > 0 {
 			buf.WriteLeadingString("FROM ( SELECT ")
 
@@ -289,7 +305,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		sb.injection.WriteTo(buf, selectMarkerAfterJoin)
 	}
 
-	if flavor == Oracle && sb.limit >= 0 {
+	if oraclePage1 {
 		upper := sb.limit
 		if sb.offset >= 0 {
 			upper += sb.offset
@@ -385,7 +401,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		}
 
 	case Oracle:
-		if flavor == Oracle && sb.limit >= 0 && sb.offset > 0 {
+		if oraclePage2 {
 			buf.WriteString(" ) ")
 			if len(sb.tables) > 0 {
 				buf.WriteString(strings.Join(sb.tables, ", "))
