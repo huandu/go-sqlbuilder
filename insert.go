@@ -120,7 +120,7 @@ func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	buf := newStringBuilder()
 	ib.injection.WriteTo(buf, insertMarkerInit)
 
-	if len(ib.values) > 1 && ib.args.Flavor == ib.args.Flavor {
+	if len(ib.values) > 1 && ib.args.Flavor == Oracle {
 		buf.WriteLeadingString(ib.verb)
 		buf.WriteString(" ALL")
 
