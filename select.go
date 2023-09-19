@@ -313,7 +313,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		buf.WriteLeadingString("WHERE ")
 		whereExprs := make([]string, 0, len(sb.whereExprs)+1)
 		whereExprs = append(whereExprs, sb.whereExprs...)
-		whereExprs = append(whereExprs, sb.LE("ROWNUM", upper))
+		whereExprs = append(whereExprs, fmt.Sprintf("ROWNUM <= %d", upper))
 		buf.WriteString(strings.Join(whereExprs, " AND "))
 
 		sb.injection.WriteTo(buf, selectMarkerAfterWhere)
@@ -407,7 +407,8 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 				buf.WriteString(strings.Join(sb.tables, ", "))
 			}
 			buf.WriteString(" WHERE ")
-			buf.WriteString(sb.G("r", sb.offset))
+			buf.WriteString("r > ")
+			buf.WriteString(strconv.Itoa(sb.offset))
 		}
 	}
 
