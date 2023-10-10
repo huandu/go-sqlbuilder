@@ -237,8 +237,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	buf := newStringBuilder()
 	sb.injection.WriteTo(buf, selectMarkerInit)
 
-	oraclePage1 := flavor == Oracle && sb.limit >= 0
-	oraclePage2 := oraclePage1 && sb.offset > 0
+	oraclePage := flavor == Oracle && (sb.limit >= 0 || sb.offset >= 0)
 
 	if len(sb.selectCols) > 0 {
 		buf.WriteLeadingString("SELECT ")
@@ -247,7 +246,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			buf.WriteString("DISTINCT ")
 		}
 
-		if oraclePage2 {
+		if oraclePage {
 			var selectCols []string
 			for i := range sb.selectCols {
 				cols := strings.SplitN(sb.selectCols[i], ".", 2)
@@ -265,7 +264,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 	sb.injection.WriteTo(buf, selectMarkerAfterSelect)
 
-	if oraclePage2 {
+	if oraclePage {
 		if len(sb.selectCols) > 0 {
 			buf.WriteLeadingString("FROM ( SELECT ")
 
@@ -274,9 +273,12 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			}
 
 			var selectCols = make([]string, 0, len(sb.selectCols)+1)
+			selectCols = append(selectCols, "ROWNUM r")
 			selectCols = append(selectCols, sb.selectCols...)
-			selectCols = append(selectCols, "ROWNUM r ")
 			buf.WriteString(strings.Join(selectCols, ", "))
+
+			buf.WriteLeadingString("FROM ( SELECT ")
+			buf.WriteString(strings.Join(sb.selectCols, ", "))
 		}
 	}
 
@@ -305,25 +307,11 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		sb.injection.WriteTo(buf, selectMarkerAfterJoin)
 	}
 
-	if oraclePage1 {
-		upper := sb.limit
-		if sb.offset >= 0 {
-			upper += sb.offset
-		}
+	if len(sb.whereExprs) > 0 {
 		buf.WriteLeadingString("WHERE ")
-		whereExprs := make([]string, 0, len(sb.whereExprs)+1)
-		whereExprs = append(whereExprs, sb.whereExprs...)
-		whereExprs = append(whereExprs, fmt.Sprintf("ROWNUM <= %d", upper))
-		buf.WriteString(strings.Join(whereExprs, " AND "))
+		buf.WriteString(strings.Join(sb.whereExprs, " AND "))
 
 		sb.injection.WriteTo(buf, selectMarkerAfterWhere)
-	} else {
-		if len(sb.whereExprs) > 0 {
-			buf.WriteLeadingString("WHERE ")
-			buf.WriteString(strings.Join(sb.whereExprs, " AND "))
-
-			sb.injection.WriteTo(buf, selectMarkerAfterWhere)
-		}
 	}
 
 	if len(sb.groupByCols) > 0 {
@@ -401,14 +389,27 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		}
 
 	case Oracle:
-		if oraclePage2 {
+		if oraclePage {
 			buf.WriteString(" ) ")
 			if len(sb.tables) > 0 {
 				buf.WriteString(strings.Join(sb.tables, ", "))
 			}
-			buf.WriteString(" WHERE ")
-			buf.WriteString("r > ")
-			buf.WriteString(strconv.Itoa(sb.offset))
+
+			min := sb.offset
+			if min < 0 {
+				min = 0
+			}
+
+			buf.WriteString(" ) WHERE ")
+			if sb.limit >= 0 {
+				buf.WriteString("r BETWEEN ")
+				buf.WriteString(strconv.Itoa(min + 1))
+				buf.WriteString(" AND ")
+				buf.WriteString(strconv.Itoa(sb.limit + min))
+			} else {
+				buf.WriteString("r >= ")
+				buf.WriteString(strconv.Itoa(min + 1))
+			}
 		}
 	}
 

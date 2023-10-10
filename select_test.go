@@ -112,7 +112,7 @@ func ExampleSelectBuilder_join() {
 }
 
 func ExampleSelectBuilder_limit_offset() {
-	flavors := []Flavor{MySQL, PostgreSQL, SQLite, SQLServer, CQL, ClickHouse, Presto}
+	flavors := []Flavor{MySQL, PostgreSQL, SQLite, SQLServer, CQL, ClickHouse, Presto, Oracle}
 	results := make([][]string, len(flavors))
 	sb := NewSelectBuilder()
 	saveResults := func() {
@@ -138,6 +138,7 @@ func ExampleSelectBuilder_limit_offset() {
 	// PostgreSQL: Offset can be set without limit.
 	// SQLServer: Offset can be set without limit.
 	// CQL: Ignore offset.
+	// Oracle: Offset can be set without limit.
 	sb.Limit(-1)
 	sb.Offset(0)
 	saveResults()
@@ -157,6 +158,15 @@ func ExampleSelectBuilder_limit_offset() {
 	sb.Offset(-1)
 	saveResults()
 
+	// Case #5: limit >= 0 and offset >= 0 order by id
+	//
+	// CQL: Ignore offset.
+	// All others: Set both limit and offset.
+	sb.Limit(1)
+	sb.Offset(1)
+	sb.OrderBy("id")
+	saveResults()
+
 	for i, result := range results {
 		fmt.Println()
 		fmt.Println(flavors[i])
@@ -173,42 +183,56 @@ func ExampleSelectBuilder_limit_offset() {
 	// #2: SELECT * FROM user
 	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
 	// #4: SELECT * FROM user LIMIT 1
+	// #5: SELECT * FROM user ORDER BY id LIMIT 1 OFFSET 1
 	//
 	// PostgreSQL
 	// #1: SELECT * FROM user
 	// #2: SELECT * FROM user OFFSET 0
 	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
 	// #4: SELECT * FROM user LIMIT 1
+	// #5: SELECT * FROM user ORDER BY id LIMIT 1 OFFSET 1
 	//
 	// SQLite
 	// #1: SELECT * FROM user
 	// #2: SELECT * FROM user
 	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
 	// #4: SELECT * FROM user LIMIT 1
+	// #5: SELECT * FROM user ORDER BY id LIMIT 1 OFFSET 1
 	//
 	// SQLServer
 	// #1: SELECT * FROM user
 	// #2: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS
 	// #3: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
 	// #4: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
+	// #5: SELECT * FROM user ORDER BY id OFFSET 1 ROWS FETCH NEXT 1 ROWS ONLY
 	//
 	// CQL
 	// #1: SELECT * FROM user
 	// #2: SELECT * FROM user
 	// #3: SELECT * FROM user LIMIT 1
 	// #4: SELECT * FROM user LIMIT 1
+	// #5: SELECT * FROM user ORDER BY id LIMIT 1
 	//
 	// ClickHouse
 	// #1: SELECT * FROM user
 	// #2: SELECT * FROM user
 	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
 	// #4: SELECT * FROM user LIMIT 1
+	// #5: SELECT * FROM user ORDER BY id LIMIT 1 OFFSET 1
 	//
 	// Presto
 	// #1: SELECT * FROM user
 	// #2: SELECT * FROM user OFFSET 0
 	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
 	// #4: SELECT * FROM user LIMIT 1
+	// #5: SELECT * FROM user ORDER BY id LIMIT 1 OFFSET 1
+	//
+	// Oracle
+	// #1: SELECT * FROM user
+	// #2: SELECT * FROM ( SELECT ROWNUM r, * FROM ( SELECT * FROM user ) user ) WHERE r >= 1
+	// #3: SELECT * FROM ( SELECT ROWNUM r, * FROM ( SELECT * FROM user ) user ) WHERE r BETWEEN 1 AND 1
+	// #4: SELECT * FROM ( SELECT ROWNUM r, * FROM ( SELECT * FROM user ) user ) WHERE r BETWEEN 1 AND 1
+	// #5: SELECT * FROM ( SELECT ROWNUM r, * FROM ( SELECT * FROM user ORDER BY id ) user ) WHERE r BETWEEN 2 AND 2
 }
 
 func ExampleSelectBuilder_ForUpdate() {
