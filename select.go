@@ -247,7 +247,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		}
 
 		if oraclePage {
-			var selectCols []string
+			var selectCols = make([]string, 0, len(sb.selectCols))
 			for i := range sb.selectCols {
 				cols := strings.SplitN(sb.selectCols[i], ".", 2)
 				if len(cols) == 1 {
@@ -274,7 +274,14 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 			var selectCols = make([]string, 0, len(sb.selectCols)+1)
 			selectCols = append(selectCols, "ROWNUM r")
-			selectCols = append(selectCols, sb.selectCols...)
+			for i := range sb.selectCols {
+				cols := strings.SplitN(sb.selectCols[i], ".", 2)
+				if len(cols) == 1 {
+					selectCols = append(selectCols, cols[0])
+				} else {
+					selectCols = append(selectCols, cols[1])
+				}
+			}
 			buf.WriteString(strings.Join(selectCols, ", "))
 
 			buf.WriteLeadingString("FROM ( SELECT ")
