@@ -710,11 +710,6 @@ func (s *Struct) ForeachRead(trans func(dbtag string, isQuoted bool, field refle
 	s.foreachReadWithTags(s.withTags, s.withoutTags, trans)
 }
 
-// ForeachReadForTag foreach tags with tag.
-func (s *Struct) ForeachReadForTag(tag string, trans func(dbtag string, isQuoted bool, field reflect.StructField)) {
-	s.foreachReadWithTags([]string{tag}, nil, trans)
-}
-
 func (s *Struct) foreachReadWithTags(with, without []string, trans func(dbtag string, isQuoted bool, field reflect.StructField)) {
 	sfs := s.structFieldsParser()
 	tagged := sfs.FilterTags(with, without)
@@ -729,11 +724,6 @@ func (s *Struct) foreachReadWithTags(with, without []string, trans func(dbtag st
 // ForeachWrite foreach tags.
 func (s *Struct) ForeachWrite(trans func(dbtag string, isQuoted bool, field reflect.StructField)) {
 	s.foreachWriteWithTags(s.withTags, s.withoutTags, trans)
-}
-
-// ForeachWriteForTag foreach tags with tag.
-func (s *Struct) ForeachWriteForTag(tag string, trans func(dbtag string, isQuoted bool, field reflect.StructField)) {
-	s.foreachWriteWithTags([]string{tag}, nil, trans)
 }
 
 func (s *Struct) foreachWriteWithTags(with, without []string, trans func(dbtag string, isQuoted bool, field reflect.StructField)) {
