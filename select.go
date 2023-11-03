@@ -237,6 +237,8 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	buf := newStringBuilder()
 	sb.injection.WriteTo(buf, selectMarkerInit)
 
+	oraclePage := flavor == Oracle && (sb.limit >= 0 || sb.offset >= 0)
+
 	if len(sb.selectCols) > 0 {
 		buf.WriteLeadingString("SELECT ")
 
@@ -244,10 +246,48 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			buf.WriteString("DISTINCT ")
 		}
 
-		buf.WriteString(strings.Join(sb.selectCols, ", "))
+		if oraclePage {
+			var selectCols = make([]string, 0, len(sb.selectCols))
+			for i := range sb.selectCols {
+				cols := strings.SplitN(sb.selectCols[i], ".", 2)
+				if len(cols) == 1 {
+					selectCols = append(selectCols, cols[0])
+				} else {
+					selectCols = append(selectCols, cols[1])
+				}
+			}
+			buf.WriteString(strings.Join(selectCols, ", "))
+		} else {
+			buf.WriteString(strings.Join(sb.selectCols, ", "))
+		}
 	}
 
 	sb.injection.WriteTo(buf, selectMarkerAfterSelect)
+
+	if oraclePage {
+		if len(sb.selectCols) > 0 {
+			buf.WriteLeadingString("FROM ( SELECT ")
+
+			if sb.distinct {
+				buf.WriteString("DISTINCT ")
+			}
+
+			var selectCols = make([]string, 0, len(sb.selectCols)+1)
+			selectCols = append(selectCols, "ROWNUM r")
+			for i := range sb.selectCols {
+				cols := strings.SplitN(sb.selectCols[i], ".", 2)
+				if len(cols) == 1 {
+					selectCols = append(selectCols, cols[0])
+				} else {
+					selectCols = append(selectCols, cols[1])
+				}
+			}
+			buf.WriteString(strings.Join(selectCols, ", "))
+
+			buf.WriteLeadingString("FROM ( SELECT ")
+			buf.WriteString(strings.Join(sb.selectCols, ", "))
+		}
+	}
 
 	if len(sb.tables) > 0 {
 		buf.WriteLeadingString("FROM ")
@@ -353,6 +393,30 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			buf.WriteLeadingString("FETCH NEXT ")
 			buf.WriteString(strconv.Itoa(sb.limit))
 			buf.WriteString(" ROWS ONLY")
+		}
+
+	case Oracle:
+		if oraclePage {
+			buf.WriteString(" ) ")
+			if len(sb.tables) > 0 {
+				buf.WriteString(strings.Join(sb.tables, ", "))
+			}
+
+			min := sb.offset
+			if min < 0 {
+				min = 0
+			}
+
+			buf.WriteString(" ) WHERE ")
+			if sb.limit >= 0 {
+				buf.WriteString("r BETWEEN ")
+				buf.WriteString(strconv.Itoa(min + 1))
+				buf.WriteString(" AND ")
+				buf.WriteString(strconv.Itoa(sb.limit + min))
+			} else {
+				buf.WriteString("r >= ")
+				buf.WriteString(strconv.Itoa(min + 1))
+			}
 		}
 	}
 

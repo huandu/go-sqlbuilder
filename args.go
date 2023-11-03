@@ -247,6 +247,8 @@ func (args *Args) compileArg(buf *stringBuilder, flavor Flavor, values []interfa
 			fmt.Fprintf(buf, "$%d", len(values)+1)
 		case SQLServer:
 			fmt.Fprintf(buf, "@p%d", len(values)+1)
+		case Oracle:
+			fmt.Fprintf(buf, ":%d", len(values)+1)
 		default:
 			panic(fmt.Errorf("Args.CompileWithFlavor: invalid flavor %v (%v)", flavor, int(flavor)))
 		}

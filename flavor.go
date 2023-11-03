@@ -19,6 +19,7 @@ const (
 	CQL
 	ClickHouse
 	Presto
+	Oracle
 )
 
 var (
@@ -58,6 +59,8 @@ func (f Flavor) String() string {
 		return "ClickHouse"
 	case Presto:
 		return "Presto"
+	case Oracle:
+		return "Oracle"
 	}
 
 	return "<invalid>"
@@ -84,6 +87,8 @@ func (f Flavor) Interpolate(sql string, args []interface{}) (string, error) {
 		return clickhouseInterpolate(sql, args...)
 	case Presto:
 		return prestoInterpolate(sql, args...)
+	case Oracle:
+		return oracleInterpolate(sql, args...)
 	}
 
 	return "", ErrInterpolateNotImplemented
@@ -140,7 +145,7 @@ func (f Flavor) Quote(name string) string {
 	switch f {
 	case MySQL, ClickHouse:
 		return fmt.Sprintf("`%s`", name)
-	case PostgreSQL, SQLServer, SQLite, Presto:
+	case PostgreSQL, SQLServer, SQLite, Presto, Oracle:
 		return fmt.Sprintf(`"%s"`, name)
 	case CQL:
 		return fmt.Sprintf("'%s'", name)
@@ -152,7 +157,7 @@ func (f Flavor) Quote(name string) string {
 // PrepareInsertIgnore prepares the insert builder to build insert ignore SQL statement based on the sql flavor
 func (f Flavor) PrepareInsertIgnore(table string, ib *InsertBuilder) {
 	switch ib.args.Flavor {
-	case MySQL:
+	case MySQL, Oracle:
 		ib.verb = "INSERT IGNORE"
 
 	case PostgreSQL:

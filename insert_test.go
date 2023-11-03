@@ -65,6 +65,22 @@ func ExampleInsertBuilder() {
 	// [1 Huan Du 1 2 Charmy Liu 1 1234567890]
 }
 
+func ExampleInsertBuilder_Oracle() {
+	ib := Oracle.NewInsertBuilder()
+	ib.InsertInto("demo.user")
+	ib.Cols("id", "name", "status")
+	ib.Values(1, "Huan Du", 1)
+	ib.Values(2, "Charmy Liu", 1)
+
+	sql, args := ib.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// INSERT ALL INTO demo.user (id, name, status) VALUES (:1, :2, :3) INTO demo.user (id, name, status) VALUES (:4, :5, :6) SELECT 1 from DUAL
+	// [1 Huan Du 1 2 Charmy Liu 1]
+}
+
 func ExampleInsertBuilder_insertIgnore() {
 	ib := NewInsertBuilder()
 	ib.InsertIgnoreInto("demo.user")
