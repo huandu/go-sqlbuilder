@@ -26,6 +26,11 @@ func (c *Cond) E(field string, value interface{}) string {
 	return c.Equal(field, value)
 }
 
+// EQ is an alias of Equal.
+func (c *Cond) EQ(field string, value interface{}) string {
+	return c.Equal(field, value)
+}
+
 // NotEqual represents "field <> value".
 func (c *Cond) NotEqual(field string, value interface{}) string {
 	buf := newStringBuilder()
@@ -37,6 +42,11 @@ func (c *Cond) NotEqual(field string, value interface{}) string {
 
 // NE is an alias of NotEqual.
 func (c *Cond) NE(field string, value interface{}) string {
+	return c.NotEqual(field, value)
+}
+
+// NEQ is an alias of NotEqual.
+func (c *Cond) NEQ(field string, value interface{}) string {
 	return c.NotEqual(field, value)
 }
 
@@ -54,6 +64,11 @@ func (c *Cond) G(field string, value interface{}) string {
 	return c.GreaterThan(field, value)
 }
 
+// GT is an alias of GreaterThan.
+func (c *Cond) GT(field string, value interface{}) string {
+	return c.GreaterThan(field, value)
+}
+
 // GreaterEqualThan represents "field >= value".
 func (c *Cond) GreaterEqualThan(field string, value interface{}) string {
 	buf := newStringBuilder()
@@ -65,6 +80,11 @@ func (c *Cond) GreaterEqualThan(field string, value interface{}) string {
 
 // GE is an alias of GreaterEqualThan.
 func (c *Cond) GE(field string, value interface{}) string {
+	return c.GreaterEqualThan(field, value)
+}
+
+// GTE is an alias of GreaterEqualThan.
+func (c *Cond) GTE(field string, value interface{}) string {
 	return c.GreaterEqualThan(field, value)
 }
 
@@ -82,6 +102,11 @@ func (c *Cond) L(field string, value interface{}) string {
 	return c.LessThan(field, value)
 }
 
+// LT is an alias of LessThan.
+func (c *Cond) LT(field string, value interface{}) string {
+	return c.LessThan(field, value)
+}
+
 // LessEqualThan represents "field <= value".
 func (c *Cond) LessEqualThan(field string, value interface{}) string {
 	buf := newStringBuilder()
@@ -93,6 +118,11 @@ func (c *Cond) LessEqualThan(field string, value interface{}) string {
 
 // LE is an alias of LessEqualThan.
 func (c *Cond) LE(field string, value interface{}) string {
+	return c.LessEqualThan(field, value)
+}
+
+// LTE is an alias of LessEqualThan.
+func (c *Cond) LTE(field string, value interface{}) string {
 	return c.LessEqualThan(field, value)
 }
 
