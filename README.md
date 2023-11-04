@@ -168,7 +168,7 @@ There are also some methods to combine conditions.
 
 SQL syntax and parameter marks vary in different systems. In this package, we introduce a concept called "flavor" to smooth out these difference.
 
-Right now, `MySQL`, `PostgreSQL`, `SQLServer`, `SQLite`, `CQL`, `ClickHouse` and `Presto` are defined in flavor list. Feel free to open issue or send pull request if anyone asks for a new flavor.
+Right now, `MySQL`, `PostgreSQL`, `SQLServer`, `SQLite`, `CQL`, `ClickHouse`, `Presto` and `Oracle` are defined in flavor list. Feel free to open issue or send pull request if anyone asks for a new flavor.
 
 By default, all builders uses `DefaultFlavor` to build SQL. The default value is `MySQL`.
 

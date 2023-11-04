@@ -18,6 +18,9 @@ func TestFlavor(t *testing.T) {
 		PostgreSQL: "PostgreSQL",
 		SQLite:     "SQLite",
 		SQLServer:  "SQLServer",
+		CQL:        "CQL",
+		ClickHouse: "ClickHouse",
+		Oracle:     "Oracle",
 	}
 
 	for f, expected := range cases {

@@ -65,7 +65,7 @@ func ExampleInsertBuilder() {
 	// [1 Huan Du 1 2 Charmy Liu 1 1234567890]
 }
 
-func ExampleInsertBuilder_Oracle() {
+func ExampleInsertBuilder_flavorOracle() {
 	ib := Oracle.NewInsertBuilder()
 	ib.InsertInto("demo.user")
 	ib.Cols("id", "name", "status")
