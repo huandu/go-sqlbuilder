@@ -13,6 +13,7 @@ const (
 	insertMarkerAfterInsertInto
 	insertMarkerAfterCols
 	insertMarkerAfterValues
+	insertMarkerAfterSelect
 )
 
 // NewInsertBuilder creates a new INSERT builder.
@@ -40,6 +41,8 @@ type InsertBuilder struct {
 
 	injection *injection
 	marker    injectionMarker
+
+	sbHolder string
 }
 
 var _ Builder = new(InsertBuilder)
@@ -89,6 +92,13 @@ func (ib *InsertBuilder) Cols(col ...string) *InsertBuilder {
 	return ib
 }
 
+// Select returns a new SelectBuilder to build a SELECT statement inside the INSERT INTO.
+func (isb *InsertBuilder) Select(col ...string) *SelectBuilder {
+	sb := Select(col...)
+	isb.sbHolder = isb.args.Add(sb)
+	return sb
+}
+
 // Values adds a list of values for a row in INSERT.
 func (ib *InsertBuilder) Values(value ...interface{}) *InsertBuilder {
 	placeholders := make([]string, 0, len(value))
@@ -119,6 +129,29 @@ func (ib *InsertBuilder) Build() (sql string, args []interface{}) {
 func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := newStringBuilder()
 	ib.injection.WriteTo(buf, insertMarkerInit)
+
+	if ib.sbHolder != "" && ib.args.Flavor == Oracle {
+		buf.WriteLeadingString(ib.verb)
+
+		if len(ib.table) > 0 {
+			buf.WriteString(" INTO ")
+			buf.WriteString(ib.table)
+		}
+		ib.injection.WriteTo(buf, insertMarkerAfterInsertInto)
+		if len(ib.cols) > 0 {
+			buf.WriteLeadingString("(")
+			buf.WriteString(strings.Join(ib.cols, ", "))
+			buf.WriteString(")")
+
+			ib.injection.WriteTo(buf, insertMarkerAfterCols)
+		}
+
+		buf.WriteString(" ")
+		buf.WriteString(ib.sbHolder)
+
+		ib.injection.WriteTo(buf, insertMarkerAfterSelect)
+		return ib.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
+	}
 
 	if len(ib.values) > 1 && ib.args.Flavor == Oracle {
 		buf.WriteLeadingString(ib.verb)
@@ -165,6 +198,14 @@ func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		buf.WriteString(")")
 
 		ib.injection.WriteTo(buf, insertMarkerAfterCols)
+	}
+
+	if ib.sbHolder != "" {
+		buf.WriteString(" ")
+		buf.WriteString(ib.sbHolder)
+
+		ib.injection.WriteTo(buf, insertMarkerAfterSelect)
+		return ib.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
 	}
 
 	if len(ib.values) > 0 {
