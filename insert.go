@@ -130,29 +130,6 @@ func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	buf := newStringBuilder()
 	ib.injection.WriteTo(buf, insertMarkerInit)
 
-	if ib.sbHolder != "" && ib.args.Flavor == Oracle {
-		buf.WriteLeadingString(ib.verb)
-
-		if len(ib.table) > 0 {
-			buf.WriteString(" INTO ")
-			buf.WriteString(ib.table)
-		}
-		ib.injection.WriteTo(buf, insertMarkerAfterInsertInto)
-		if len(ib.cols) > 0 {
-			buf.WriteLeadingString("(")
-			buf.WriteString(strings.Join(ib.cols, ", "))
-			buf.WriteString(")")
-
-			ib.injection.WriteTo(buf, insertMarkerAfterCols)
-		}
-
-		buf.WriteString(" ")
-		buf.WriteString(ib.sbHolder)
-
-		ib.injection.WriteTo(buf, insertMarkerAfterSelect)
-		return ib.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
-	}
-
 	if len(ib.values) > 1 && ib.args.Flavor == Oracle {
 		buf.WriteLeadingString(ib.verb)
 		buf.WriteString(" ALL")
