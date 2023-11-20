@@ -179,3 +179,35 @@ func ExampleInsertBuilder_SQL() {
 	// /* before */ INSERT INTO demo.user PARTITION (p0) (id, name, status, created_at) /* after cols */ VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE status = ?
 	// [3 Shawn Du 1 1234567890 1]
 }
+
+func ExampleInsertBuilder_subSelect() {
+	ib := NewInsertBuilder()
+	ib.InsertInto("demo.user")
+	ib.Cols("id", "name")
+	sb := ib.Select("id", "name").From("demo.test")
+	sb.Where(sb.EQ("id", 1))
+
+	sql, args := ib.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// INSERT INTO demo.user (id, name) SELECT id, name FROM demo.test WHERE id = ?
+	// [1]
+}
+
+func ExampleInsertBuilder_subSelect_oracle() {
+	ib := Oracle.NewInsertBuilder()
+	ib.InsertInto("demo.user")
+	ib.Cols("id", "name")
+	sb := ib.Select("id", "name").From("demo.test")
+	sb.Where(sb.EQ("id", 1))
+
+	sql, args := ib.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// INSERT INTO demo.user (id, name) SELECT id, name FROM demo.test WHERE id = :1
+	// [1]
+}

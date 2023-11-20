@@ -13,6 +13,7 @@ const (
 	insertMarkerAfterInsertInto
 	insertMarkerAfterCols
 	insertMarkerAfterValues
+	insertMarkerAfterSelect
 )
 
 // NewInsertBuilder creates a new INSERT builder.
@@ -40,6 +41,8 @@ type InsertBuilder struct {
 
 	injection *injection
 	marker    injectionMarker
+
+	sbHolder string
 }
 
 var _ Builder = new(InsertBuilder)
@@ -87,6 +90,13 @@ func (ib *InsertBuilder) Cols(col ...string) *InsertBuilder {
 	ib.cols = EscapeAll(col...)
 	ib.marker = insertMarkerAfterCols
 	return ib
+}
+
+// Select returns a new SelectBuilder to build a SELECT statement inside the INSERT INTO.
+func (isb *InsertBuilder) Select(col ...string) *SelectBuilder {
+	sb := Select(col...)
+	isb.sbHolder = isb.args.Add(sb)
+	return sb
 }
 
 // Values adds a list of values for a row in INSERT.
@@ -165,6 +175,14 @@ func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		buf.WriteString(")")
 
 		ib.injection.WriteTo(buf, insertMarkerAfterCols)
+	}
+
+	if ib.sbHolder != "" {
+		buf.WriteString(" ")
+		buf.WriteString(ib.sbHolder)
+
+		ib.injection.WriteTo(buf, insertMarkerAfterSelect)
+		return ib.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
 	}
 
 	if len(ib.values) > 0 {
