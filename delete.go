@@ -100,7 +100,8 @@ func (db *DeleteBuilder) Limit(limit int) *DeleteBuilder {
 
 // Args returns all arguments for the compiled DELETE builder.
 func (db *DeleteBuilder) Args() []interface{} {
-	return db.args.args
+	_, args := db.Build()
+	return args
 }
 
 // String returns the compiled DELETE string.

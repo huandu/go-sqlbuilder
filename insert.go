@@ -114,7 +114,8 @@ func (ib *InsertBuilder) Values(value ...interface{}) *InsertBuilder {
 
 // Args returns all arguments for the compiled INSERT builder.
 func (ib *InsertBuilder) Args() []interface{} {
-	return ib.args.args
+	_, args := ib.Build()
+	return args
 }
 
 // String returns the compiled INSERT string.

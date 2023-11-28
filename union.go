@@ -116,7 +116,8 @@ func (ub *UnionBuilder) Offset(offset int) *UnionBuilder {
 
 // Args returns all arguments for the compiled SELECT builder.
 func (ub *UnionBuilder) Args() []interface{} {
-	return ub.args.args
+	_, args := ub.Build()
+	return args
 }
 
 // String returns the compiled SELECT string.

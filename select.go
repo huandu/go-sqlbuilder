@@ -221,7 +221,8 @@ func (sb *SelectBuilder) BuilderAs(builder Builder, alias string) string {
 
 // Args returns all arguments for the compiled SELECT builder.
 func (sb *SelectBuilder) Args() []interface{} {
-	return sb.args.args
+	_, args := sb.Build()
+	return args
 }
 
 // String returns the compiled SELECT string.
