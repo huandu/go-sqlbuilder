@@ -85,7 +85,12 @@ func (ctb *CreateTableBuilder) Option(opt ...string) *CreateTableBuilder {
 	return ctb
 }
 
-// String returns the compiled INSERT string.
+// Args returns all arguments for the compiled CREATE TABLE builder.
+func (ctb *CreateTableBuilder) Args() []interface{} {
+	return ctb.args.args
+}
+
+// String returns the compiled CREATE TABLE string.
 func (ctb *CreateTableBuilder) String() string {
 	s, _ := ctb.Build()
 	return s

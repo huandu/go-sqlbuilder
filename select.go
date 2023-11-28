@@ -219,6 +219,11 @@ func (sb *SelectBuilder) BuilderAs(builder Builder, alias string) string {
 	return fmt.Sprintf("(%s) AS %s", sb.Var(builder), alias)
 }
 
+// Args returns all arguments for the compiled SELECT builder.
+func (sb *SelectBuilder) Args() []interface{} {
+	return sb.args.args
+}
+
 // String returns the compiled SELECT string.
 func (sb *SelectBuilder) String() string {
 	s, _ := sb.Build()
