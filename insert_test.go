@@ -211,3 +211,17 @@ func ExampleInsertBuilder_subSelect_oracle() {
 	// INSERT INTO demo.user (id, name) SELECT id, name FROM demo.test WHERE id = :1
 	// [1]
 }
+
+func ExampleInsertBuilder_NumValue() {
+	ib := NewInsertBuilder()
+	ib.InsertInto("demo.user")
+	ib.Cols("id", "name")
+	ib.Values(1, "Huan Du")
+	ib.Values(2, "Charmy Liu")
+
+	// Count the number of values.
+	fmt.Println(ib.NumValue())
+
+	// Output:
+	// 2
+}

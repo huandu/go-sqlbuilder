@@ -156,6 +156,11 @@ func (ub *UpdateBuilder) Limit(limit int) *UpdateBuilder {
 	return ub
 }
 
+// NumAssignment returns the number of assignments to update.
+func (ub *UpdateBuilder) NumAssignment() int {
+	return len(ub.assignments)
+}
+
 // String returns the compiled UPDATE string.
 func (ub *UpdateBuilder) String() string {
 	s, _ := ub.Build()

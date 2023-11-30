@@ -116,3 +116,19 @@ func ExampleUpdateBuilder_SQL() {
 	// Output:
 	// /* before */ UPDATE demo.user /* after update */ SET type = ? /* after set */ ORDER BY id DESC /* after order by */ LIMIT 10 /* after limit */
 }
+
+func ExampleUpdateBuilder_NumAssignment() {
+	ub := NewUpdateBuilder()
+	ub.Update("demo.user")
+	ub.Set(
+		ub.Assign("type", "sys"),
+		ub.Incr("credit"),
+		"modified_at = UNIX_TIMESTAMP(NOW())",
+	)
+
+	// Count the number of assignments.
+	fmt.Println(ub.NumAssignment())
+
+	// Output:
+	// 3
+}

@@ -85,6 +85,11 @@ func (ctb *CreateTableBuilder) Option(opt ...string) *CreateTableBuilder {
 	return ctb
 }
 
+// NumDefine returns the number of definitions in CREATE TABLE.
+func (ctb *CreateTableBuilder) NumDefine() int {
+	return len(ctb.defs)
+}
+
 // String returns the compiled INSERT string.
 func (ctb *CreateTableBuilder) String() string {
 	s, _ := ctb.Build()

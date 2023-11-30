@@ -69,3 +69,20 @@ func ExampleCreateTableBuilder_SQL() {
 	// /* before */ CREATE TEMPORARY TABLE IF NOT EXISTS demo.user /* after create */ (id BIGINT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT "user id", name VARCHAR(255) NOT NULL COMMENT "user name") /* after define */ DEFAULT CHARACTER SET utf8mb4 AS SELECT * FROM old.user WHERE name LIKE ?
 	// [%Huan%]
 }
+
+func ExampleCreateTableBuilder_NumDefine() {
+	ctb := NewCreateTableBuilder()
+	ctb.CreateTable("demo.user").IfNotExists()
+	ctb.Define("id", "BIGINT(20)", "NOT NULL", "AUTO_INCREMENT", "PRIMARY KEY", `COMMENT "user id"`)
+	ctb.Define("name", "VARCHAR(255)", "NOT NULL", `COMMENT "user name"`)
+	ctb.Define("created_at", "DATETIME", "NOT NULL", `COMMENT "user create time"`)
+	ctb.Define("modified_at", "DATETIME", "NOT NULL", `COMMENT "user modify time"`)
+	ctb.Define("KEY", "idx_name_modified_at", "name, modified_at")
+	ctb.Option("DEFAULT CHARACTER SET", "utf8mb4")
+
+	// Count the number of definitions.
+	fmt.Println(ctb.NumDefine())
+
+	// Output:
+	// 5
+}

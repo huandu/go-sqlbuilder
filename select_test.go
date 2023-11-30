@@ -317,3 +317,18 @@ func ExampleSelectBuilder_customSELECT() {
 	// SELECT id, name FROM user WHERE id IN (?, ?, ?)
 	// [1 2 3]
 }
+
+func ExampleSelectBuilder_NumCol() {
+	sb := NewSelectBuilder()
+	sb.Select("id", "name", "created_at")
+	sb.From("demo.user")
+	sb.Where(
+		sb.GreaterThan("id", 1234),
+	)
+
+	// Count the number of columns.
+	fmt.Println(sb.NumCol())
+
+	// Output:
+	// 3
+}

@@ -219,6 +219,11 @@ func (sb *SelectBuilder) BuilderAs(builder Builder, alias string) string {
 	return fmt.Sprintf("(%s) AS %s", sb.Var(builder), alias)
 }
 
+// NumCol returns the number of columns to select.
+func (sb *SelectBuilder) NumCol() int {
+	return len(sb.selectCols)
+}
+
 // String returns the compiled SELECT string.
 func (sb *SelectBuilder) String() string {
 	s, _ := sb.Build()

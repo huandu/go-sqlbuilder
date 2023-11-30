@@ -112,6 +112,11 @@ func (ib *InsertBuilder) Values(value ...interface{}) *InsertBuilder {
 	return ib
 }
 
+// NumValue returns the number of values to insert.
+func (ib *InsertBuilder) NumValue() int {
+	return len(ib.values)
+}
+
 // String returns the compiled INSERT string.
 func (ib *InsertBuilder) String() string {
 	s, _ := ib.Build()
