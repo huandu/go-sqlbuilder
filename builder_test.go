@@ -71,8 +71,16 @@ func ExampleWithFlavor() {
 	fmt.Println(sql)
 	fmt.Println(args)
 
+	// Explicitly use MySQL as the informix.
+	sql, args = WithFlavor(Buildf("SELECT * FROM foo WHERE id = %v", 1234), Informix).Build()
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
 	// Output:
 	// SELECT * FROM foo WHERE id = $1
+	// [1234]
+	// SELECT * FROM foo WHERE id = ?
 	// [1234]
 	// SELECT * FROM foo WHERE id = ?
 	// [1234]

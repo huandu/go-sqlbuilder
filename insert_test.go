@@ -212,6 +212,22 @@ func ExampleInsertBuilder_subSelect_oracle() {
 	// [1]
 }
 
+func ExampleInsertBuilder_subSelect_informix() {
+	ib := Informix.NewInsertBuilder()
+	ib.InsertInto("demo.user")
+	ib.Cols("id", "name")
+	sb := ib.Select("id", "name").From("demo.test")
+	sb.Where(sb.EQ("id", 1))
+
+	sql, args := ib.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// INSERT INTO demo.user (id, name) SELECT id, name FROM demo.test WHERE id = :1
+	// [1]
+}
+
 func ExampleInsertBuilder_NumValue() {
 	ib := NewInsertBuilder()
 	ib.InsertInto("demo.user")

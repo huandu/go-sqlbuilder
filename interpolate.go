@@ -399,6 +399,10 @@ func prestoInterpolate(query string, args ...interface{}) (string, error) {
 	return mysqlLikeInterpolate(Presto, query, args...)
 }
 
+func informixInterpolate(query string, args ...interface{}) (string, error) {
+	return mysqlLikeInterpolate(Informix, query, args...)
+}
+
 // oraclelInterpolate parses query and replace all ":*" with encoded args.
 // If there are more ":*" than len(args), returns ErrMissingArgs.
 // Otherwise, if there are less ":*" than len(args), the redundant args are omitted.
@@ -612,6 +616,9 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 			buf = append(buf, v.Format("2006-01-02 15:04:05.999999")...)
 			buf = append(buf, "', 'YYYY-MM-DD HH24:MI:SS.FF')"...)
 
+		case Informix:
+			buf = append(buf, v.Format("'2006-01-02 15:04:05.999999'")...)
+
 		}
 
 	case fmt.Stringer:
@@ -734,6 +741,8 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 				buf = append(buf, "hextoraw('"...)
 				buf = appendHex(buf, data)
 				buf = append(buf, "')"...)
+			default:
+				return nil, ErrInterpolateUnsupportedArgs
 			}
 
 		default:

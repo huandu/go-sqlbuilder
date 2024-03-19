@@ -351,7 +351,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	}
 
 	switch flavor {
-	case MySQL, SQLite, ClickHouse:
+	case MySQL, SQLite, ClickHouse, Informix:
 		if sb.limit >= 0 {
 			buf.WriteLeadingString("LIMIT ")
 			buf.WriteString(strconv.Itoa(sb.limit))

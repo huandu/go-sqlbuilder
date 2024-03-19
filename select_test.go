@@ -112,7 +112,7 @@ func ExampleSelectBuilder_join() {
 }
 
 func ExampleSelectBuilder_limit_offset() {
-	flavors := []Flavor{MySQL, PostgreSQL, SQLite, SQLServer, CQL, ClickHouse, Presto, Oracle}
+	flavors := []Flavor{MySQL, PostgreSQL, SQLite, SQLServer, CQL, ClickHouse, Presto, Oracle, Informix}
 	results := make([][]string, len(flavors))
 	sb := NewSelectBuilder()
 	saveResults := func() {
@@ -233,6 +233,13 @@ func ExampleSelectBuilder_limit_offset() {
 	// #3: SELECT * FROM ( SELECT ROWNUM r, * FROM ( SELECT * FROM user ) user ) WHERE r BETWEEN 1 AND 1
 	// #4: SELECT * FROM ( SELECT ROWNUM r, * FROM ( SELECT * FROM user ) user ) WHERE r BETWEEN 1 AND 1
 	// #5: SELECT * FROM ( SELECT ROWNUM r, * FROM ( SELECT * FROM user ORDER BY id ) user ) WHERE r BETWEEN 2 AND 2
+	//
+	// Informix
+	// #1: SELECT * FROM user
+	// #2: SELECT * FROM user
+	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
+	// #4: SELECT * FROM user LIMIT 1
+	// #5: SELECT * FROM user ORDER BY id LIMIT 1 OFFSET 1
 }
 
 func ExampleSelectBuilder_ForUpdate() {

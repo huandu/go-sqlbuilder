@@ -178,7 +178,7 @@ func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 
 	}
 
-	if MySQL == flavor && ub.limit >= 0 || PostgreSQL == flavor {
+	if ((MySQL == flavor || Informix == flavor) && ub.limit >= 0) || PostgreSQL == flavor {
 		if ub.offset >= 0 {
 			buf.WriteLeadingString("OFFSET ")
 			buf.WriteString(strconv.Itoa(ub.offset))
