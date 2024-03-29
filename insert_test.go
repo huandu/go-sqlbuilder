@@ -224,7 +224,7 @@ func ExampleInsertBuilder_subSelect_informix() {
 	fmt.Println(args)
 
 	// Output:
-	// INSERT INTO demo.user (id, name) SELECT id, name FROM demo.test WHERE id = :1
+	// INSERT INTO demo.user (id, name) SELECT id, name FROM demo.test WHERE id = ?
 	// [1]
 }
 
