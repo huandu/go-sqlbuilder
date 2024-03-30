@@ -247,6 +247,24 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	if len(sb.selectCols) > 0 {
 		buf.WriteLeadingString("SELECT ")
 
+		if flavor == Informix {
+			if sb.offset >= 0 {
+				buf.WriteString("SKIP ")
+				buf.WriteString(strconv.Itoa(sb.offset))
+				buf.WriteString(" ")
+			}
+
+			if sb.limit > 0 {
+				if sb.offset < 0 {
+					buf.WriteString("SKIP 0 ")
+				}
+
+				buf.WriteString("FIRST ")
+				buf.WriteString(strconv.Itoa(sb.limit))
+				buf.WriteString(" ")
+			}
+		}
+
 		if sb.distinct {
 			buf.WriteString("DISTINCT ")
 		}
@@ -422,6 +440,12 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 				buf.WriteString("r >= ")
 				buf.WriteString(strconv.Itoa(min + 1))
 			}
+		}
+	case Informix:
+		// If ORDER BY is not set, sort column #1 by default.
+		// It's required to make OFFSET...FETCH work.
+		if len(sb.orderByCols) == 0 && (sb.limit >= 0 || sb.offset >= 0) {
+			buf.WriteLeadingString("ORDER BY 1")
 		}
 	}
 

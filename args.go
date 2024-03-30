@@ -241,7 +241,7 @@ func (args *Args) compileArg(buf *stringBuilder, flavor Flavor, values []interfa
 
 	default:
 		switch flavor {
-		case MySQL, SQLite, CQL, ClickHouse, Presto:
+		case MySQL, SQLite, CQL, ClickHouse, Presto, Informix:
 			buf.WriteRune('?')
 		case PostgreSQL:
 			fmt.Fprintf(buf, "$%d", len(values)+1)

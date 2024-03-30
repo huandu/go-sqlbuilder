@@ -21,6 +21,7 @@ func TestFlavor(t *testing.T) {
 		CQL:        "CQL",
 		ClickHouse: "ClickHouse",
 		Oracle:     "Oracle",
+		Informix:   "Informix",
 	}
 
 	for f, expected := range cases {
@@ -157,5 +158,23 @@ func ExampleFlavor_Interpolate_oracle() {
 
 	// Output:
 	// SELECT name FROM user WHERE id = 1234 AND name = 'Charmy Liu' AND enabled = 1
+	// <nil>
+}
+
+func ExampleFlavor_Interpolate_infomix() {
+	sb := Informix.NewSelectBuilder()
+	sb.Select("name").From("user").Where(
+		sb.NE("id", 1234),
+		sb.E("name", "Charmy Liu"),
+		sb.E("enabled", true),
+	)
+	sql, args := sb.Build()
+	query, err := Informix.Interpolate(sql, args)
+
+	fmt.Println(query)
+	fmt.Println(err)
+
+	// Output:
+	// SELECT name FROM user WHERE id <> 1234 AND name = 'Charmy Liu' AND enabled = TRUE
 	// <nil>
 }
