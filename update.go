@@ -232,3 +232,15 @@ func (ub *UpdateBuilder) SQL(sql string) *UpdateBuilder {
 	ub.injection.SQL(ub.marker, sql)
 	return ub
 }
+
+// Set WhereExprs and Args from another builder
+func (ub *UpdateBuilder) SetConditions(whereExprs []string, arg Args) *UpdateBuilder {
+	ub.whereExprs = whereExprs
+	*ub.args = arg
+	return ub
+}
+
+// GetConditions returns the current WHERE expressions and Args.
+func (ub *UpdateBuilder) GetConditions() ([]string, Args) {
+	return ub.whereExprs, *ub.args
+}

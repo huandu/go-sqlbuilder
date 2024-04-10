@@ -164,3 +164,15 @@ func (db *DeleteBuilder) SQL(sql string) *DeleteBuilder {
 	db.injection.SQL(db.marker, sql)
 	return db
 }
+
+// Set WhereExprs and Args from another builder
+func (db *DeleteBuilder) SetConditions(whereExprs []string, args Args) *DeleteBuilder {
+	db.whereExprs = whereExprs
+	*db.args = args
+	return db
+}
+
+// GetConditions returns the current WHERE expressions and Args.
+func (db *DeleteBuilder) GetConditions() ([]string, Args) {
+	return db.whereExprs, *db.Cond.Args
+}

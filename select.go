@@ -475,3 +475,15 @@ func (sb *SelectBuilder) SQL(sql string) *SelectBuilder {
 	sb.injection.SQL(sb.marker, sql)
 	return sb
 }
+
+// Set WhereExprs and Args from another builder
+func (sb *SelectBuilder) SetConditions(whereExprs []string, args Args) *SelectBuilder {
+	sb.whereExprs = whereExprs
+	*sb.args = args
+	return sb
+}
+
+// GetConditions returns the current WHERE expressions and Args.
+func (sb *SelectBuilder) GetConditions() ([]string, Args) {
+	return sb.whereExprs, *sb.Cond.Args
+}
