@@ -236,10 +236,10 @@ func ExampleSelectBuilder_limit_offset() {
 	//
 	// Informix
 	// #1: SELECT * FROM user
-	// #2: SELECT SKIP 0 * FROM user ORDER BY 1
-	// #3: SELECT SKIP 0 FIRST 1 * FROM user ORDER BY 1
-	// #4: SELECT SKIP 0 FIRST 1 * FROM user ORDER BY 1
-	// #5: SELECT SKIP 1 FIRST 1 * FROM user ORDER BY id
+	// #2: SELECT * FROM user
+	// #3: SELECT * FROM user SKIP 0 FIRST 1
+	// #4: SELECT * FROM user FIRST 1
+	// #5: SELECT * FROM user ORDER BY id SKIP 1 FIRST 1
 }
 
 func ExampleSelectBuilder_ForUpdate() {
