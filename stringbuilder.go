@@ -34,6 +34,19 @@ func (sb *stringBuilder) WriteString(s string) {
 	sb.builder.WriteString(s)
 }
 
+func (sb *stringBuilder) WriteStrings(ss []string, sep string) {
+	if len(ss) == 0 {
+		return
+	}
+
+	sb.WriteString(ss[0])
+
+	for _, s := range ss[1:] {
+		sb.WriteString(sep)
+		sb.WriteString(s)
+	}
+}
+
 func (sb *stringBuilder) WriteRune(r rune) {
 	sb.builder.WriteRune(r)
 }

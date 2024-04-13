@@ -6,7 +6,6 @@ package sqlbuilder
 import (
 	"fmt"
 	"strconv"
-	"strings"
 )
 
 const (
@@ -25,7 +24,11 @@ func NewUpdateBuilder() *UpdateBuilder {
 
 func newUpdateBuilder() *UpdateBuilder {
 	args := &Args{}
+	proxy := &whereClauseProxy{}
 	return &UpdateBuilder{
+		whereClauseProxy: proxy,
+		whereClauseExpr:  args.Add(proxy),
+
 		Cond: Cond{
 			Args: args,
 		},
@@ -37,11 +40,14 @@ func newUpdateBuilder() *UpdateBuilder {
 
 // UpdateBuilder is a builder to build UPDATE.
 type UpdateBuilder struct {
+	*WhereClause
 	Cond
+
+	whereClauseProxy *whereClauseProxy
+	whereClauseExpr  string
 
 	table       string
 	assignments []string
-	whereExprs  []string
 	orderByCols []string
 	order       string
 	limit       int
@@ -82,8 +88,22 @@ func (ub *UpdateBuilder) SetMore(assignment ...string) *UpdateBuilder {
 
 // Where sets expressions of WHERE in UPDATE.
 func (ub *UpdateBuilder) Where(andExpr ...string) *UpdateBuilder {
-	ub.whereExprs = append(ub.whereExprs, andExpr...)
+	if ub.WhereClause == nil {
+		ub.WhereClause = NewWhereClause()
+	}
+
+	ub.WhereClause.AddWhereExpr(ub.args, andExpr...)
 	ub.marker = updateMarkerAfterWhere
+	return ub
+}
+
+// AddWhereClause adds all clauses in the whereClause to SELECT.
+func (ub *UpdateBuilder) AddWhereClause(whereClause *WhereClause) *UpdateBuilder {
+	if ub.WhereClause == nil {
+		ub.WhereClause = NewWhereClause()
+	}
+
+	ub.WhereClause.AddWhereClause(whereClause)
 	return ub
 }
 
@@ -188,20 +208,24 @@ func (ub *UpdateBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 	if len(ub.assignments) > 0 {
 		buf.WriteLeadingString("SET ")
-		buf.WriteString(strings.Join(ub.assignments, ", "))
+		buf.WriteStrings(ub.assignments, ", ")
 	}
 
 	ub.injection.WriteTo(buf, updateMarkerAfterSet)
 
-	if len(ub.whereExprs) > 0 {
-		buf.WriteLeadingString("WHERE ")
-		buf.WriteString(strings.Join(ub.whereExprs, " AND "))
+	if ub.WhereClause != nil {
+		ub.whereClauseProxy.WhereClause = ub.WhereClause
+		defer func() {
+			ub.whereClauseProxy.WhereClause = nil
+		}()
+
+		buf.WriteLeadingString(ub.whereClauseExpr)
 		ub.injection.WriteTo(buf, updateMarkerAfterWhere)
 	}
 
 	if len(ub.orderByCols) > 0 {
 		buf.WriteLeadingString("ORDER BY ")
-		buf.WriteString(strings.Join(ub.orderByCols, ", "))
+		buf.WriteStrings(ub.orderByCols, ", ")
 
 		if ub.order != "" {
 			buf.WriteLeadingString(ub.order)

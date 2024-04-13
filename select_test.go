@@ -61,19 +61,26 @@ func ExampleSelectBuilder_advancedUsage() {
 	sb := NewSelectBuilder()
 	innerSb := NewSelectBuilder()
 
+	// Named arguments are supported.
+	start := sql.Named("start", 1234567890)
+	end := sql.Named("end", 1234599999)
+	level := sql.Named("level", 20)
+
 	sb.Select("id", "name")
 	sb.From(
 		sb.BuilderAs(innerSb, "user"),
 	)
 	sb.Where(
 		sb.In("status", Flatten([]int{1, 2, 3})...),
-		sb.Between("created_at", sql.Named("start", 1234567890), sql.Named("end", 1234599999)),
+		sb.Between("created_at", start, end),
 	)
 	sb.OrderBy("modified_at").Desc()
 
 	innerSb.Select("*")
 	innerSb.From("banned")
 	innerSb.Where(
+		innerSb.GreaterThan("level", level),
+		innerSb.LessEqualThan("updated_at", end),
 		innerSb.NotIn("name", Flatten([]string{"Huan Du", "Charmy Liu"})...),
 	)
 
@@ -82,8 +89,8 @@ func ExampleSelectBuilder_advancedUsage() {
 	fmt.Println(args)
 
 	// Output:
-	// SELECT id, name FROM (SELECT * FROM banned WHERE name NOT IN (?, ?)) AS user WHERE status IN (?, ?, ?) AND created_at BETWEEN @start AND @end ORDER BY modified_at DESC
-	// [Huan Du Charmy Liu 1 2 3 {{} start 1234567890} {{} end 1234599999}]
+	// SELECT id, name FROM (SELECT * FROM banned WHERE level > @level AND updated_at <= @end AND name NOT IN (?, ?)) AS user WHERE status IN (?, ?, ?) AND created_at BETWEEN @start AND @end ORDER BY modified_at DESC
+	// [Huan Du Charmy Liu 1 2 3 {{} level 20} {{} end 1234599999} {{} start 1234567890}]
 }
 
 func ExampleSelectBuilder_join() {

@@ -3,13 +3,16 @@
 
 package sqlbuilder
 
-import (
-	"strings"
-)
-
 // Cond provides several helper methods to build conditions.
 type Cond struct {
 	Args *Args
+}
+
+// NewCond returns a new Cond.
+func NewCond() *Cond {
+	return &Cond{
+		Args: &Args{},
+	}
 }
 
 // Equal represents "field = value".
@@ -137,7 +140,7 @@ func (c *Cond) In(field string, value ...interface{}) string {
 	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" IN (")
-	buf.WriteString(strings.Join(vs, ", "))
+	buf.WriteStrings(vs, ", ")
 	buf.WriteString(")")
 	return buf.String()
 }
@@ -153,7 +156,7 @@ func (c *Cond) NotIn(field string, value ...interface{}) string {
 	buf := newStringBuilder()
 	buf.WriteString(Escape(field))
 	buf.WriteString(" NOT IN (")
-	buf.WriteString(strings.Join(vs, ", "))
+	buf.WriteStrings(vs, ", ")
 	buf.WriteString(")")
 	return buf.String()
 }
@@ -218,7 +221,7 @@ func (c *Cond) NotBetween(field string, lower, upper interface{}) string {
 func (c *Cond) Or(orExpr ...string) string {
 	buf := newStringBuilder()
 	buf.WriteString("(")
-	buf.WriteString(strings.Join(orExpr, " OR "))
+	buf.WriteStrings(orExpr, " OR ")
 	buf.WriteString(")")
 	return buf.String()
 }
@@ -227,7 +230,7 @@ func (c *Cond) Or(orExpr ...string) string {
 func (c *Cond) And(andExpr ...string) string {
 	buf := newStringBuilder()
 	buf.WriteString("(")
-	buf.WriteString(strings.Join(andExpr, " AND "))
+	buf.WriteStrings(andExpr, " AND ")
 	buf.WriteString(")")
 	return buf.String()
 }
@@ -263,7 +266,7 @@ func (c *Cond) Any(field, op string, value ...interface{}) string {
 	buf.WriteString(" ")
 	buf.WriteString(op)
 	buf.WriteString(" ANY (")
-	buf.WriteString(strings.Join(vs, ", "))
+	buf.WriteStrings(vs, ", ")
 	buf.WriteString(")")
 	return buf.String()
 }
@@ -281,7 +284,7 @@ func (c *Cond) All(field, op string, value ...interface{}) string {
 	buf.WriteString(" ")
 	buf.WriteString(op)
 	buf.WriteString(" ALL (")
-	buf.WriteString(strings.Join(vs, ", "))
+	buf.WriteStrings(vs, ", ")
 	buf.WriteString(")")
 	return buf.String()
 }
@@ -299,7 +302,7 @@ func (c *Cond) Some(field, op string, value ...interface{}) string {
 	buf.WriteString(" ")
 	buf.WriteString(op)
 	buf.WriteString(" SOME (")
-	buf.WriteString(strings.Join(vs, ", "))
+	buf.WriteStrings(vs, ", ")
 	buf.WriteString(")")
 	return buf.String()
 }

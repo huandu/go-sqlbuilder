@@ -10,6 +10,7 @@
   - [Basic usage](#basic-usage)
   - [Pre-defined SQL builders](#pre-defined-sql-builders)
   - [Build `WHERE` clause](#build-where-clause)
+  - [Share `WHERE` clause among builders](#share-where-clause-among-builders)
   - [Build SQL for different systems](#build-sql-for-different-systems)
   - [Using `Struct` as a light weight ORM](#using-struct-as-a-light-weight-orm)
   - [Nested SQL](#nested-sql)
@@ -138,12 +139,12 @@ fmt.Println(args)
 
 There are many methods for building conditions.
 
-- [Cond.Equal](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Equal)/[Cond.E](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.E): `field = value`.
-- [Cond.NotEqual](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NotEqual)/[Cond.NE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NE): `field <> value`.
-- [Cond.GreaterThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GreaterThan)/[Cond.G](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.G): `field > value`.
-- [Cond.GreaterEqualThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GreaterEqualThan)/[Cond.GE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GE): `field >= value`.
-- [Cond.LessThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LessThan)/[Cond.L](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.L): `field < value`.
-- [Cond.LessEqualThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LessEqualThan)/[Cond.LE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LE): `field <= value`.
+- [Cond.Equal](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Equal)/[Cond.E](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.E)/[Cond.EQ](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.EQ): `field = value`.
+- [Cond.NotEqual](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NotEqual)/[Cond.NE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NE)/[Cond.NEQ](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NEQ): `field <> value`.
+- [Cond.GreaterThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GreaterThan)/[Cond.G](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.G)/[Cond.GT](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GT): `field > value`.
+- [Cond.GreaterEqualThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GreaterEqualThan)/[Cond.GE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GE)/[Cond.GTE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GTE): `field >= value`.
+- [Cond.LessThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LessThan)/[Cond.L](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.L)/[Cond.LT](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LT): `field < value`.
+- [Cond.LessEqualThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LessEqualThan)/[Cond.LE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LE)/[Cond.LTE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LTE): `field <= value`.
 - [Cond.In](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.In): `field IN (value1, value2, ...)`.
 - [Cond.NotIn](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NotIn): `field NOT IN (value1, value2, ...)`.
 - [Cond.Like](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Like): `field LIKE value`.
@@ -163,6 +164,36 @@ There are also some methods to combine conditions.
 
 - [Cond.And](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.And): Combine conditions with `AND` operator.
 - [Cond.Or](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Or): Combine conditions with `OR` operator.
+
+### Share `WHERE` clause among builders
+
+Due to the importance of the `WHERE` statement in SQL, we often need to continuously append conditions and even share some common `WHERE` conditions among different builders. Therefore, we abstract the `WHERE` statement into a `WhereClause` struct, which can be used to create reusable `WHERE` conditions.
+
+Here is a sample to show how to copy `WHERE` clause from a `SelectBuilder` to an `UpdateBuilder`.
+
+```go
+// Build a SQL to select a user from database.
+sb := Select("name", "level").From("users")
+sb.Where(
+    sb.Equal("id", 1234),
+)
+fmt.Println(sb)
+
+ub := Update("users")
+ub.Set(
+    ub.Add("level", 10),
+)
+
+// Set the WHERE clause of UPDATE to the WHERE clause of SELECT.
+ub.WhereClause = sb.WhereClause
+fmt.Println(ub)
+
+// Output:
+// SELECT name, level FROM users WHERE id = ?
+// UPDATE users SET level = level + ? WHERE id = ?
+```
+
+The `WhereClause` is not thread-safe. Read samples for [WhereClause](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#WhereClause) to learn how to use it correctly.
 
 ### Build SQL for different systems
 

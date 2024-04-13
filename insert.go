@@ -147,7 +147,7 @@ func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			ib.injection.WriteTo(buf, insertMarkerAfterInsertInto)
 			if len(ib.cols) > 0 {
 				buf.WriteLeadingString("(")
-				buf.WriteString(strings.Join(ib.cols, ", "))
+				buf.WriteStrings(ib.cols, ", ")
 				buf.WriteString(")")
 
 				ib.injection.WriteTo(buf, insertMarkerAfterCols)
@@ -156,7 +156,7 @@ func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			buf.WriteLeadingString("VALUES ")
 			values := make([]string, 0, len(ib.values))
 			values = append(values, fmt.Sprintf("(%v)", strings.Join(v, ", ")))
-			buf.WriteString(strings.Join(values, ", "))
+			buf.WriteStrings(values, ", ")
 		}
 
 		buf.WriteString(" SELECT 1 from DUAL")
@@ -176,7 +176,7 @@ func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 	if len(ib.cols) > 0 {
 		buf.WriteLeadingString("(")
-		buf.WriteString(strings.Join(ib.cols, ", "))
+		buf.WriteStrings(ib.cols, ", ")
 		buf.WriteString(")")
 
 		ib.injection.WriteTo(buf, insertMarkerAfterCols)
@@ -198,7 +198,7 @@ func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			values = append(values, fmt.Sprintf("(%v)", strings.Join(v, ", ")))
 		}
 
-		buf.WriteString(strings.Join(values, ", "))
+		buf.WriteStrings(values, ", ")
 	}
 
 	ib.injection.WriteTo(buf, insertMarkerAfterValues)
