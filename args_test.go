@@ -5,6 +5,7 @@ package sqlbuilder
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"strings"
 	"testing"
@@ -14,16 +15,24 @@ import (
 
 func TestArgs(t *testing.T) {
 	a := assert.New(t)
+	start := sql.Named("start", 1234567890)
+	end := sql.Named("end", 1234599999)
+	named1 := Named("named1", "foo")
+	named2 := Named("named2", "bar")
+
 	cases := map[string][]interface{}{
 		"abc ? def\n[123]":                   {"abc $? def", 123},
 		"abc ? def\n[456]":                   {"abc $0 def", 456},
 		"abc  def\n[]":                       {"abc $1 def", 123},
-		"abc ? def\n[789]":                   {"abc ${s} def", Named("s", 789)},
 		"abc  def \n[]":                      {"abc ${unknown} def ", 123},
 		"abc $ def\n[]":                      {"abc $$ def", 123},
 		"abcdef$\n[]":                        {"abcdef$", 123},
 		"abc ? ? ? ? def\n[123 456 123 456]": {"abc $? $? $0 $? def", 123, 456, 789},
 		"abc ? raw ? raw def\n[123 123]":     {"abc $? $? $0 $? def", 123, Raw("raw"), 789},
+		"abc $-1 $a def\n[]":                 {"abc $-1 $a def", 123},
+
+		"abc ? def ? ?\n[foo bar foo]":                                  {"abc ${named1} def ${named2} ${named1}", named2, named1, named2},
+		"@end @start @end\n[{{} end 1234599999} {{} start 1234567890}]": {"$? $? $?", end, start, end},
 	}
 
 	for expected, c := range cases {
