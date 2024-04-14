@@ -5,6 +5,9 @@ package sqlbuilder
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/huandu/go-assert"
 )
 
 func ExampleWhereClause() {
@@ -187,4 +190,41 @@ func ExampleWhereClause_AddWhereClause() {
 	// [1234]
 	// UPDATE users SET level = level + ? WHERE id = ? AND deleted = ?
 	// [10 1234 0]
+}
+
+func TestWhereClauseSharedInstances(t *testing.T) {
+	a := assert.New(t)
+	sb := Select("*").From("t")
+	ub := Update("t").Set("foo = 1")
+	db := DeleteFrom("t")
+
+	whereClause := NewWhereClause()
+	sb.WhereClause = whereClause
+	ub.WhereClause = whereClause
+	db.WhereClause = whereClause
+	sb.Where(sb.Equal("id", 123))
+	a.Equal(sb.String(), "SELECT * FROM t WHERE id = ?")
+	a.Equal(ub.String(), "UPDATE t SET foo = 1 WHERE id = ?")
+	a.Equal(db.String(), "DELETE FROM t WHERE id = ?")
+
+	// Copied WhereClause is independent from the original.
+	ub.WhereClause = CopyWhereClause(whereClause)
+	ub.Where(ub.GreaterEqualThan("level", 10))
+	db.Where(db.In("status", 1, 2))
+	a.Equal(sb.String(), "SELECT * FROM t WHERE id = ? AND status IN (?, ?)")
+	a.Equal(ub.String(), "UPDATE t SET foo = 1 WHERE id = ? AND level >= ?")
+	a.Equal(db.String(), "DELETE FROM t WHERE id = ? AND status IN (?, ?)")
+
+	// Clear the WhereClause and add new where clause and expressions.
+	db.WhereClause = nil
+	db.AddWhereClause(ub.WhereClause)
+	db.AddWhereExpr(db.Args, db.Equal("deleted", 0))
+	a.Equal(sb.String(), "SELECT * FROM t WHERE id = ? AND status IN (?, ?)")
+	a.Equal(ub.String(), "UPDATE t SET foo = 1 WHERE id = ? AND level >= ?")
+	a.Equal(db.String(), "DELETE FROM t WHERE id = ? AND level >= ? AND deleted = ?")
+
+	// Nested WhereClause.
+	ub.Where(ub.NotIn("id", sb))
+	sb.Where(sb.NotEqual("flag", "normal"))
+	a.Equal(ub.String(), "UPDATE t SET foo = 1 WHERE id = ? AND level >= ? AND id NOT IN (SELECT * FROM t WHERE id = ? AND status IN (?, ?) AND flag <> ?)")
 }
