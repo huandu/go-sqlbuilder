@@ -141,22 +141,7 @@ func (args *Args) CompileWithFlavor(format string, flavor Flavor, initialValue .
 	}
 
 	query = buf.String()
-
-	if len(args.sqlNamedArgs) > 0 {
-		// Stabilize the sequence to make it easier to write test cases.
-		ints := make([]int, 0, len(args.sqlNamedArgs))
-
-		for _, p := range args.sqlNamedArgs {
-			ints = append(ints, p)
-		}
-
-		sort.Ints(ints)
-
-		for _, i := range ints {
-			values = append(values, args.args[i])
-		}
-	}
-
+	values = args.mergeSQLNamedArgs(values)
 	return
 }
 
@@ -253,8 +238,71 @@ func (args *Args) compileArg(buf *stringBuilder, flavor Flavor, values []interfa
 			panic(fmt.Errorf("Args.CompileWithFlavor: invalid flavor %v (%v)", flavor, int(flavor)))
 		}
 
-		values = append(values, arg)
+		namedValues := parseNamedArgs(values)
+
+		if n := len(namedValues); n == 0 {
+			values = append(values, arg)
+		} else {
+			index := len(values) - n
+			values = append(values[:index+1], namedValues...)
+			values[index] = arg
+		}
 	}
 
 	return values
+}
+
+func (args *Args) mergeSQLNamedArgs(values []interface{}) []interface{} {
+	if len(args.sqlNamedArgs) == 0 {
+		return values
+	}
+
+	namedValues := parseNamedArgs(values)
+	existingNames := make(map[string]struct{}, len(namedValues))
+
+	for _, v := range namedValues {
+		if a, ok := v.(sql.NamedArg); ok {
+			existingNames[a.Name] = struct{}{}
+		}
+	}
+
+	// Stabilize the sequence to make it easier to write test cases.
+	ints := make([]int, 0, len(args.sqlNamedArgs))
+
+	for n, p := range args.sqlNamedArgs {
+		if _, ok := existingNames[n]; ok {
+			continue
+		}
+
+		ints = append(ints, p)
+	}
+
+	sort.Ints(ints)
+
+	for _, i := range ints {
+		values = append(values, args.args[i])
+	}
+
+	return values
+}
+
+func parseNamedArgs(initialValue []interface{}) (namedValues []interface{}) {
+	if len(initialValue) == 0 {
+		return nil
+	}
+
+	// sql.NamedArgs must be placed at the end of the initial value.
+	i := len(initialValue)
+
+	for ; i > 0; i-- {
+		switch initialValue[i-1].(type) {
+		case sql.NamedArg:
+			continue
+		}
+
+		break
+	}
+
+	namedValues = initialValue[i:]
+	return
 }

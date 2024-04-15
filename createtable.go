@@ -131,7 +131,7 @@ func (ctb *CreateTableBuilder) BuildWithFlavor(flavor Flavor, initialArg ...inte
 			defs = append(defs, strings.Join(def, " "))
 		}
 
-		buf.WriteString(strings.Join(defs, ", "))
+		buf.WriteStrings(defs, ", ")
 		buf.WriteRune(')')
 
 		ctb.injection.WriteTo(buf, createTableMarkerAfterDefine)

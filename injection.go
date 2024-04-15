@@ -3,10 +3,6 @@
 
 package sqlbuilder
 
-import (
-	"strings"
-)
-
 // injection is a helper type to manage injected SQLs in all builders.
 type injection struct {
 	markerSQLs map[injectionMarker][]string
@@ -36,6 +32,6 @@ func (injection *injection) WriteTo(buf *stringBuilder, marker injectionMarker) 
 		return
 	}
 
-	s := strings.Join(sqls, " ")
-	buf.WriteLeadingString(s)
+	buf.WriteLeadingString("")
+	buf.WriteStrings(sqls, " ")
 }

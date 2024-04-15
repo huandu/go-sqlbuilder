@@ -5,7 +5,6 @@ package sqlbuilder
 
 import (
 	"strconv"
-	"strings"
 )
 
 const (
@@ -162,7 +161,7 @@ func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 
 	if len(ub.orderByCols) > 0 {
 		buf.WriteLeadingString("ORDER BY ")
-		buf.WriteString(strings.Join(ub.orderByCols, ", "))
+		buf.WriteStrings(ub.orderByCols, ", ")
 
 		if ub.order != "" {
 			buf.WriteRune(' ')

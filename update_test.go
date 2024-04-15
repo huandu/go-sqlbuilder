@@ -59,10 +59,10 @@ func TestUpdateAssignments(t *testing.T) {
 	cases := map[string]func(ub *UpdateBuilder) string{
 		"f = f + 1|[]":     func(ub *UpdateBuilder) string { return ub.Incr("f") },
 		"f = f - 1|[]":     func(ub *UpdateBuilder) string { return ub.Decr("f") },
-		"f = f + $0|[123]": func(ub *UpdateBuilder) string { return ub.Add("f", 123) },
-		"f = f - $0|[123]": func(ub *UpdateBuilder) string { return ub.Sub("f", 123) },
-		"f = f * $0|[123]": func(ub *UpdateBuilder) string { return ub.Mul("f", 123) },
-		"f = f / $0|[123]": func(ub *UpdateBuilder) string { return ub.Div("f", 123) },
+		"f = f + $1|[123]": func(ub *UpdateBuilder) string { return ub.Add("f", 123) },
+		"f = f - $1|[123]": func(ub *UpdateBuilder) string { return ub.Sub("f", 123) },
+		"f = f * $1|[123]": func(ub *UpdateBuilder) string { return ub.Mul("f", 123) },
+		"f = f / $1|[123]": func(ub *UpdateBuilder) string { return ub.Div("f", 123) },
 	}
 
 	for expected, f := range cases {

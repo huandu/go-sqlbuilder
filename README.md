@@ -10,6 +10,7 @@
   - [Basic usage](#basic-usage)
   - [Pre-defined SQL builders](#pre-defined-sql-builders)
   - [Build `WHERE` clause](#build-where-clause)
+  - [Share `WHERE` clause among builders](#share-where-clause-among-builders)
   - [Build SQL for different systems](#build-sql-for-different-systems)
   - [Using `Struct` as a light weight ORM](#using-struct-as-a-light-weight-orm)
   - [Nested SQL](#nested-sql)
@@ -18,11 +19,13 @@
   - [Freestyle builder](#freestyle-builder)
   - [Using special syntax to build SQL](#using-special-syntax-to-build-sql)
   - [Interpolate `args` in the `sql`](#interpolate-args-in-the-sql)
-- [FAQ](#faq)
-  - [What's the difference between this package and `squirrel`](#whats-the-difference-between-this-package-and-squirrel)
 - [License](#license)
 
-Package `sqlbuilder` provides a set of flexible and powerful SQL string builders. The only goal of this package is to build SQL string with arguments which can be used in `DB#Query` or `DB#Exec` defined in package `database/sql`.
+The `sqlbuilder` package implements a series of flexible and powerful SQL string concatenation builders. This package focuses on constructing SQL strings for direct use with the Go standard library's `sql.DB` and `sql.Stmt` related interfaces, and strives to optimize the performance of building SQL and reduce memory consumption.
+
+The initial goal in designing this package was to create a pure SQL construction library that is independent of specific database drivers and business logic. It is designed to meet the needs of enterprise-level scenarios that require various customized database drivers, special operation and maintenance standards, heterogeneous systems, and non-standard SQL in complex situations. Since its open-source inception, this package has been tested in a large enterprise-level application scenario, enduring the pressure of hundreds of millions of orders daily and nearly ten million transactions per day, demonstrating good performance and scalability.
+
+This package does not bind to any specific database driver, nor does it automatically connect to any database. It does not even assume the use of the generated SQL, making it suitable for any application scenario that constructs SQL-like statements. It is also very suitable for secondary development on this basis, to implement more business-related database access packages, ORMs, and so on.
 
 ## Install
 
@@ -138,12 +141,12 @@ fmt.Println(args)
 
 There are many methods for building conditions.
 
-- [Cond.Equal](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Equal)/[Cond.E](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.E): `field = value`.
-- [Cond.NotEqual](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NotEqual)/[Cond.NE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NE): `field <> value`.
-- [Cond.GreaterThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GreaterThan)/[Cond.G](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.G): `field > value`.
-- [Cond.GreaterEqualThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GreaterEqualThan)/[Cond.GE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GE): `field >= value`.
-- [Cond.LessThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LessThan)/[Cond.L](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.L): `field < value`.
-- [Cond.LessEqualThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LessEqualThan)/[Cond.LE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LE): `field <= value`.
+- [Cond.Equal](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Equal)/[Cond.E](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.E)/[Cond.EQ](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.EQ): `field = value`.
+- [Cond.NotEqual](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NotEqual)/[Cond.NE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NE)/[Cond.NEQ](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NEQ): `field <> value`.
+- [Cond.GreaterThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GreaterThan)/[Cond.G](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.G)/[Cond.GT](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GT): `field > value`.
+- [Cond.GreaterEqualThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GreaterEqualThan)/[Cond.GE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GE)/[Cond.GTE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.GTE): `field >= value`.
+- [Cond.LessThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LessThan)/[Cond.L](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.L)/[Cond.LT](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LT): `field < value`.
+- [Cond.LessEqualThan](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LessEqualThan)/[Cond.LE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LE)/[Cond.LTE](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.LTE): `field <= value`.
 - [Cond.In](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.In): `field IN (value1, value2, ...)`.
 - [Cond.NotIn](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NotIn): `field NOT IN (value1, value2, ...)`.
 - [Cond.Like](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Like): `field LIKE value`.
@@ -163,6 +166,36 @@ There are also some methods to combine conditions.
 
 - [Cond.And](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.And): Combine conditions with `AND` operator.
 - [Cond.Or](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Or): Combine conditions with `OR` operator.
+
+### Share `WHERE` clause among builders
+
+Due to the importance of the `WHERE` statement in SQL, we often need to continuously append conditions and even share some common `WHERE` conditions among different builders. Therefore, we abstract the `WHERE` statement into a `WhereClause` struct, which can be used to create reusable `WHERE` conditions.
+
+Here is a sample to show how to copy `WHERE` clause from a `SelectBuilder` to an `UpdateBuilder`.
+
+```go
+// Build a SQL to select a user from database.
+sb := Select("name", "level").From("users")
+sb.Where(
+    sb.Equal("id", 1234),
+)
+fmt.Println(sb)
+
+ub := Update("users")
+ub.Set(
+    ub.Add("level", 10),
+)
+
+// Set the WHERE clause of UPDATE to the WHERE clause of SELECT.
+ub.WhereClause = sb.WhereClause
+fmt.Println(ub)
+
+// Output:
+// SELECT name, level FROM users WHERE id = ?
+// UPDATE users SET level = level + ? WHERE id = ?
+```
+
+Read samples for [WhereClause](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#WhereClause) to learn how to use it.
 
 ### Build SQL for different systems
 
@@ -374,7 +407,9 @@ If we just want to use `${name}` syntax to refer named arguments, use `BuildName
 
 ### Interpolate `args` in the `sql`
 
-Some SQL drivers doesn't actually implement `StmtExecContext#ExecContext`. They will fail when `len(args) > 0`. The only solution is to interpolate `args` in the `sql`, and execute the interpolated query with the driver.
+Some SQL-like drivers, e.g. SQL for Redis, SQL for ES, etc., doesn't actually implement `StmtExecContext#ExecContext`. They will fail when `len(args) > 0`. The only solution is to interpolate `args` in the `sql`, and execute the interpolated query with the driver.
+
+The design goal of the interpolation feature in this package is to implement a "basically sufficient" capability, rather than a feature that is on par with various SQL drivers and DBMS systems.
 
 _Security warning_: I try my best to escape special characters in interpolate methods, but it's still less secure than `Stmt` implemented by SQL servers.
 
@@ -426,19 +461,6 @@ fmt.Println(err)
 // SELECT * FROM dup(42);
 // <nil>
 ```
-
-## FAQ
-
-### What's the difference between this package and `squirrel`
-
-Package [squirrel](https://github.com/Masterminds/squirrel) is another SQL builder package with outstanding design and high code quality.
-Comparing with `squirrel`, `go-sqlbuilder` is much more extensible with more built-in features.
-
-Here are details.
-
-- API design: The core of `go-sqlbuilder` is `Builder` and `Args`. Nearly all features are built on top of them. If we want to extend this package, e.g. support `EXPLAIN`, we can use `Build("EXPLAIN $?", builder)` to add `EXPLAIN` in front of any SQL.
-- ORM: Package `squirrel` doesn't provide ORM directly. There is another package [structable](https://github.com/Masterminds/structable), which is based on `squirrel`, designed for ORM.
-- No design pitfalls: There is no design pitfalls like `squirrel.Eq{"mynumber": []uint8{1,2,3}}`. I'm proud of it. :)
 
 ## License
 

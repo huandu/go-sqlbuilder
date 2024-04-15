@@ -101,9 +101,9 @@ func Tuple(values ...interface{}) interface{} {
 // TupleNames joins names with tuple format.
 // The names is not escaped. Use `EscapeAll` to escape them if necessary.
 func TupleNames(names ...string) string {
-	buf := &strings.Builder{}
+	buf := newStringBuilder()
 	buf.WriteRune('(')
-	buf.WriteString(strings.Join(names, ", "))
+	buf.WriteStrings(names, ", ")
 	buf.WriteRune(')')
 
 	return buf.String()
