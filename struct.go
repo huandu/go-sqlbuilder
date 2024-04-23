@@ -307,10 +307,11 @@ func (s *Struct) selectFromWithTags(table string, with, without []string) (sb *S
 
 	buf := newStringBuilder()
 	cols := make([]string, 0, len(tagged.ForRead))
+	tableAlias := parseTableAlias(table)
 
 	for _, sf := range tagged.ForRead {
 		if s.Flavor != CQL && !strings.ContainsRune(sf.Alias, '.') {
-			buf.WriteString(table)
+			buf.WriteString(tableAlias)
 			buf.WriteRune('.')
 		}
 		buf.WriteString(sf.NameForSelect(s.Flavor))
@@ -321,6 +322,16 @@ func (s *Struct) selectFromWithTags(table string, with, without []string) (sb *S
 
 	sb.Select(cols...)
 	return sb
+}
+
+func parseTableAlias(table string) string {
+	idx := strings.LastIndex(table, " ")
+
+	if idx == -1 {
+		return table
+	}
+
+	return table[idx+1:]
 }
 
 // Update creates a new `UpdateBuilder` with table name.

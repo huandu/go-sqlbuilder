@@ -52,7 +52,7 @@ fmt.Println(sql)
 // SELECT id, name FROM demo.user WHERE status = 1 LIMIT 10
 ```
 
-In the most cases, we need to escape all input from user. In this case, create a builder before starting.
+In the most common cases, we need to escape all input from user. In this case, create a builder before starting.
 
 ```go
 sb := sqlbuilder.NewSelectBuilder()
@@ -222,7 +222,7 @@ type ATable struct {
     Field1     string                                    // If a field doesn't has a tag, use "Field1" as column name in SQL.
     Field2     int    `db:"field2"`                      // Use "db" in field tag to set column name used in SQL.
     Field3     int64  `db:"field3" fieldtag:"foo,bar"`   // Set fieldtag to a field. We can call `WithTag` to include fields with tag or `WithoutTag` to exclude fields with tag.
-    Field4     int64  `db:"field4" fieldtag:"foo"`       // If we use `s.WithTag("foo").Select(table)`, columnes of SELECT are field3 and field4.
+    Field4     int64  `db:"field4" fieldtag:"foo"`       // If we use `s.WithTag("foo").Select("t")`, columnes of SELECT are "t.field3" and "t.field4".
     Field5     string `db:"field5" fieldas:"f5_alias"`   // Use "fieldas" in field tag to set a column alias (AS) used in SELECT.
     Ignored    int32  `db:"-"`                           // If we set field name as "-", Struct will ignore it.
     unexported int                                       // Unexported field is not visible to Struct.
@@ -232,6 +232,10 @@ type ATable struct {
     // The `omitempty` can be written as a function.
     // In this case, omit empty field `Tagged` when UPDATE for tag `tag1` and `tag3` but not `tag2`.
     Tagged     string `db:"tagged" fieldopt:"omitempty(tag1,tag3)" fieldtag:"tag1,tag2,tag3"`
+
+    // By default, the `SelectFrom("t")` will add the "t." to all names of fields matched tag.
+    // We can add dot to field name to disable this behavior.
+    FieldWithTableAlias string `db:"m.field"`
 }
 ```
 
@@ -254,7 +258,7 @@ var userStruct = NewStruct(new(User))
 
 func ExampleStruct() {
     // Prepare SELECT query.
-    //     SELECT id, name, status FROM user WHERE id = 1234
+    //     SELECT user.id, user.name, user.status FROM user WHERE id = 1234
     sb := userStruct.SelectFrom("user")
     sb.Where(sb.Equal("id", 1234))
 

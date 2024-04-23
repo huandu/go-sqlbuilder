@@ -386,6 +386,37 @@ func ExampleStruct_useStructAsORM() {
 	// sqlbuilder.User{ID:1234, Name:"huandu", Status:1}
 }
 
+func ExampleStruct_buildJOIN() {
+	// Suppose we're going to query a "member" table joined with "user" table.
+	type Member struct {
+		ID         string    `db:"id"`
+		UserID     string    `db:"user_id"`
+		MemberName int       `db:"name"`
+		CreatedAt  time.Time `db:"created_at"`
+
+		// Add "u." prefix to the field name to specify the field in "user" table.
+		Name  string `db:"u.name"`
+		Email string `db:"u.email"`
+	}
+
+	// Parse member struct. The memberStruct can be a global variable.
+	// It's guraanteed to be thread-safe.
+	var memberStruct = NewStruct(new(Member))
+
+	// Prepare JOIN query.
+	sb := memberStruct.SelectFrom("member m").Join("user u", "m.user_id = u.user_id")
+	sb.Where(sb.Like("m.name", "Huan%"))
+
+	sql, args := sb.Build()
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT m.id, m.user_id, m.name, m.created_at, u.name, u.email FROM member m JOIN user u ON m.user_id = u.user_id WHERE m.name LIKE ?
+	// [Huan%]
+}
+
 var orderDB testDB = 1
 
 func ExampleStruct_WithTag() {
