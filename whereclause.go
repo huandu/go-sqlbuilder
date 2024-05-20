@@ -88,6 +88,10 @@ func (wc *WhereClause) SetFlavor(flavor Flavor) (old Flavor) {
 
 // AddWhereExpr adds an AND expression to WHERE clause with the specified arguments.
 func (wc *WhereClause) AddWhereExpr(args *Args, andExpr ...string) {
+	if len(andExpr) == 0 {
+		return
+	}
+
 	// Merge with last clause if possible.
 	if len(wc.clauses) > 0 {
 		lastClause := &wc.clauses[len(wc.clauses)-1]

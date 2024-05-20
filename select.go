@@ -147,6 +147,10 @@ func (sb *SelectBuilder) JoinWithOption(option JoinOption, table string, onExpr 
 
 // Where sets expressions of WHERE in SELECT.
 func (sb *SelectBuilder) Where(andExpr ...string) *SelectBuilder {
+	if len(andExpr) == 0 {
+		return sb
+	}
+
 	if sb.WhereClause == nil {
 		sb.WhereClause = NewWhereClause()
 	}

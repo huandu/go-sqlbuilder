@@ -228,3 +228,15 @@ func TestWhereClauseSharedInstances(t *testing.T) {
 	sb.Where(sb.NotEqual("flag", "normal"))
 	a.Equal(ub.String(), "UPDATE t SET foo = 1 WHERE id = ? AND level >= ? AND id NOT IN (SELECT * FROM t WHERE id = ? AND status IN (?, ?) AND flag <> ?)")
 }
+
+func TestEmptyWhereExpr(t *testing.T) {
+	a := assert.New(t)
+	var emptyExpr []string
+	sb := Select("*").From("t").Where(emptyExpr...)
+	ub := Update("t").Set("foo = 1").Where(emptyExpr...)
+	db := DeleteFrom("t").Where(emptyExpr...)
+
+	a.Equal(sb.String(), "SELECT * FROM t")
+	a.Equal(ub.String(), "UPDATE t SET foo = 1")
+	a.Equal(db.String(), "DELETE FROM t")
+}

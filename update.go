@@ -88,6 +88,10 @@ func (ub *UpdateBuilder) SetMore(assignment ...string) *UpdateBuilder {
 
 // Where sets expressions of WHERE in UPDATE.
 func (ub *UpdateBuilder) Where(andExpr ...string) *UpdateBuilder {
+	if len(andExpr) == 0 {
+		return ub
+	}
+
 	if ub.WhereClause == nil {
 		ub.WhereClause = NewWhereClause()
 	}
