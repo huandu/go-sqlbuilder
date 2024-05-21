@@ -30,6 +30,7 @@ _testmain.go
 # VS Code
 debug
 debug_test
+.vscode
 
 # Mac
 .DS_Store
