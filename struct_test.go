@@ -638,9 +638,7 @@ func ExampleStruct_buildDELETE() {
 
 	// Prepare DELETE query.
 	user := &User{
-		ID:     1234,
-		Name:   "Huan Du",
-		Status: 1,
+		ID: 1234,
 	}
 	b := userStruct.DeleteFrom("user")
 	b.Where(b.Equal("id", user.ID))

@@ -11,6 +11,7 @@ import (
 
 const (
 	selectMarkerInit injectionMarker = iota
+	selectMarkerAfterWith
 	selectMarkerAfterSelect
 	selectMarkerAfterFrom
 	selectMarkerAfterJoin
@@ -65,6 +66,7 @@ type SelectBuilder struct {
 	whereClauseProxy *whereClauseProxy
 	whereClauseExpr  string
 
+	cteBuilder  string
 	distinct    bool
 	tables      []string
 	selectCols  []string
@@ -90,6 +92,14 @@ var _ Builder = new(SelectBuilder)
 // Select sets columns in SELECT.
 func Select(col ...string) *SelectBuilder {
 	return DefaultFlavor.NewSelectBuilder().Select(col...)
+}
+
+// With sets WITH clause (the Common Table Expression) before SELECT.
+func (sb *SelectBuilder) With(builder *CTEBuilder) *SelectBuilder {
+	sb.marker = selectMarkerAfterWith
+	sb.cteBuilder = sb.Var(builder)
+	sb.tables = []string{builder.TableName()}
+	return sb
 }
 
 // Select sets columns in SELECT.
@@ -268,6 +278,11 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	sb.injection.WriteTo(buf, selectMarkerInit)
 
 	oraclePage := flavor == Oracle && (sb.limit >= 0 || sb.offset >= 0)
+
+	if sb.cteBuilder != "" {
+		buf.WriteLeadingString(sb.cteBuilder)
+		sb.injection.WriteTo(buf, selectMarkerAfterWith)
+	}
 
 	if len(sb.selectCols) > 0 {
 		buf.WriteLeadingString("SELECT ")
