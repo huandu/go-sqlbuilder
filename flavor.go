@@ -148,6 +148,13 @@ func (f Flavor) NewCTEBuilder() *CTEBuilder {
 	return b
 }
 
+// NewCTETableBuilder creates a new CTE table builder with flavor.
+func (f Flavor) NewCTETableBuilder() *CTETableBuilder {
+	b := newCTETableBuilder()
+	b.SetFlavor(f)
+	return b
+}
+
 // Quote adds quote for name to make sure the name can be used safely
 // as table name or field name.
 //

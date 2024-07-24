@@ -98,7 +98,7 @@ func Select(col ...string) *SelectBuilder {
 func (sb *SelectBuilder) With(builder *CTEBuilder) *SelectBuilder {
 	sb.marker = selectMarkerAfterWith
 	sb.cteBuilder = sb.Var(builder)
-	sb.tables = []string{builder.TableName()}
+	sb.tables = builder.TableNames()
 	return sb
 }
 

@@ -6,12 +6,11 @@ package sqlbuilder
 const (
 	cteMarkerInit injectionMarker = iota
 	cteMarkerAfterWith
-	cteMarkerAfterAs
 )
 
 // With creates a new CTE builder with default flavor.
-func With(name string, cols ...string) *CTEBuilder {
-	return DefaultFlavor.NewCTEBuilder().With(name, cols...)
+func With(tables ...*CTETableBuilder) *CTEBuilder {
+	return DefaultFlavor.NewCTEBuilder().With(tables...)
 }
 
 func newCTEBuilder() *CTEBuilder {
@@ -23,9 +22,8 @@ func newCTEBuilder() *CTEBuilder {
 
 // CTEBuilder is a CTE (Common Table Expression) builder.
 type CTEBuilder struct {
-	name       string
-	cols       []string
-	builderVar string
+	tableNames       []string
+	tableBuilderVars []string
 
 	args *Args
 
@@ -36,17 +34,18 @@ type CTEBuilder struct {
 var _ Builder = new(CTEBuilder)
 
 // With sets the CTE name and columns.
-func (cteb *CTEBuilder) With(name string, cols ...string) *CTEBuilder {
-	cteb.name = name
-	cteb.cols = cols
-	cteb.marker = cteMarkerAfterWith
-	return cteb
-}
+func (cteb *CTEBuilder) With(tables ...*CTETableBuilder) *CTEBuilder {
+	tableNames := make([]string, 0, len(tables))
+	tableBuilderVars := make([]string, 0, len(tables))
 
-// As sets the builder to select data.
-func (cteb *CTEBuilder) As(builder Builder) *CTEBuilder {
-	cteb.builderVar = cteb.args.Add(builder)
-	cteb.marker = cteMarkerAfterAs
+	for _, table := range tables {
+		tableNames = append(tableNames, table.TableName())
+		tableBuilderVars = append(tableBuilderVars, cteb.args.Add(table))
+	}
+
+	cteb.tableNames = tableNames
+	cteb.tableBuilderVars = tableBuilderVars
+	cteb.marker = cteMarkerAfterWith
 	return cteb
 }
 
@@ -72,27 +71,12 @@ func (cteb *CTEBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 	buf := newStringBuilder()
 	cteb.injection.WriteTo(buf, cteMarkerInit)
 
-	if cteb.name != "" {
+	if len(cteb.tableBuilderVars) > 0 {
 		buf.WriteLeadingString("WITH ")
-		buf.WriteString(cteb.name)
-
-		if len(cteb.cols) > 0 {
-			buf.WriteLeadingString("(")
-			buf.WriteStrings(cteb.cols, ", ")
-			buf.WriteString(")")
-		}
-
-		cteb.injection.WriteTo(buf, cteMarkerAfterWith)
+		buf.WriteStrings(cteb.tableBuilderVars, ", ")
 	}
 
-	if cteb.builderVar != "" {
-		buf.WriteLeadingString("AS (")
-		buf.WriteString(cteb.builderVar)
-		buf.WriteRune(')')
-
-		cteb.injection.WriteTo(buf, cteMarkerAfterAs)
-	}
-
+	cteb.injection.WriteTo(buf, cteMarkerAfterWith)
 	return cteb.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
 }
 
@@ -103,18 +87,13 @@ func (cteb *CTEBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
-// Var returns a placeholder for value.
-func (cteb *CTEBuilder) Var(arg interface{}) string {
-	return cteb.args.Add(arg)
-}
-
 // SQL adds an arbitrary sql to current position.
 func (cteb *CTEBuilder) SQL(sql string) *CTEBuilder {
 	cteb.injection.SQL(cteb.marker, sql)
 	return cteb
 }
 
-// TableName returns the CTE table name.
-func (cteb *CTEBuilder) TableName() string {
-	return cteb.name
+// TableNames returns all table names in a CTE.
+func (cteb *CTEBuilder) TableNames() []string {
+	return cteb.tableNames
 }

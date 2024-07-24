@@ -11,14 +11,23 @@ import (
 )
 
 func ExampleWith() {
-	sb := With("users", "id", "name").As(
-		Select("id", "name").From("users").Where("name IS NOT NULL"),
-	).Select("users.id", "orders.id").Join("orders", "users.id = orders.user_id")
+	sb := With(
+		CTETable("users", "id", "name").As(
+			Select("id", "name").From("users").Where("name IS NOT NULL"),
+		),
+		CTETable("devices").As(
+			Select("device_id").From("devices"),
+		),
+	).Select("users.id", "orders.id", "devices.device_id").Join(
+		"orders",
+		"users.id = orders.user_id",
+		"devices.device_id = orders.device_id",
+	)
 
 	fmt.Println(sb)
 
 	// Output:
-	// WITH users (id, name) AS (SELECT id, name FROM users WHERE name IS NOT NULL) SELECT users.id, orders.id FROM users JOIN orders ON users.id = orders.user_id
+	// WITH users (id, name) AS (SELECT id, name FROM users WHERE name IS NOT NULL), devices AS (SELECT device_id FROM devices) SELECT users.id, orders.id, devices.device_id FROM users, devices JOIN orders ON users.id = orders.user_id AND devices.device_id = orders.device_id
 }
 
 func ExampleCTEBuilder() {
@@ -26,7 +35,9 @@ func ExampleCTEBuilder() {
 	usersBuilder.Where(
 		usersBuilder.GreaterEqualThan("level", 10),
 	)
-	cteb := With("valid_users").As(usersBuilder)
+	cteb := With(
+		CTETable("valid_users").As(usersBuilder),
+	)
 	fmt.Println(cteb)
 
 	sb := Select("valid_users.id", "valid_users.name", "orders.id").With(cteb)
@@ -49,17 +60,22 @@ func ExampleCTEBuilder() {
 func TestCTEBuilder(t *testing.T) {
 	a := assert.New(t)
 	cteb := newCTEBuilder()
+	ctetb := newCTETableBuilder()
 	cteb.SQL("/* init */")
-	cteb.With("t", "a", "b")
+	cteb.With(ctetb)
 	cteb.SQL("/* after with */")
 
-	// Make sure that calling Var() will not affect the As().
-	cteb.Var(123)
+	ctetb.SQL("/* table init */")
+	ctetb.Table("t", "a", "b")
+	ctetb.SQL("/* after table */")
 
-	cteb.As(Select("a", "b").From("t"))
-	cteb.SQL("/* after as */")
+	ctetb.As(Select("a", "b").From("t"))
+	ctetb.SQL("/* after table as */")
 
 	sql, args := cteb.Build()
-	a.Equal(sql, "/* init */ WITH t (a, b) /* after with */ AS (SELECT a, b FROM t) /* after as */")
+	a.Equal(sql, "/* init */ WITH /* table init */ t (a, b) /* after table */ AS (SELECT a, b FROM t) /* after table as */ /* after with */")
 	a.Assert(args == nil)
+
+	sql = ctetb.String()
+	a.Equal(sql, "/* table init */ t (a, b) /* after table */ AS (SELECT a, b FROM t) /* after table as */")
 }
