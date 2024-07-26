@@ -33,6 +33,7 @@ func TestCond(t *testing.T) {
 		"$$a IN ($0, $1, $2)":         func() string { return newTestCond().In("$a", 1, 2, 3) },
 		"$$a NOT IN ($0, $1, $2)":     func() string { return newTestCond().NotIn("$a", 1, 2, 3) },
 		"$$a LIKE $0":                 func() string { return newTestCond().Like("$a", "%Huan%") },
+		"$$a ILIKE $0":                func() string { return newTestCond().ILike("$a", "%Huan%") },
 		"$$a NOT LIKE $0":             func() string { return newTestCond().NotLike("$a", "%Huan%") },
 		"$$a IS NULL":                 func() string { return newTestCond().IsNull("$a") },
 		"$$a IS NOT NULL":             func() string { return newTestCond().IsNotNull("$a") },

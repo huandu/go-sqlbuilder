@@ -170,6 +170,15 @@ func (c *Cond) Like(field string, value interface{}) string {
 	return buf.String()
 }
 
+// ILike represents "field ILIKE value".
+func (c *Cond) ILike(field string, value interface{}) string {
+	buf := newStringBuilder()
+	buf.WriteString(Escape(field))
+	buf.WriteString(" ILIKE ")
+	buf.WriteString(c.Args.Add(value))
+	return buf.String()
+}
+
 // NotLike represents "field NOT LIKE value".
 func (c *Cond) NotLike(field string, value interface{}) string {
 	buf := newStringBuilder()
