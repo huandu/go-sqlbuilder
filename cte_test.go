@@ -40,8 +40,9 @@ func ExampleCTEBuilder() {
 	)
 	fmt.Println(cteb)
 
-	sb := Select("valid_users.id", "valid_users.name", "orders.id").With(cteb)
-	sb.Join("orders", "valid_users.id = orders.user_id")
+	sb := Select("valid_users.id", "valid_users.name", "orders.id").
+		From("users").With(cteb).
+		Join("orders", "users.id = orders.user_id")
 	sb.Where(
 		sb.LessEqualThan("orders.price", 200),
 		"valid_users.level < orders.min_level",
@@ -50,11 +51,13 @@ func ExampleCTEBuilder() {
 	sql, args := sb.Build()
 	fmt.Println(sql)
 	fmt.Println(args)
+	fmt.Println(sb.TableNames())
 
 	// Output:
 	// WITH valid_users AS (SELECT id, name, level FROM users WHERE level >= ?)
-	// WITH valid_users AS (SELECT id, name, level FROM users WHERE level >= ?) SELECT valid_users.id, valid_users.name, orders.id FROM valid_users JOIN orders ON valid_users.id = orders.user_id WHERE orders.price <= ? AND valid_users.level < orders.min_level ORDER BY orders.price DESC
+	// WITH valid_users AS (SELECT id, name, level FROM users WHERE level >= ?) SELECT valid_users.id, valid_users.name, orders.id FROM users, valid_users JOIN orders ON users.id = orders.user_id WHERE orders.price <= ? AND valid_users.level < orders.min_level ORDER BY orders.price DESC
 	// [10 200]
+	// [users valid_users]
 }
 
 func TestCTEBuilder(t *testing.T) {

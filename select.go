@@ -94,11 +94,16 @@ func Select(col ...string) *SelectBuilder {
 	return DefaultFlavor.NewSelectBuilder().Select(col...)
 }
 
+// TableNames returns all table names in a SELECT.
+func (sb *SelectBuilder) TableNames() []string {
+	return sb.tables
+}
+
 // With sets WITH clause (the Common Table Expression) before SELECT.
 func (sb *SelectBuilder) With(builder *CTEBuilder) *SelectBuilder {
 	sb.marker = selectMarkerAfterWith
 	sb.cteBuilder = sb.Var(builder)
-	sb.tables = builder.TableNames()
+	sb.tables = append(sb.tables, builder.TableNames()...)
 	return sb
 }
 
