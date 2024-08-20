@@ -13,6 +13,11 @@ func With(tables ...*CTETableBuilder) *CTEBuilder {
 	return DefaultFlavor.NewCTEBuilder().With(tables...)
 }
 
+// WithRecursive creates a new recursive CTE builder with default flavor.
+func WithRecursive(tables ...*CTETableBuilder) *CTEBuilder {
+	return DefaultFlavor.NewCTEBuilder().WithRecursive(tables...)
+}
+
 func newCTEBuilder() *CTEBuilder {
 	return &CTEBuilder{
 		args:      &Args{},
@@ -22,6 +27,7 @@ func newCTEBuilder() *CTEBuilder {
 
 // CTEBuilder is a CTE (Common Table Expression) builder.
 type CTEBuilder struct {
+	recursive        bool
 	tableNames       []string
 	tableBuilderVars []string
 
@@ -49,6 +55,12 @@ func (cteb *CTEBuilder) With(tables ...*CTETableBuilder) *CTEBuilder {
 	return cteb
 }
 
+// WithRecursive sets the CTE name and columns and turns on the RECURSIVE keyword.
+func (cteb *CTEBuilder) WithRecursive(tables ...*CTETableBuilder) *CTEBuilder {
+	cteb.With(tables...).recursive = true
+	return cteb
+}
+
 // Select creates a new SelectBuilder to build a SELECT statement using this CTE.
 func (cteb *CTEBuilder) Select(col ...string) *SelectBuilder {
 	sb := cteb.args.Flavor.NewSelectBuilder()
@@ -73,6 +85,9 @@ func (cteb *CTEBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 
 	if len(cteb.tableBuilderVars) > 0 {
 		buf.WriteLeadingString("WITH ")
+		if cteb.recursive {
+			buf.WriteString("RECURSIVE ")
+		}
 		buf.WriteStrings(cteb.tableBuilderVars, ", ")
 	}
 
