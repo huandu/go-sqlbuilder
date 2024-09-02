@@ -47,6 +47,12 @@ func TestCond(t *testing.T) {
 		"$$a < ALL ($0)":              func() string { return newTestCond().All("$a", "<", 1) },
 		"$$a > SOME ($0, $1, $2)":     func() string { return newTestCond().Some("$a", ">", 1, 2, 3) },
 		"$0":                          func() string { return newTestCond().Var(123) },
+		"$$a MATCH_ALL $0":            func() string { return newTestCond().MatchAll("$a", "1 2 3") },
+		"$$a MATCH_ANY $0":            func() string { return newTestCond().MatchAny("$a", "1 2 3") },
+		"$$a MATCH_PHRASE $0":         func() string { return newTestCond().MatchPhrase("$a", "", "1 2 3") },
+		"$$a MATCH_PHRASE $0 ~3+":     func() string { return newTestCond().MatchPhrase("$a", "~3+", "1 2 3") },
+		"$$a MATCH_PHRASE_PREFIX $0":  func() string { return newTestCond().MatchPhrasePrefix("$a", "1 2 3") },
+		"$$a MATCH_REGEXP $0":         func() string { return newTestCond().MatchRegexp("$a", "1 2 3") },
 	}
 
 	for expected, f := range cases {
