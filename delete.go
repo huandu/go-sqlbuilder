@@ -9,6 +9,7 @@ import (
 
 const (
 	deleteMarkerInit injectionMarker = iota
+	deleteMarkerAfterWith
 	deleteMarkerAfterDeleteFrom
 	deleteMarkerAfterWhere
 	deleteMarkerAfterOrderBy
@@ -44,6 +45,7 @@ type DeleteBuilder struct {
 	whereClauseProxy *whereClauseProxy
 	whereClauseExpr  string
 
+	cteBuilder  string
 	table       string
 	orderByCols []string
 	order       string
@@ -60,6 +62,13 @@ var _ Builder = new(DeleteBuilder)
 // DeleteFrom sets table name in DELETE.
 func DeleteFrom(table string) *DeleteBuilder {
 	return DefaultFlavor.NewDeleteBuilder().DeleteFrom(table)
+}
+
+// With sets WITH clause (the Common Table Expression) before DELETE.
+func (db *DeleteBuilder) With(builder *CTEBuilder) *DeleteBuilder {
+	db.marker = deleteMarkerAfterWith
+	db.cteBuilder = db.Var(builder)
+	return db
 }
 
 // DeleteFrom sets table name in DELETE.
@@ -139,6 +148,11 @@ func (db *DeleteBuilder) Build() (sql string, args []interface{}) {
 func (db *DeleteBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := newStringBuilder()
 	db.injection.WriteTo(buf, deleteMarkerInit)
+
+	if db.cteBuilder != "" {
+		buf.WriteLeadingString(db.cteBuilder)
+		db.injection.WriteTo(buf, deleteMarkerAfterWith)
+	}
 
 	if len(db.table) > 0 {
 		buf.WriteLeadingString("DELETE FROM ")

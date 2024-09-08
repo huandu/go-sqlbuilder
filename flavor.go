@@ -149,8 +149,8 @@ func (f Flavor) NewCTEBuilder() *CTEBuilder {
 }
 
 // NewCTETableBuilder creates a new CTE table builder with flavor.
-func (f Flavor) NewCTETableBuilder() *CTETableBuilder {
-	b := newCTETableBuilder()
+func (f Flavor) NewCTEQueryBuilder() *CTEQueryBuilder {
+	b := newCTEQueryBuilder()
 	b.SetFlavor(f)
 	return b
 }

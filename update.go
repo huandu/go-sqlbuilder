@@ -10,6 +10,7 @@ import (
 
 const (
 	updateMarkerInit injectionMarker = iota
+	updateMarkerAfterWith
 	updateMarkerAfterUpdate
 	updateMarkerAfterSet
 	updateMarkerAfterWhere
@@ -46,6 +47,7 @@ type UpdateBuilder struct {
 	whereClauseProxy *whereClauseProxy
 	whereClauseExpr  string
 
+	cteBuilder  string
 	table       string
 	assignments []string
 	orderByCols []string
@@ -63,6 +65,13 @@ var _ Builder = new(UpdateBuilder)
 // Update sets table name in UPDATE.
 func Update(table string) *UpdateBuilder {
 	return DefaultFlavor.NewUpdateBuilder().Update(table)
+}
+
+// With sets WITH clause (the Common Table Expression) before UPDATE.
+func (ub *UpdateBuilder) With(builder *CTEBuilder) *UpdateBuilder {
+	ub.marker = updateMarkerAfterWith
+	ub.cteBuilder = ub.Var(builder)
+	return ub
 }
 
 // Update sets table name in UPDATE.
@@ -202,6 +211,11 @@ func (ub *UpdateBuilder) Build() (sql string, args []interface{}) {
 func (ub *UpdateBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	buf := newStringBuilder()
 	ub.injection.WriteTo(buf, updateMarkerInit)
+
+	if ub.cteBuilder != "" {
+		buf.WriteLeadingString(ub.cteBuilder)
+		ub.injection.WriteTo(buf, updateMarkerAfterWith)
+	}
 
 	if len(ub.table) > 0 {
 		buf.WriteLeadingString("UPDATE ")

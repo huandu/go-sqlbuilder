@@ -66,7 +66,9 @@ type SelectBuilder struct {
 	whereClauseProxy *whereClauseProxy
 	whereClauseExpr  string
 
-	cteBuilder  string
+	cteBuilderVar string
+	cteBuilder    *CTEBuilder
+
 	distinct    bool
 	tables      []string
 	selectCols  []string
@@ -96,14 +98,32 @@ func Select(col ...string) *SelectBuilder {
 
 // TableNames returns all table names in a SELECT.
 func (sb *SelectBuilder) TableNames() []string {
-	return sb.tables
+	var additionalTableNames []string
+
+	if sb.cteBuilder != nil {
+		additionalTableNames = sb.cteBuilder.tableNamesForSelect()
+	}
+
+	var tableNames []string
+
+	if len(sb.tables) > 0 && len(additionalTableNames) > 0 {
+		tableNames = make([]string, len(sb.tables)+len(additionalTableNames))
+		copy(tableNames, sb.tables)
+		copy(tableNames[len(sb.tables):], additionalTableNames)
+	} else if len(sb.tables) > 0 {
+		tableNames = sb.tables
+	} else if len(additionalTableNames) > 0 {
+		tableNames = additionalTableNames
+	}
+
+	return tableNames
 }
 
 // With sets WITH clause (the Common Table Expression) before SELECT.
 func (sb *SelectBuilder) With(builder *CTEBuilder) *SelectBuilder {
 	sb.marker = selectMarkerAfterWith
-	sb.cteBuilder = sb.Var(builder)
-	sb.tables = append(sb.tables, builder.TableNames()...)
+	sb.cteBuilderVar = sb.Var(builder)
+	sb.cteBuilder = builder
 	return sb
 }
 
@@ -284,8 +304,8 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 	oraclePage := flavor == Oracle && (sb.limit >= 0 || sb.offset >= 0)
 
-	if sb.cteBuilder != "" {
-		buf.WriteLeadingString(sb.cteBuilder)
+	if sb.cteBuilderVar != "" {
+		buf.WriteLeadingString(sb.cteBuilderVar)
 		sb.injection.WriteTo(buf, selectMarkerAfterWith)
 	}
 
@@ -341,9 +361,11 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		}
 	}
 
-	if len(sb.tables) > 0 {
+	tableNames := sb.TableNames()
+
+	if len(tableNames) > 0 {
 		buf.WriteLeadingString("FROM ")
-		buf.WriteStrings(sb.tables, ", ")
+		buf.WriteStrings(tableNames, ", ")
 	}
 
 	sb.injection.WriteTo(buf, selectMarkerAfterFrom)

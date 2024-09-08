@@ -207,26 +207,40 @@ func TestWhereClauseSharedInstances(t *testing.T) {
 	a.Equal(ub.String(), "UPDATE t SET foo = 1 WHERE id = ?")
 	a.Equal(db.String(), "DELETE FROM t WHERE id = ?")
 
+	// Add more WhereClause.
+	cond := NewCond()
+	moreWhereClause := NewWhereClause().AddWhereExpr(
+		cond.Args,
+		cond.GreaterEqualThan("credit", 100),
+	)
+
+	// The moreWhereClause is added to whereClause.
+	// All builders sharing the same WhereClause will have the same new cluase.
+	sb.AddWhereClause(moreWhereClause)
+	a.Equal(sb.String(), "SELECT * FROM t WHERE id = ? AND credit >= ?")
+	a.Equal(ub.String(), "UPDATE t SET foo = 1 WHERE id = ? AND credit >= ?")
+	a.Equal(db.String(), "DELETE FROM t WHERE id = ? AND credit >= ?")
+
 	// Copied WhereClause is independent from the original.
 	ub.WhereClause = CopyWhereClause(whereClause)
 	ub.Where(ub.GreaterEqualThan("level", 10))
 	db.Where(db.In("status", 1, 2))
-	a.Equal(sb.String(), "SELECT * FROM t WHERE id = ? AND status IN (?, ?)")
-	a.Equal(ub.String(), "UPDATE t SET foo = 1 WHERE id = ? AND level >= ?")
-	a.Equal(db.String(), "DELETE FROM t WHERE id = ? AND status IN (?, ?)")
+	a.Equal(sb.String(), "SELECT * FROM t WHERE id = ? AND credit >= ? AND status IN (?, ?)")
+	a.Equal(ub.String(), "UPDATE t SET foo = 1 WHERE id = ? AND credit >= ? AND level >= ?")
+	a.Equal(db.String(), "DELETE FROM t WHERE id = ? AND credit >= ? AND status IN (?, ?)")
 
 	// Clear the WhereClause and add new where clause and expressions.
 	db.WhereClause = nil
 	db.AddWhereClause(ub.WhereClause)
 	db.AddWhereExpr(db.Args, db.Equal("deleted", 0))
-	a.Equal(sb.String(), "SELECT * FROM t WHERE id = ? AND status IN (?, ?)")
-	a.Equal(ub.String(), "UPDATE t SET foo = 1 WHERE id = ? AND level >= ?")
-	a.Equal(db.String(), "DELETE FROM t WHERE id = ? AND level >= ? AND deleted = ?")
+	a.Equal(sb.String(), "SELECT * FROM t WHERE id = ? AND credit >= ? AND status IN (?, ?)")
+	a.Equal(ub.String(), "UPDATE t SET foo = 1 WHERE id = ? AND credit >= ? AND level >= ?")
+	a.Equal(db.String(), "DELETE FROM t WHERE id = ? AND credit >= ? AND level >= ? AND deleted = ?")
 
 	// Nested WhereClause.
 	ub.Where(ub.NotIn("id", sb))
 	sb.Where(sb.NotEqual("flag", "normal"))
-	a.Equal(ub.String(), "UPDATE t SET foo = 1 WHERE id = ? AND level >= ? AND id NOT IN (SELECT * FROM t WHERE id = ? AND status IN (?, ?) AND flag <> ?)")
+	a.Equal(ub.String(), "UPDATE t SET foo = 1 WHERE id = ? AND credit >= ? AND level >= ? AND id NOT IN (SELECT * FROM t WHERE id = ? AND credit >= ? AND status IN (?, ?) AND flag <> ?)")
 }
 
 func TestEmptyWhereExpr(t *testing.T) {

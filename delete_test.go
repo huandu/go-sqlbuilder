@@ -65,3 +65,18 @@ func ExampleDeleteBuilder_SQL() {
 	// /* before */ DELETE FROM demo.user PARTITION (p0) WHERE id > ? /* after where */ ORDER BY id /* after order by */ LIMIT 10 /* after limit */
 	// [1234]
 }
+
+func ExampleDeleteBuilder_With() {
+	sql := With(
+		CTEQuery("users").As(
+			Select("id", "name").From("users").Where("name IS NULL"),
+		),
+	).DeleteFrom("orders").Where(
+		"users.id = orders.user_id",
+	).String()
+
+	fmt.Println(sql)
+
+	// Output:
+	// WITH users AS (SELECT id, name FROM users WHERE name IS NULL) DELETE FROM orders WHERE users.id = orders.user_id
+}

@@ -87,9 +87,9 @@ func (wc *WhereClause) SetFlavor(flavor Flavor) (old Flavor) {
 }
 
 // AddWhereExpr adds an AND expression to WHERE clause with the specified arguments.
-func (wc *WhereClause) AddWhereExpr(args *Args, andExpr ...string) {
+func (wc *WhereClause) AddWhereExpr(args *Args, andExpr ...string) *WhereClause {
 	if len(andExpr) == 0 {
-		return
+		return wc
 	}
 
 	// Merge with last clause if possible.
@@ -98,7 +98,7 @@ func (wc *WhereClause) AddWhereExpr(args *Args, andExpr ...string) {
 
 		if lastClause.args == args {
 			lastClause.andExprs = append(lastClause.andExprs, andExpr...)
-			return
+			return wc
 		}
 	}
 
@@ -106,13 +106,15 @@ func (wc *WhereClause) AddWhereExpr(args *Args, andExpr ...string) {
 		args:     args,
 		andExprs: andExpr,
 	})
+	return wc
 }
 
 // AddWhereClause adds all clauses in the whereClause to the wc.
-func (wc *WhereClause) AddWhereClause(whereClause *WhereClause) {
+func (wc *WhereClause) AddWhereClause(whereClause *WhereClause) *WhereClause {
 	if whereClause == nil {
-		return
+		return wc
 	}
 
 	wc.clauses = append(wc.clauses, whereClause.clauses...)
+	return wc
 }

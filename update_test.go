@@ -132,3 +132,20 @@ func ExampleUpdateBuilder_NumAssignment() {
 	// Output:
 	// 3
 }
+
+func ExampleUpdateBuilder_With() {
+	sql := With(
+		CTEQuery("users").As(
+			Select("id", "name").From("users").Where("prime IS NOT NULL"),
+		),
+	).Update("orders").Set(
+		"orders.transport_fee = 0",
+	).Where(
+		"users.id = orders.user_id",
+	).String()
+
+	fmt.Println(sql)
+
+	// Output:
+	// WITH users AS (SELECT id, name FROM users WHERE prime IS NOT NULL) UPDATE orders SET orders.transport_fee = 0 WHERE users.id = orders.user_id
+}

@@ -346,3 +346,21 @@ func ExampleSelectBuilder_NumCol() {
 	// Output:
 	// 3
 }
+
+func ExampleSelectBuilder_With() {
+	sql := With(
+		CTEQuery("users").As(
+			Select("id", "name").From("users").Where("prime IS NOT NULL"),
+		),
+
+		// The CTE table orders will be added to table list of FROM clause automatically.
+		CTETable("orders").As(
+			Select("id", "user_id").From("orders"),
+		),
+	).Select("orders.id").Join("users", "orders.user_id = users.id").Limit(10).String()
+
+	fmt.Println(sql)
+
+	// Output:
+	// WITH users AS (SELECT id, name FROM users WHERE prime IS NOT NULL), orders AS (SELECT id, user_id FROM orders) SELECT orders.id FROM orders JOIN users ON orders.user_id = users.id LIMIT 10
+}

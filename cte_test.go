@@ -32,7 +32,7 @@ func ExampleWith() {
 
 func ExampleWithRecursive() {
 	sb := WithRecursive(
-		CTETable("source_accounts", "id", "parent_id").As(
+		CTEQuery("source_accounts", "id", "parent_id").As(
 			UnionAll(
 				Select("p.id", "p.parent_id").
 					From("accounts AS p").
@@ -85,7 +85,7 @@ func ExampleCTEBuilder() {
 func TestCTEBuilder(t *testing.T) {
 	a := assert.New(t)
 	cteb := newCTEBuilder()
-	ctetb := newCTETableBuilder()
+	ctetb := newCTEQueryBuilder()
 	cteb.SQL("/* init */")
 	cteb.With(ctetb)
 	cteb.SQL("/* after with */")
@@ -96,6 +96,8 @@ func TestCTEBuilder(t *testing.T) {
 
 	ctetb.As(Select("a", "b").From("t"))
 	ctetb.SQL("/* after table as */")
+
+	a.Equal(cteb.TableNames(), []string{ctetb.TableName()})
 
 	sql, args := cteb.Build()
 	a.Equal(sql, "/* init */ WITH /* table init */ t (a, b) /* after table */ AS (SELECT a, b FROM t) /* after table as */ /* after with */")
@@ -109,7 +111,7 @@ func TestRecursiveCTEBuilder(t *testing.T) {
 	a := assert.New(t)
 	cteb := newCTEBuilder()
 	cteb.recursive = true
-	ctetb := newCTETableBuilder()
+	ctetb := newCTEQueryBuilder()
 	cteb.SQL("/* init */")
 	cteb.With(ctetb)
 	cteb.SQL("/* after with */")
