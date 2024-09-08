@@ -6,6 +6,9 @@ package sqlbuilder
 import (
 	"database/sql"
 	"fmt"
+	"testing"
+
+	"github.com/huandu/go-assert"
 )
 
 func ExampleSelect() {
@@ -363,4 +366,12 @@ func ExampleSelectBuilder_With() {
 
 	// Output:
 	// WITH users AS (SELECT id, name FROM users WHERE prime IS NOT NULL), orders AS (SELECT id, user_id FROM orders) SELECT orders.id FROM orders JOIN users ON orders.user_id = users.id LIMIT 10
+}
+
+func TestSelectBuilderSelectMore(t *testing.T) {
+	a := assert.New(t)
+	sb := Select("id").SQL("/* first */").Where(
+		"name IS NOT NULL",
+	).SQL("/* second */").SelectMore("name").SQL("/* third */")
+	a.Equal(sb.String(), "SELECT id, name /* first */ /* third */ WHERE name IS NOT NULL /* second */")
 }

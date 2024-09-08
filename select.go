@@ -134,6 +134,13 @@ func (sb *SelectBuilder) Select(col ...string) *SelectBuilder {
 	return sb
 }
 
+// SelectMore adds more columns in SELECT.
+func (sb *SelectBuilder) SelectMore(col ...string) *SelectBuilder {
+	sb.selectCols = append(sb.selectCols, col...)
+	sb.marker = selectMarkerAfterSelect
+	return sb
+}
+
 // Distinct marks this SELECT as DISTINCT.
 func (sb *SelectBuilder) Distinct() *SelectBuilder {
 	sb.distinct = true
