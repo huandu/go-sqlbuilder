@@ -48,6 +48,7 @@ type CTEQueryBuilder struct {
 var _ Builder = new(CTEQueryBuilder)
 
 // CTETableBuilder is an alias of CTEQueryBuilder for backward compatibility.
+//
 // Deprecated: use CTEQueryBuilder instead.
 type CTETableBuilder = CTEQueryBuilder
 

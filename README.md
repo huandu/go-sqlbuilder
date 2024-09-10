@@ -3,7 +3,7 @@
 [![Go](https://github.com/huandu/go-sqlbuilder/workflows/Go/badge.svg)](https://github.com/huandu/go-sqlbuilder/actions)
 [![GoDoc](https://godoc.org/github.com/huandu/go-sqlbuilder?status.svg)](https://pkg.go.dev/github.com/huandu/go-sqlbuilder)
 [![Go Report](https://goreportcard.com/badge/github.com/huandu/go-sqlbuilder)](https://goreportcard.com/report/github.com/huandu/go-sqlbuilder)
-[![Coverage Status](https://coveralls.io/repos/github/huandu/go-sqlbuilder/badge.svg?branch=master)](https://coveralls.io/github/huandu/go-sqlbuilder?branch=master) [![Join the chat at https://gitter.im/go-sqlbuilder/community](https://badges.gitter.im/go-sqlbuilder/community.svg)](https://gitter.im/go-sqlbuilder/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Coverage Status](https://coveralls.io/repos/github/huandu/go-sqlbuilder/badge.svg?branch=master)](https://coveralls.io/github/huandu/go-sqlbuilder?branch=master)
 
 - [Install](#install)
 - [Usage](#usage)
@@ -21,15 +21,15 @@
   - [Interpolate `args` in the `sql`](#interpolate-args-in-the-sql)
 - [License](#license)
 
-The `sqlbuilder` package implements a series of flexible and powerful SQL string concatenation builders. This package focuses on constructing SQL strings for direct use with the Go standard library's `sql.DB` and `sql.Stmt` related interfaces, and strives to optimize the performance of building SQL and reduce memory consumption.
+The `sqlbuilder` package offers a comprehensive suite of SQL string concatenation utilities. It is designed to facilitate the construction of SQL statements compatible with Go's standard library `sql.DB` and `sql.Stmt` interfaces, focusing on optimizing the performance of SQL statement creation and minimizing memory usage.
 
-The initial goal in designing this package was to create a pure SQL construction library that is independent of specific database drivers and business logic. It is designed to meet the needs of enterprise-level scenarios that require various customized database drivers, special operation and maintenance standards, heterogeneous systems, and non-standard SQL in complex situations. Since its open-source inception, this package has been tested in a large enterprise-level application scenario, enduring the pressure of hundreds of millions of orders daily and nearly ten million transactions per day, demonstrating good performance and scalability.
+The primary objective of this package's design was to craft a SQL construction library that operates independently of specific database drivers and business logic. It is tailored to accommodate the diverse needs of enterprise environments, including the use of custom database drivers, adherence to specialized operational standards, integration into heterogeneous systems, and handling of non-standard SQL in intricate scenarios. Following its open-source release, the package has undergone extensive testing within a large-scale enterprise context, successfully managing the workload of hundreds of millions of orders daily and nearly ten million transactions daily, thus highlighting its robust performance and scalability.
 
-This package does not bind to any specific database driver, nor does it automatically connect to any database. It does not even assume the use of the generated SQL, making it suitable for any application scenario that constructs SQL-like statements. It is also very suitable for secondary development on this basis, to implement more business-related database access packages, ORMs, and so on.
+This package is not restricted to any particular database driver and does not automatically establish connections with any database systems. It does not presuppose the execution of the generated SQL, making it versatile for a broad spectrum of application scenarios that involve the construction of SQL-like statements. It is equally well-suited for further development aimed at creating more business-specific database interaction packages, ORMs, and similar tools.
 
 ## Install
 
-Use `go get` to install this package.
+Install this package by executing the following command:
 
 ```shell
 go get github.com/huandu/go-sqlbuilder
@@ -39,7 +39,7 @@ go get github.com/huandu/go-sqlbuilder
 
 ### Basic usage
 
-We can build a SQL really quick with this package.
+We can rapidly construct SQL statements using this package.
 
 ```go
 sql := sqlbuilder.Select("id", "name").From("demo.user").
@@ -52,7 +52,7 @@ fmt.Println(sql)
 // SELECT id, name FROM demo.user WHERE status = 1 LIMIT 10
 ```
 
-In the most common cases, we need to escape all input from user. In this case, create a builder before starting.
+In common scenarios, it is necessary to escape all user inputs. To achieve this, initialize a builder at the outset.
 
 ```go
 sb := sqlbuilder.NewSelectBuilder()
@@ -72,21 +72,21 @@ fmt.Println(args)
 
 ### Pre-defined SQL builders
 
-This package includes following pre-defined builders so far. API document and examples can be found in the `godoc` online document.
+This package includes the following pre-defined builders. API documentation and usage examples are available in the `godoc` online documentation.
 
-- [Struct](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Struct): Builder factory for a struct.
-- [CreateTableBuilder](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#CreateTableBuilder): Builder for CREATE TABLE.
-- [SelectBuilder](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#SelectBuilder): Builder for SELECT.
-- [InsertBuilder](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#InsertBuilder): Builder for INSERT.
-- [UpdateBuilder](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#UpdateBuilder): Builder for UPDATE.
-- [DeleteBuilder](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#DeleteBuilder): Builder for DELETE.
-- [UnionBuilder](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#UnionBuilder): Builder for UNION and UNION ALL.
+- [Struct](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Struct): Factory for creating builders based on struct definitions.
+- [CreateTableBuilder](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#CreateTableBuilder): Builder for `CREATE TABLE`.
+- [SelectBuilder](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#SelectBuilder): Builder for `SELECT`.
+- [InsertBuilder](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#InsertBuilder): Builder for `INSERT`.
+- [UpdateBuilder](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#UpdateBuilder): Builder for `UPDATE`.
+- [DeleteBuilder](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#DeleteBuilder): Builder for `DELETE`.
+- [UnionBuilder](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#UnionBuilder): Builder for `UNION` and `UNION ALL`.
 - [CTEBuilder](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#CTEBuilder): Builder for Common Table Expression (CTE), e.g. `WITH name (col1, col2) AS (SELECT ...)`.
-- [Buildf](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Buildf): Freestyle builder using `fmt.Sprintf`-like syntax.
-- [Build](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Build): Advanced freestyle builder using special syntax defined in [Args#Compile](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Args.Compile).
-- [BuildNamed](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#BuildNamed): Advanced freestyle builder using `${key}` to refer the value of a map by key.
+- [Buildf](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Buildf): Freestyle builder employing `fmt.Sprintf`-like syntax.
+- [Build](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Build): Advanced freestyle builder utilizing special syntax as defined in [Args#Compile](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Args.Compile).
+- [BuildNamed](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#BuildNamed): Advanced freestyle builder that uses `${key}` to reference values by key in a map.
 
-There is a special method `SQL(sql string)` implemented by all statement builders. We can use this method to insert any arbitrary SQL fragment into a builder when building a SQL. It's quite useful to build SQL containing non-standard syntax supported by a OLTP or OLAP system.
+A unique method, `SQL(sql string)`, is implemented across all statement builders, enabling the insertion of any arbitrary SQL segment into a builder during SQL construction. This feature is particularly beneficial for crafting SQL statements that incorporate non-standard syntax required by OLTP or OLAP systems.
 
 ```go
 // Build a SQL to create a HIVE table.
@@ -107,19 +107,19 @@ fmt.Println(sql)
 // CREATE TABLE users PARTITION BY (year) AS SELECT columns[0] id, columns[1] name, columns[2] year FROM `all-users.csv` LIMIT 100
 ```
 
-Following are some utility methods to deal with special cases.
+Below are several utility methods designed to address special cases.
 
-- [Flatten](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Flatten) can convert an array-like variable to a flat slice of `[]interface{}` recursively. For instance, calling `Flatten([]interface{"foo", []int{2, 3}})` returns `[]interface{}{"foo", 2, 3}`. This method can work with builder methods like `In`/`NotIn`/`Values`/etc to convert a typed array to `[]interface{}` or merge inputs.
-- [List](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#List) works similar to `Flatten` except that its return value is dedecated for builder args. For instance, calling `Buildf("my_func(%v)", List([]int{1, 2, 3})).Build()` returns SQL `my_func(?, ?, ?)` and args `[]interface{}{1, 2, 3}`.
-- [Raw](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Raw) marks a string as "raw string" in args. For instance, calling `Buildf("SELECT %v", Raw("NOW()")).Build()` returns SQL `SELECT NOW()`.
+- [Flatten](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Flatten) enables the recursive conversion of an array-like variable into a flat slice of `[]interface{}`. For example, invoking `Flatten([]interface{"foo", []int{2, 3}})` yields `[]interface{}{"foo", 2, 3}`. This method is compatible with builder methods such as `In`, `NotIn`, `Values`, etc., facilitating the conversion of a typed array into `[]interface{}` or the merging of inputs.
+- [List](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#List) operates similarly to `Flatten`, with the exception that its return value is specifically intended for use as builder arguments. For example, `Buildf("my_func(%v)", List([]int{1, 2, 3})).Build()` generates SQL `my_func(?, ?, ?)` with arguments `[]interface{}{1, 2, 3}`.
+- [Raw](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Raw) designates a string as a "raw string" within arguments. For instance, `Buildf("SELECT %v", Raw("NOW()")).Build()` results in SQL `SELECT NOW()`.
 
-To learn how to use builders, check out [examples on GoDoc](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#pkg-examples).
+For detailed instructions on utilizing these builders, consult the [examples provided on GoDoc](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#pkg-examples).
 
 ### Build `WHERE` clause
 
 `WHERE` clause is the most important part of a SQL. We can use `Where` method to add one or more conditions to a builder.
 
-To make building `WHERE` clause easier, there is an utility type called `Cond` to build condition. All builders which support `WHERE` clause have an anonymous `Cond` field so that we can call methods implemented by `Cond` on these builders.
+To simplify the construction of `WHERE` clauses, a utility type named `Cond` is provided for condition building. All builders that support `WHERE` clauses possess an anonymous `Cond` field, enabling the invocation of `Cond` methods on these builders.
 
 ```go
 sb := sqlbuilder.Select("id").From("user")
@@ -153,12 +153,14 @@ There are many methods for building conditions.
 - [Cond.Like](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Like): `field LIKE value`.
 - [Cond.ILike](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.ILike): `field ILIKE value`.
 - [Cond.NotLike](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NotLike): `field NOT LIKE value`.
+- [Cond.NotILike](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NotILike): `field NOT ILIKE value`.
 - [Cond.Between](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Between): `field BETWEEN lower AND upper`.
 - [Cond.NotBetween](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NotBetween): `field NOT BETWEEN lower AND upper`.
 - [Cond.IsNull](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.IsNull): `field IS NULL`.
 - [Cond.IsNotNull](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.IsNotNull): `field IS NOT NULL`.
 - [Cond.Exists](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Exists): `EXISTS (subquery)`.
 - [Cond.NotExists](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.NotExists): `NOT EXISTS (subquery)`.
+- [Cond.Not](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Not): `NOT expr`.
 - [Cond.Any](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Any): `field op ANY (value1, value2, ...)`.
 - [Cond.All](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.All): `field op ALL (value1, value2, ...)`.
 - [Cond.Some](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Some): `field op SOME (value1, value2, ...)`.
@@ -173,7 +175,7 @@ There are also some methods to combine conditions.
 
 Due to the importance of the `WHERE` statement in SQL, we often need to continuously append conditions and even share some common `WHERE` conditions among different builders. Therefore, we abstract the `WHERE` statement into a `WhereClause` struct, which can be used to create reusable `WHERE` conditions.
 
-Here is a sample to show how to copy `WHERE` clause from a `SelectBuilder` to an `UpdateBuilder`.
+The following example illustrates how to transfer a `WHERE` clause from a `SelectBuilder` to an `UpdateBuilder`.
 
 ```go
 // Build a SQL to select a user from database.
@@ -197,27 +199,23 @@ fmt.Println(ub)
 // UPDATE users SET level = level + ? WHERE id = ?
 ```
 
-Read samples for [WhereClause](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#WhereClause) to learn how to use it.
+Refer to the [WhereClause](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#WhereClause) examples to learn its usage.
 
 ### Build SQL for different systems
 
-SQL syntax and parameter marks vary in different systems. In this package, we introduce a concept called "flavor" to smooth out these difference.
+SQL syntax and parameter placeholders can differ across systems. To address these variations, this package introduces a concept termed "flavor".
 
-Right now, `MySQL`, `PostgreSQL`, `SQLServer`, `SQLite`, `CQL`, `ClickHouse`, `Presto` and `Oracle` are defined in flavor list. Feel free to open issue or send pull request if anyone asks for a new flavor.
+Currently, flavors such as `MySQL`, `PostgreSQL`, `SQLite`, `SQLServer`, `CQL`, `ClickHouse`, `Presto`, `Oracle` and `Informix` are supported. Should there be a demand for additional flavors, please submit an issue or a pull request.
 
-By default, all builders uses `DefaultFlavor` to build SQL. The default value is `MySQL`.
+By default, all builders utilize `DefaultFlavor` for SQL construction, with `MySQL` as the default setting.
 
-There is a `BuildWithFlavor` method in `Builder` interface. We can use it to build a SQL with provided flavor.
-
-We can wrap any `Builder` with a default flavor through `WithFlavor`.
-
-To be more verbose, we can use `PostgreSQL.NewSelectBuilder()` to create a `SelectBuilder` with the `PostgreSQL` flavor. All builders can be created in this way.
+For greater readibility, `PostgreSQL.NewSelectBuilder()` can be used to instantiate a `SelectBuilder` with the `PostgreSQL` flavor. All builders can be created in this way.
 
 ### Using `Struct` as a light weight ORM
 
-`Struct` stores type information and struct fields of a struct. It's a factory of builders. We can use `Struct` methods to create initialized SELECT/INSERT/UPDATE/DELETE builders to work with the struct. It can help us to save time and avoid human-error on writing column names.
+`Struct` encapsulates type information and struct fields, serving as a builder factory. Utilizing `Struct` methods, one can generate `SELECT`/`INSERT`/`UPDATE`/`DELETE` builders that are pre-configured for use with the struct, thereby conserving time and mitigating the risk of typographical errors in column name entries.
 
-We can define a struct type and use field tags to let `Struct` know how to create right builders for us.
+One can define a struct type and employ field tags to guide `Struct` in generating the appropriate builders.
 
 ```go
 type ATable struct {
@@ -241,11 +239,11 @@ type ATable struct {
 }
 ```
 
-Read [examples](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Struct) for `Struct` to learn details of how to use it.
+For detailed instructions on utilizing `Struct`, refer to the [examples](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Struct).
 
-What's more, we can use `Struct` as a kind of zero-config ORM. While most ORM implementations requires several prerequisite configs to work with database connections, `Struct` doesn't require any config and work well with any SQL driver which works with `database/sql`. `Struct` doesn't call any `database/sql` API; It just creates right SQL with arguments for `DB#Query`/`DB#Exec` or a slice of address of struct fields for `Rows#Scan`/`Row#Scan`.
+Furthermore, `Struct` can be employed as a zero-configuration ORM. Unlike most ORM implementations that necessitate preliminary configurations for database connectivity, `Struct` operates without any configuration, functioning seamlessly with any SQL driver compatible with `database/sql`. `Struct` does not invoke any `database/sql` APIs; it solely generates the appropriate SQL statements with arguments for `DB#Query`/`DB#Exec` or an array of struct field addresses for `Rows#Scan`/`Row#Scan`.
 
-Here is a sample to use `Struct` as ORM. It should be quite straight forward for developers who are familiar with `database/sql` APIs.
+The following example demonstrates the use of `Struct` as an ORM. It should be relatively straightforward for developers well-versed in `database/sql` APIs.
 
 ```go
 type User struct {
@@ -254,7 +252,7 @@ type User struct {
     Status int    `db:"status"`
 }
 
-// A global variable to create SQL builders.
+// A global variable for creating SQL builders.
 // All methods of userStruct are thread-safe.
 var userStruct = NewStruct(new(User))
 
@@ -264,13 +262,13 @@ func ExampleStruct() {
     sb := userStruct.SelectFrom("user")
     sb.Where(sb.Equal("id", 1234))
 
-    // Execute the query.
+    // Execute the query and scan the results into the user struct.
     sql, args := sb.Build()
     rows, _ := db.Query(sql, args...)
     defer rows.Close()
 
     // Scan row data and set value to user.
-    // Suppose we get following data.
+    // Assuming the following data is retrieved:
     //
     //     |  id  |  name  | status |
     //     |------|--------|--------|
@@ -289,22 +287,22 @@ func ExampleStruct() {
 }
 ```
 
-In many production environments, table column names are usually snake_case words, e.g. `user_id`, while we have to use CamelCase in struct types to make struct fields public and `golint` happy. It's a bit redundant to use the `db` tag in every struct field. If there is a certain rule to map field names to table column names, We can use field mapper function to make code simpler.
+In numerous production environments, table column names adhere to the snake_case convention, e.g., `user_id`. Conversely, struct fields in Go are typically in CamelCase to maintain public accessibility and satisfy `golint`. Employing the `db` tag for each struct field can be redundant. To streamline this, a field mapper function can be utilized to establish a consistent rule for mapping struct field names to database column names.
 
-The `DefaultFieldMapper` is a global field mapper function to convert field name to new style. By default, it sets to `nil` and does nothing. If we know that most table column names are snake_case words, we can set `DefaultFieldMapper` to `sqlbuilder.SnakeCaseMapper`. If we have some special cases, we can set custom mapper to a `Struct` by calling `WithFieldMapper`.
+The `DefaultFieldMapper` serves as a global field mapper function, tasked with the conversion of field names to a desired style. By default, it is set to `nil`, effectively performing no action. Recognizing that the majority of table column names follow the snake_case convention, one can assign `DefaultFieldMapper` to `sqlbuilder.SnakeCaseMapper`. For instances that deviate from this norm, a custom mapper can be assigned to a `Struct` via the `WithFieldMapper` method.
 
-Following are special notes regarding to field mapper.
+Here are important considerations regarding the field mapper:
 
 - Field tag has precedence over field mapper function - thus, mapper is ignored if the `db` tag is set;
 - Field mapper is called only once on a Struct when the Struct is used to create builder for the first time.
 
-See [field mapper function sample](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#FieldMapperFunc) as a demo.
+Refer to the [field mapper function sample](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#FieldMapperFunc) for an illustrative example.
 
 ### Nested SQL
 
-It's quite straight forward to create a nested SQL: use a builder as an argument to nest it.
+Creating nested SQL is straightforward: simply use a builder as an argument for nesting.
 
-Here is a sample.
+Here is an illustrative example.
 
 ```go
 sb := sqlbuilder.NewSelectBuilder()
@@ -329,7 +327,7 @@ fmt.Println(args)
 
 ### Use `sql.Named` in a builder
 
-The function `sql.Named` defined in `database/sql` can create a named argument in SQL. It's necessary if we want to reuse an argument several times in one SQL. It's still quite simple to use named arguments in a builder: use it as an argument.
+The `sql.Named` function, as defined in the `database/sql` package, facilitates the creation of named arguments within SQL statements. This feature is essential for scenarios where an argument needs to be reused multiple times within a single SQL statement. Incorporating named arguments into a builder is straightforward: treat them as regular arguments.
 
 Here is a sample.
 
@@ -357,16 +355,16 @@ fmt.Println(args)
 
 ### Argument modifiers
 
-There are several modifiers for arguments.
+Several argument modifiers are available:
 
-- `List(arg)` represents a list of arguments. If `arg` is a slice or array, e.g. a slice with 3 ints, it will be compiled to `?, ?, ?` and flattened in the final arguments as 3 ints. It's a tool for convenience. We can use it in the `IN` expression or `VALUES` of `INSERT INTO`.
-- `TupleNames(names)` and `Tuple(values)` represent the tuple syntax in SQL. See [Tuple](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#example-Tuple) for usage.
-- `Named(name, arg)` represents a named argument. It only works with `Build` or `BuildNamed` to define a named placeholder using syntax `${name}`.
-- `Raw(expr)` marks an `expr` as a plain string in SQL rather than an argument. When we build a builder, the value of raw expressions are copied in SQL string directly without leaving any `?` in SQL.
+- `List(arg)` encapsulates a series of arguments. Given `arg` as a slice or array, for instance, a slice containing three integers, it compiles to `?, ?, ?` and is presented in the final arguments as three individual integers. This serves as a convenience tool, utilizable within `IN` expressions or within the `VALUES` clause of an `INSERT INTO` statement.
+- `TupleNames(names)` and `Tuple(values)` facilitate the representation of tuple syntax in SQL. For usage examples, refer to [Tuple](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#example-Tuple).
+- `Named(name, arg)` designates a named argument. Functionality is limited to `Build` or `BuildNamed`, where it defines a named placeholder using the syntax `${name}`.
+- `Raw(expr)` designates `expr` as a plain string within SQL, as opposed to an argument. During the construction of a builder, raw expressions are directly embedded into the SQL string, omitting the need for `?` placeholders.
 
 ### Freestyle builder
 
-A builder is only a way to record arguments. If we want to build a long SQL with lots of special syntax (e.g. special comments for a database proxy), simply use `Buildf` to format a SQL string using a `fmt.Sprintf`-like syntax.
+A builder essentially serves as a means to log arguments. For constructing lengthy SQL statements that incorporate numerous special syntax elements (e.g., special comments intended for a database proxy), `Buildf` can be employed to format the SQL string using a syntax akin to `fmt.Sprintf`.
 
 ```go
 sb := sqlbuilder.NewSelectBuilder()
@@ -384,14 +382,14 @@ fmt.Println(args)
 
 ### Using special syntax to build SQL
 
-Package `sqlbuilder` defines special syntax to represent an uncompiled SQL internally. If we want to take advantage of the syntax to build customized tools, we can use `Build` to compile it with arguments.
+The `sqlbuilder` package incorporates special syntax for representing uncompiled SQL internally. To leverage this syntax for developing customized tools, the `Build` function can be utilized to compile it with the necessary arguments.
 
-The format string uses special syntax to represent arguments.
+The format string employs special syntax for representing arguments:
 
-- `$?` refers successive arguments passed in the call. It works similar as `%v` in `fmt.Sprintf`.
-- `$0` `$1` ... `$n` refers nth-argument passed in the call. Next `$?` will use arguments n+1.
-- `${name}` refers a named argument created by `Named` with `name`.
-- `$$` is a `"$"` string.
+- `$?` references successive arguments supplied in the function call, functioning similarly to `%v` in `fmt.Sprintf`.
+- `$0`, `$1`, ..., `$n` reference the nth argument provided in the call; subsequent `$?` will then refer to arguments n+1 onwards.
+- `${name}` references a named argument defined by `Named` using the specified `name`.
+- `$$` represents a literal `"$"` character.
 
 ```go
 sb := sqlbuilder.NewSelectBuilder()
@@ -409,19 +407,19 @@ fmt.Println(args)
 // [1 2 1514458225 3 4 5 1514458225 1514544625]
 ```
 
-If we just want to use `${name}` syntax to refer named arguments, use `BuildNamed` instead. It disables all special syntax but `${name}` and `$$`.
+For scenarios where only the `${name}` syntax is required to reference named arguments, utilize `BuildNamed`. This function disables all special syntax except for `${name}` and `$$`.
 
 ### Interpolate `args` in the `sql`
 
-Some SQL-like drivers, e.g. SQL for Redis, SQL for ES, etc., doesn't actually implement `StmtExecContext#ExecContext`. They will fail when `len(args) > 0`. The only solution is to interpolate `args` in the `sql`, and execute the interpolated query with the driver.
+Certain SQL-like drivers, such as those for Redis or Elasticsearch, do not implement the `StmtExecContext#ExecContext` method. These drivers encounter issues when `len(args) > 0`. The sole workaround is to interpolate `args` directly into the `sql` string and then execute the resulting query with the driver.
 
-The design goal of the interpolation feature in this package is to implement a "basically sufficient" capability, rather than a feature that is on par with various SQL drivers and DBMS systems.
+The interpolation feature in this package is designed to provide a "basically sufficient" level of functionality, rather than a capability that rivals the comprehensive features of various SQL drivers and DBMS systems.
 
-_Security warning_: I try my best to escape special characters in interpolate methods, but it's still less secure than `Stmt` implemented by SQL servers.
+_Security warning_: While efforts are made to escape special characters in interpolation methods, this approach remains less secure than using `Stmt` as implemented by SQL drivers.
 
-This feature is inspired by interpolation feature in package `github.com/go-sql-driver/mysql`.
+This feature draws inspiration from the interpolation capabilities found in the `github.com/go-sql-driver/mysql` package.
 
-Here is a sample for MySQL.
+Here is an example specifically for MySQL:
 
 ```go
 sb := MySQL.NewSelectBuilder()
@@ -441,7 +439,7 @@ fmt.Println(err)
 // <nil>
 ```
 
-Here is a sample for PostgreSQL. Note that the dollar quote is supported.
+Here is an example for PostgreSQL, noting that dollar quoting is supported:
 
 ```go
 // Only the last `$1` is interpolated.
@@ -470,4 +468,4 @@ fmt.Println(err)
 
 ## License
 
-This package is licensed under MIT license. See LICENSE for details.
+This package is licensed under the MIT license. For more information, refer to the LICENSE file.
