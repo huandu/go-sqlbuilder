@@ -188,6 +188,15 @@ func (c *Cond) NotLike(field string, value interface{}) string {
 	return buf.String()
 }
 
+// NotILike represents "field NOT ILIKE value".
+func (c *Cond) NotILike(field string, value interface{}) string {
+	buf := newStringBuilder()
+	buf.WriteString(Escape(field))
+	buf.WriteString(" NOT ILIKE ")
+	buf.WriteString(c.Args.Add(value))
+	return buf.String()
+}
+
 // IsNull represents "field IS NULL".
 func (c *Cond) IsNull(field string) string {
 	buf := newStringBuilder()
@@ -241,6 +250,14 @@ func (c *Cond) And(andExpr ...string) string {
 	buf.WriteString("(")
 	buf.WriteStrings(andExpr, " AND ")
 	buf.WriteString(")")
+	return buf.String()
+}
+
+// Not represents "NOT expr".
+func (c *Cond) Not(notExpr string) string {
+	buf := newStringBuilder()
+	buf.WriteString("NOT ")
+	buf.WriteString(notExpr)
 	return buf.String()
 }
 
