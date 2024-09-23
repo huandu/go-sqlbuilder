@@ -164,6 +164,8 @@ There are many methods for building conditions.
 - [Cond.Any](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Any): `field op ANY (value1, value2, ...)`.
 - [Cond.All](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.All): `field op ALL (value1, value2, ...)`.
 - [Cond.Some](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Some): `field op SOME (value1, value2, ...)`.
+- [Cond.IsDistinctFrom](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.IsDistinctFrom) `field IS DISTINCT FROM value`.
+- [Cond.IsNotDistinctFrom](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.IsNotDistinctFrom) `field IS NOT DISTINCT FROM value`.
 - [Cond.Var](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Cond.Var): A placeholder for any value.
 
 There are also some methods to combine conditions.
