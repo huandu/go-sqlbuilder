@@ -104,3 +104,32 @@ CASE WHEN f4 IS NULL AND ? IS NULL THEN 1 WHEN f4 IS NOT NULL AND ? IS NOT NULL 
 		a.Equal(actual, expected)
 	}
 }
+
+func TestCondExpr(t *testing.T) {
+	a := assert.New(t)
+	cond := &Cond{
+		Args: &Args{},
+	}
+	sb1 := Select("1 = 1")
+	sb2 := Select("FALSE")
+	formats := []string{
+		cond.And(),
+		cond.Or(),
+		cond.And(cond.Var(sb1), cond.Var(sb2)),
+		cond.Or(cond.Var(sb1), cond.Var(sb2)),
+		cond.Not(cond.Or(cond.Var(sb1), cond.And(cond.Var(sb1), cond.Var(sb2)))),
+	}
+	expectResults := []string{
+		"",
+		"",
+		"(SELECT 1 = 1 AND SELECT FALSE)",
+		"(SELECT 1 = 1 OR SELECT FALSE)",
+		"NOT (SELECT 1 = 1 OR (SELECT 1 = 1 AND SELECT FALSE))",
+	}
+
+	for i, expected := range expectResults {
+		actual, values := cond.Args.Compile(formats[i])
+		a.Equal(len(values), 0)
+		a.Equal(actual, expected)
+	}
+}

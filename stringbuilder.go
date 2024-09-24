@@ -62,3 +62,7 @@ func (sb *stringBuilder) String() string {
 func (sb *stringBuilder) Reset() {
 	sb.builder.Reset()
 }
+
+func (sb *stringBuilder) Grow(n int) {
+	sb.builder.Grow(n)
+}

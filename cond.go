@@ -3,6 +3,14 @@
 
 package sqlbuilder
 
+const (
+	lparen = "("
+	rparen = ")"
+	opOR   = " OR "
+	opAND  = " AND "
+	opNOT  = "NOT "
+)
+
 // Cond provides several helper methods to build conditions.
 type Cond struct {
 	Args *Args
@@ -319,26 +327,49 @@ func (c *Cond) NotBetween(field string, lower, upper interface{}) string {
 
 // Or is used to construct the expression OR logic like "expr1 OR expr2 OR expr3".
 func (c *Cond) Or(orExpr ...string) string {
+	if len(orExpr) == 0 {
+		return ""
+	}
+
 	buf := newStringBuilder()
-	buf.WriteString("(")
-	buf.WriteStrings(orExpr, " OR ")
-	buf.WriteString(")")
+
+	// Ensure that there is only 1 memory allocation.
+	size := len(lparen) + len(rparen) + (len(orExpr)-1)*len(opOR) + estimateStringsBytes(orExpr)
+	buf.Grow(size)
+
+	buf.WriteString(lparen)
+	buf.WriteStrings(orExpr, opOR)
+	buf.WriteString(rparen)
 	return buf.String()
 }
 
 // And is used to construct the expression AND logic like "expr1 AND expr2 AND expr3".
 func (c *Cond) And(andExpr ...string) string {
+	if len(andExpr) == 0 {
+		return ""
+	}
+
 	buf := newStringBuilder()
-	buf.WriteString("(")
-	buf.WriteStrings(andExpr, " AND ")
-	buf.WriteString(")")
+
+	// Ensure that there is only 1 memory allocation.
+	size := len(lparen) + len(rparen) + (len(andExpr)-1)*len(opAND) + estimateStringsBytes(andExpr)
+	buf.Grow(size)
+
+	buf.WriteString(lparen)
+	buf.WriteStrings(andExpr, opAND)
+	buf.WriteString(rparen)
 	return buf.String()
 }
 
 // Not is used to construct the expression "NOT expr".
 func (c *Cond) Not(notExpr string) string {
 	buf := newStringBuilder()
-	buf.WriteString("NOT ")
+
+	// Ensure that there is only 1 memory allocation.
+	size := len(opNOT) + len(notExpr)
+	buf.Grow(size)
+
+	buf.WriteString(opNOT)
 	buf.WriteString(notExpr)
 	return buf.String()
 }
@@ -513,4 +544,12 @@ func (c *Cond) Var(value interface{}) string {
 
 type condBuilder struct {
 	Builder func(ctx *argsCompileContext)
+}
+
+func estimateStringsBytes(strs []string) (n int) {
+	for _, s := range strs {
+		n += len(s)
+	}
+
+	return
 }
