@@ -25,11 +25,9 @@ func NewCond() *Cond {
 
 // Equal is used to construct the expression "field = value".
 func (c *Cond) Equal(field string, value interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" = ")
 			ctx.WriteValue(value)
 		},
@@ -48,11 +46,9 @@ func (c *Cond) EQ(field string, value interface{}) string {
 
 // NotEqual is used to construct the expression "field <> value".
 func (c *Cond) NotEqual(field string, value interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" <> ")
 			ctx.WriteValue(value)
 		},
@@ -71,11 +67,9 @@ func (c *Cond) NEQ(field string, value interface{}) string {
 
 // GreaterThan is used to construct the expression "field > value".
 func (c *Cond) GreaterThan(field string, value interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" > ")
 			ctx.WriteValue(value)
 		},
@@ -94,11 +88,9 @@ func (c *Cond) GT(field string, value interface{}) string {
 
 // GreaterEqualThan is used to construct the expression "field >= value".
 func (c *Cond) GreaterEqualThan(field string, value interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" >= ")
 			ctx.WriteValue(value)
 		},
@@ -117,11 +109,9 @@ func (c *Cond) GTE(field string, value interface{}) string {
 
 // LessThan is used to construct the expression "field < value".
 func (c *Cond) LessThan(field string, value interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" < ")
 			ctx.WriteValue(value)
 		},
@@ -140,11 +130,9 @@ func (c *Cond) LT(field string, value interface{}) string {
 
 // LessEqualThan is used to construct the expression "field <= value".
 func (c *Cond) LessEqualThan(field string, value interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" <= ")
 			ctx.WriteValue(value)
 		},
@@ -163,11 +151,9 @@ func (c *Cond) LTE(field string, value interface{}) string {
 
 // In is used to construct the expression "field IN (value...)".
 func (c *Cond) In(field string, values ...interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" IN (")
 			ctx.WriteValues(values, ", ")
 			ctx.WriteString(")")
@@ -177,11 +163,9 @@ func (c *Cond) In(field string, values ...interface{}) string {
 
 // NotIn is used to construct the expression "field NOT IN (value...)".
 func (c *Cond) NotIn(field string, values ...interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" NOT IN (")
 			ctx.WriteValues(values, ", ")
 			ctx.WriteString(")")
@@ -191,11 +175,9 @@ func (c *Cond) NotIn(field string, values ...interface{}) string {
 
 // Like is used to construct the expression "field LIKE value".
 func (c *Cond) Like(field string, value interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" LIKE ")
 			ctx.WriteValue(value)
 		},
@@ -208,20 +190,18 @@ func (c *Cond) Like(field string, value interface{}) string {
 // the ILike method will return "LOWER(field) LIKE LOWER(value)"
 // to simulate the behavior of the ILIKE operator.
 func (c *Cond) ILike(field string, value interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			switch ctx.Flavor {
 			case PostgreSQL, SQLite:
-				ctx.WriteString(escaped)
+				ctx.WriteString(field)
 				ctx.WriteString(" ILIKE ")
 				ctx.WriteValue(value)
 
 			default:
 				// Use LOWER to simulate ILIKE.
 				ctx.WriteString("LOWER(")
-				ctx.WriteString(escaped)
+				ctx.WriteString(field)
 				ctx.WriteString(") LIKE LOWER(")
 				ctx.WriteValue(value)
 				ctx.WriteString(")")
@@ -232,11 +212,9 @@ func (c *Cond) ILike(field string, value interface{}) string {
 
 // NotLike is used to construct the expression "field NOT LIKE value".
 func (c *Cond) NotLike(field string, value interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" NOT LIKE ")
 			ctx.WriteValue(value)
 		},
@@ -249,20 +227,18 @@ func (c *Cond) NotLike(field string, value interface{}) string {
 // the NotILike method will return "LOWER(field) NOT LIKE LOWER(value)"
 // to simulate the behavior of the ILIKE operator.
 func (c *Cond) NotILike(field string, value interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			switch ctx.Flavor {
 			case PostgreSQL, SQLite:
-				ctx.WriteString(escaped)
+				ctx.WriteString(field)
 				ctx.WriteString(" NOT ILIKE ")
 				ctx.WriteValue(value)
 
 			default:
 				// Use LOWER to simulate ILIKE.
 				ctx.WriteString("LOWER(")
-				ctx.WriteString(escaped)
+				ctx.WriteString(field)
 				ctx.WriteString(") NOT LIKE LOWER(")
 				ctx.WriteValue(value)
 				ctx.WriteString(")")
@@ -273,11 +249,9 @@ func (c *Cond) NotILike(field string, value interface{}) string {
 
 // IsNull is used to construct the expression "field IS NULL".
 func (c *Cond) IsNull(field string) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" IS NULL")
 		},
 	})
@@ -285,11 +259,9 @@ func (c *Cond) IsNull(field string) string {
 
 // IsNotNull is used to construct the expression "field IS NOT NULL".
 func (c *Cond) IsNotNull(field string) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" IS NOT NULL")
 		},
 	})
@@ -297,11 +269,9 @@ func (c *Cond) IsNotNull(field string) string {
 
 // Between is used to construct the expression "field BETWEEN lower AND upper".
 func (c *Cond) Between(field string, lower, upper interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" BETWEEN ")
 			ctx.WriteValue(lower)
 			ctx.WriteString(" AND ")
@@ -312,11 +282,9 @@ func (c *Cond) Between(field string, lower, upper interface{}) string {
 
 // NotBetween is used to construct the expression "field NOT BETWEEN lower AND upper".
 func (c *Cond) NotBetween(field string, lower, upper interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" NOT BETWEEN ")
 			ctx.WriteValue(lower)
 			ctx.WriteString(" AND ")
@@ -398,11 +366,9 @@ func (c *Cond) NotExists(subquery interface{}) string {
 
 // Any is used to construct the expression "field op ANY (value...)".
 func (c *Cond) Any(field, op string, values ...interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" ")
 			ctx.WriteString(op)
 			ctx.WriteString(" ANY (")
@@ -414,11 +380,9 @@ func (c *Cond) Any(field, op string, values ...interface{}) string {
 
 // All is used to construct the expression "field op ALL (value...)".
 func (c *Cond) All(field, op string, values ...interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" ")
 			ctx.WriteString(op)
 			ctx.WriteString(" ALL (")
@@ -430,11 +394,9 @@ func (c *Cond) All(field, op string, values ...interface{}) string {
 
 // Some is used to construct the expression "field op SOME (value...)".
 func (c *Cond) Some(field, op string, values ...interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
-			ctx.WriteString(escaped)
+			ctx.WriteString(field)
 			ctx.WriteString(" ")
 			ctx.WriteString(op)
 			ctx.WriteString(" SOME (")
@@ -451,19 +413,17 @@ func (c *Cond) Some(field, op string, values ...interface{}) string {
 // "CASE ... WHEN ... ELSE ... END" expression to simulate the behavior of
 // the IS DISTINCT FROM operator.
 func (c *Cond) IsDistinctFrom(field string, value interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			switch ctx.Flavor {
 			case PostgreSQL, SQLite, SQLServer:
-				ctx.WriteString(escaped)
+				ctx.WriteString(field)
 				ctx.WriteString(" IS DISTINCT FROM ")
 				ctx.WriteValue(value)
 
 			case MySQL:
 				ctx.WriteString("NOT ")
-				ctx.WriteString(escaped)
+				ctx.WriteString(field)
 				ctx.WriteString(" <=> ")
 				ctx.WriteValue(value)
 
@@ -474,15 +434,15 @@ func (c *Cond) IsDistinctFrom(field string, value interface{}) string {
 				//     ELSE 1
 				// END = 1
 				ctx.WriteString("CASE WHEN ")
-				ctx.WriteString(escaped)
+				ctx.WriteString(field)
 				ctx.WriteString(" IS NULL AND ")
 				ctx.WriteValue(value)
 				ctx.WriteString(" IS NULL THEN 0 WHEN ")
-				ctx.WriteString(escaped)
+				ctx.WriteString(field)
 				ctx.WriteString(" IS NOT NULL AND ")
 				ctx.WriteValue(value)
 				ctx.WriteString(" IS NOT NULL AND ")
-				ctx.WriteString(escaped)
+				ctx.WriteString(field)
 				ctx.WriteString(" = ")
 				ctx.WriteValue(value)
 				ctx.WriteString(" THEN 0 ELSE 1 END = 1")
@@ -498,18 +458,16 @@ func (c *Cond) IsDistinctFrom(field string, value interface{}) string {
 // "CASE ... WHEN ... ELSE ... END" expression to simulate the behavior of
 // the IS NOT DISTINCT FROM operator.
 func (c *Cond) IsNotDistinctFrom(field string, value interface{}) string {
-	escaped := Escape(field)
-
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			switch ctx.Flavor {
 			case PostgreSQL, SQLite, SQLServer:
-				ctx.WriteString(escaped)
+				ctx.WriteString(field)
 				ctx.WriteString(" IS NOT DISTINCT FROM ")
 				ctx.WriteValue(value)
 
 			case MySQL:
-				ctx.WriteString(escaped)
+				ctx.WriteString(field)
 				ctx.WriteString(" <=> ")
 				ctx.WriteValue(value)
 
@@ -520,15 +478,15 @@ func (c *Cond) IsNotDistinctFrom(field string, value interface{}) string {
 				//     ELSE 0
 				// END = 1
 				ctx.WriteString("CASE WHEN ")
-				ctx.WriteString(escaped)
+				ctx.WriteString(field)
 				ctx.WriteString(" IS NULL AND ")
 				ctx.WriteValue(value)
 				ctx.WriteString(" IS NULL THEN 1 WHEN ")
-				ctx.WriteString(escaped)
+				ctx.WriteString(field)
 				ctx.WriteString(" IS NOT NULL AND ")
 				ctx.WriteValue(value)
 				ctx.WriteString(" IS NOT NULL AND ")
-				ctx.WriteString(escaped)
+				ctx.WriteString(field)
 				ctx.WriteString(" = ")
 				ctx.WriteValue(value)
 				ctx.WriteString(" THEN 1 ELSE 0 END = 1")
