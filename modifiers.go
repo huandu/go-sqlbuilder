@@ -4,6 +4,7 @@
 package sqlbuilder
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 )
@@ -105,6 +106,21 @@ func TupleNames(names ...string) string {
 	buf.WriteRune('(')
 	buf.WriteStrings(names, ", ")
 	buf.WriteRune(')')
+
+	return buf.String()
+}
+
+// JSONNames joins names in the JSON-ish format utilized for Postgres Array operations.
+func JSONNames(names ...string) string {
+	var quoted []string
+	for _, name := range names {
+		quoted = append(quoted, fmt.Sprintf(`"%s"`, name))
+	}
+
+	buf := newStringBuilder()
+	buf.WriteRune('{')
+	buf.WriteStrings(quoted, ", ")
+	buf.WriteRune('}')
 
 	return buf.String()
 }
