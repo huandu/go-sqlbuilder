@@ -52,6 +52,7 @@ func TestCond(t *testing.T) {
 		"$a IS DISTINCT FROM $1":      func(cond *Cond) string { return cond.IsDistinctFrom("$a", 1) },
 		"$a IS NOT DISTINCT FROM $1":  func(cond *Cond) string { return cond.IsNotDistinctFrom("$a", 1) },
 		"$1":                          func(cond *Cond) string { return cond.Var(123) },
+		"$a @> $1":                    func(cond *Cond) string { return cond.Contains("$a", "one", "two") },
 	}
 
 	for expected, f := range cases {

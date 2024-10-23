@@ -3,12 +3,18 @@
 
 package sqlbuilder
 
+import (
+	"github.com/lib/pq"
+)
+
 const (
-	lparen = "("
-	rparen = ")"
-	opOR   = " OR "
-	opAND  = " AND "
-	opNOT  = "NOT "
+	lparen       = "("
+	rparen       = ")"
+	opOR         = " OR "
+	opAND        = " AND "
+	opNOT        = "NOT "
+	opPGContains = " @> "
+	opPGOverlap  = " && "
 )
 
 // Cond provides several helper methods to build conditions.
@@ -21,6 +27,32 @@ func NewCond() *Cond {
 	return &Cond{
 		Args: &Args{},
 	}
+}
+
+// Contains is used to present array comparisons using the containment operator.
+// This is meant to express scenarios where the entire array provided must exist
+// within the array field.
+func (c *Cond) Contains(field string, values ...string) string {
+	return c.Var(condBuilder{
+		Builder: func(ctx *argsCompileContext) {
+			ctx.WriteString(field)
+			ctx.WriteString(opPGContains)
+			ctx.WriteValue(pq.Array(values))
+		},
+	})
+}
+
+// Overlaps is used to present array comparisons using the overlap operator.
+// This is meant to find any entries where any of the provided array exist in the
+// database column
+func (c *Cond) Overlaps(field string, values ...string) string {
+	return c.Var(condBuilder{
+		Builder: func(ctx *argsCompileContext) {
+			ctx.WriteString(field)
+			ctx.WriteString(opPGOverlap)
+			ctx.WriteValue(pq.Array(values))
+		},
+	})
 }
 
 // Equal is used to construct the expression "field = value".
