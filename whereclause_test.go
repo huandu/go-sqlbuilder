@@ -254,3 +254,60 @@ func TestEmptyWhereExpr(t *testing.T) {
 	a.Equal(ub.String(), "UPDATE t SET foo = 1")
 	a.Equal(db.String(), "DELETE FROM t")
 }
+
+func TestEmptyStringsWhere(t *testing.T) {
+	a := assert.New(t)
+	emptyExpr := []string{"", "", ""}
+
+	sb := Select("*").From("t").Where(emptyExpr...)
+	ub := Update("t").Set("foo = 1").Where(emptyExpr...)
+	db := DeleteFrom("t").Where(emptyExpr...)
+
+	a.Equal(sb.String(), "SELECT * FROM t")
+	a.Equal(ub.String(), "UPDATE t SET foo = 1")
+	a.Equal(db.String(), "DELETE FROM t")
+}
+
+func TestEmptyAddWhereExpr(t *testing.T) {
+	a := assert.New(t)
+	var emptyExpr []string
+	sb := Select("*").From("t")
+	ub := Update("t").Set("foo = 1")
+	db := DeleteFrom("t")
+
+	cond := NewCond()
+	whereClause := NewWhereClause().AddWhereExpr(
+		cond.Args,
+		emptyExpr...,
+	)
+
+	sb.AddWhereClause(whereClause)
+	ub.AddWhereClause(whereClause)
+	db.AddWhereClause(whereClause)
+
+	a.Equal(sb.String(), "SELECT * FROM t ")
+	a.Equal(ub.String(), "UPDATE t SET foo = 1 ")
+	a.Equal(db.String(), "DELETE FROM t ")
+}
+
+func TestEmptyStringsWhereAddWhereExpr(t *testing.T) {
+	a := assert.New(t)
+	emptyExpr := []string{"", "", ""}
+	sb := Select("*").From("t")
+	ub := Update("t").Set("foo = 1")
+	db := DeleteFrom("t")
+
+	cond := NewCond()
+	whereClause := NewWhereClause().AddWhereExpr(
+		cond.Args,
+		emptyExpr...,
+	)
+
+	sb.AddWhereClause(whereClause)
+	ub.AddWhereClause(whereClause)
+	db.AddWhereClause(whereClause)
+
+	a.Equal(sb.String(), "SELECT * FROM t ")
+	a.Equal(ub.String(), "UPDATE t SET foo = 1 ")
+	a.Equal(db.String(), "DELETE FROM t ")
+}
