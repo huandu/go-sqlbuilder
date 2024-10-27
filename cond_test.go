@@ -10,51 +10,148 @@ import (
 	"github.com/huandu/go-assert"
 )
 
+type TestPair struct {
+	Expected string
+	Actual   func(cond *Cond) string
+}
+
 func TestCond(t *testing.T) {
 	a := assert.New(t)
 	cases := map[string]func(cond *Cond) string{
-		"$a = $1":                     func(cond *Cond) string { return cond.Equal("$a", 123) },
-		"$b = $1":                     func(cond *Cond) string { return cond.E("$b", 123) },
-		"$c = $1":                     func(cond *Cond) string { return cond.EQ("$c", 123) },
-		"$a <> $1":                    func(cond *Cond) string { return cond.NotEqual("$a", 123) },
-		"$b <> $1":                    func(cond *Cond) string { return cond.NE("$b", 123) },
-		"$c <> $1":                    func(cond *Cond) string { return cond.NEQ("$c", 123) },
-		"$a > $1":                     func(cond *Cond) string { return cond.GreaterThan("$a", 123) },
-		"$b > $1":                     func(cond *Cond) string { return cond.G("$b", 123) },
-		"$c > $1":                     func(cond *Cond) string { return cond.GT("$c", 123) },
-		"$a >= $1":                    func(cond *Cond) string { return cond.GreaterEqualThan("$a", 123) },
-		"$b >= $1":                    func(cond *Cond) string { return cond.GE("$b", 123) },
-		"$c >= $1":                    func(cond *Cond) string { return cond.GTE("$c", 123) },
-		"$a < $1":                     func(cond *Cond) string { return cond.LessThan("$a", 123) },
-		"$b < $1":                     func(cond *Cond) string { return cond.L("$b", 123) },
-		"$c < $1":                     func(cond *Cond) string { return cond.LT("$c", 123) },
-		"$a <= $1":                    func(cond *Cond) string { return cond.LessEqualThan("$a", 123) },
-		"$b <= $1":                    func(cond *Cond) string { return cond.LE("$b", 123) },
-		"$c <= $1":                    func(cond *Cond) string { return cond.LTE("$c", 123) },
-		"$a IN ($1, $2, $3)":          func(cond *Cond) string { return cond.In("$a", 1, 2, 3) },
-		"$a NOT IN ($1, $2, $3)":      func(cond *Cond) string { return cond.NotIn("$a", 1, 2, 3) },
-		"$a LIKE $1":                  func(cond *Cond) string { return cond.Like("$a", "%Huan%") },
-		"$a ILIKE $1":                 func(cond *Cond) string { return cond.ILike("$a", "%Huan%") },
-		"$a NOT LIKE $1":              func(cond *Cond) string { return cond.NotLike("$a", "%Huan%") },
-		"$a NOT ILIKE $1":             func(cond *Cond) string { return cond.NotILike("$a", "%Huan%") },
-		"$a IS NULL":                  func(cond *Cond) string { return cond.IsNull("$a") },
-		"$a IS NOT NULL":              func(cond *Cond) string { return cond.IsNotNull("$a") },
-		"$a BETWEEN $1 AND $2":        func(cond *Cond) string { return cond.Between("$a", 123, 456) },
-		"$a NOT BETWEEN $1 AND $2":    func(cond *Cond) string { return cond.NotBetween("$a", 123, 456) },
-		"(1 = 1 OR 2 = 2 OR 3 = 3)":   func(cond *Cond) string { return cond.Or("1 = 1", "2 = 2", "3 = 3") },
-		"(1 = 1 AND 2 = 2 AND 3 = 3)": func(cond *Cond) string { return cond.And("1 = 1", "2 = 2", "3 = 3") },
-		"NOT 1 = 1":                   func(cond *Cond) string { return cond.Not("1 = 1") },
-		"EXISTS ($1)":                 func(cond *Cond) string { return cond.Exists(1) },
-		"NOT EXISTS ($1)":             func(cond *Cond) string { return cond.NotExists(1) },
-		"$a > ANY ($1, $2)":           func(cond *Cond) string { return cond.Any("$a", ">", 1, 2) },
-		"$a < ALL ($1)":               func(cond *Cond) string { return cond.All("$a", "<", 1) },
-		"$a > SOME ($1, $2, $3)":      func(cond *Cond) string { return cond.Some("$a", ">", 1, 2, 3) },
-		"$a IS DISTINCT FROM $1":      func(cond *Cond) string { return cond.IsDistinctFrom("$a", 1) },
-		"$a IS NOT DISTINCT FROM $1":  func(cond *Cond) string { return cond.IsNotDistinctFrom("$a", 1) },
-		"$1":                          func(cond *Cond) string { return cond.Var(123) },
+		"$a = $1":                    func(cond *Cond) string { return cond.Equal("$a", 123) },
+		"$b = $1":                    func(cond *Cond) string { return cond.E("$b", 123) },
+		"$c = $1":                    func(cond *Cond) string { return cond.EQ("$c", 123) },
+		"$a <> $1":                   func(cond *Cond) string { return cond.NotEqual("$a", 123) },
+		"$b <> $1":                   func(cond *Cond) string { return cond.NE("$b", 123) },
+		"$c <> $1":                   func(cond *Cond) string { return cond.NEQ("$c", 123) },
+		"$a > $1":                    func(cond *Cond) string { return cond.GreaterThan("$a", 123) },
+		"$b > $1":                    func(cond *Cond) string { return cond.G("$b", 123) },
+		"$c > $1":                    func(cond *Cond) string { return cond.GT("$c", 123) },
+		"$a >= $1":                   func(cond *Cond) string { return cond.GreaterEqualThan("$a", 123) },
+		"$b >= $1":                   func(cond *Cond) string { return cond.GE("$b", 123) },
+		"$c >= $1":                   func(cond *Cond) string { return cond.GTE("$c", 123) },
+		"$a < $1":                    func(cond *Cond) string { return cond.LessThan("$a", 123) },
+		"$b < $1":                    func(cond *Cond) string { return cond.L("$b", 123) },
+		"$c < $1":                    func(cond *Cond) string { return cond.LT("$c", 123) },
+		"$a <= $1":                   func(cond *Cond) string { return cond.LessEqualThan("$a", 123) },
+		"$b <= $1":                   func(cond *Cond) string { return cond.LE("$b", 123) },
+		"$c <= $1":                   func(cond *Cond) string { return cond.LTE("$c", 123) },
+		"$a IN ($1, $2, $3)":         func(cond *Cond) string { return cond.In("$a", 1, 2, 3) },
+		"$a NOT IN ($1, $2, $3)":     func(cond *Cond) string { return cond.NotIn("$a", 1, 2, 3) },
+		"$a LIKE $1":                 func(cond *Cond) string { return cond.Like("$a", "%Huan%") },
+		"$a ILIKE $1":                func(cond *Cond) string { return cond.ILike("$a", "%Huan%") },
+		"$a NOT LIKE $1":             func(cond *Cond) string { return cond.NotLike("$a", "%Huan%") },
+		"$a NOT ILIKE $1":            func(cond *Cond) string { return cond.NotILike("$a", "%Huan%") },
+		"$a IS NULL":                 func(cond *Cond) string { return cond.IsNull("$a") },
+		"$a IS NOT NULL":             func(cond *Cond) string { return cond.IsNotNull("$a") },
+		"$a BETWEEN $1 AND $2":       func(cond *Cond) string { return cond.Between("$a", 123, 456) },
+		"$a NOT BETWEEN $1 AND $2":   func(cond *Cond) string { return cond.NotBetween("$a", 123, 456) },
+		"NOT 1 = 1":                  func(cond *Cond) string { return cond.Not("1 = 1") },
+		"EXISTS ($1)":                func(cond *Cond) string { return cond.Exists(1) },
+		"NOT EXISTS ($1)":            func(cond *Cond) string { return cond.NotExists(1) },
+		"$a > ANY ($1, $2)":          func(cond *Cond) string { return cond.Any("$a", ">", 1, 2) },
+		"$a < ALL ($1)":              func(cond *Cond) string { return cond.All("$a", "<", 1) },
+		"$a > SOME ($1, $2, $3)":     func(cond *Cond) string { return cond.Some("$a", ">", 1, 2, 3) },
+		"$a IS DISTINCT FROM $1":     func(cond *Cond) string { return cond.IsDistinctFrom("$a", 1) },
+		"$a IS NOT DISTINCT FROM $1": func(cond *Cond) string { return cond.IsNotDistinctFrom("$a", 1) },
+		"$1":                         func(cond *Cond) string { return cond.Var(123) },
 	}
 
 	for expected, f := range cases {
+		actual := callCond(f)
+		a.Equal(actual, expected)
+	}
+}
+
+func TestOrCond(t *testing.T) {
+	a := assert.New(t)
+	cases := []TestPair{
+		{Expected: "(1 = 1 OR 2 = 2 OR 3 = 3)", Actual: func(cond *Cond) string { return cond.Or("1 = 1", "2 = 2", "3 = 3") }},
+
+		{Expected: "(1 = 1 OR 2 = 2)", Actual: func(cond *Cond) string { return cond.Or("", "1 = 1", "2 = 2") }},
+		{Expected: "(1 = 1 OR 2 = 2)", Actual: func(cond *Cond) string { return cond.Or("1 = 1", "2 = 2", "") }},
+		{Expected: "(1 = 1 OR 2 = 2)", Actual: func(cond *Cond) string { return cond.Or("1 = 1", "", "2 = 2") }},
+
+		{Expected: "(1 = 1)", Actual: func(cond *Cond) string { return cond.Or("1 = 1", "", "") }},
+		{Expected: "(1 = 1)", Actual: func(cond *Cond) string { return cond.Or("", "1 = 1", "") }},
+		{Expected: "(1 = 1)", Actual: func(cond *Cond) string { return cond.Or("", "", "1 = 1") }},
+		{Expected: "(1 = 1)", Actual: func(cond *Cond) string { return cond.Or("1 = 1") }},
+
+		{Expected: "", Actual: func(cond *Cond) string { return cond.Or("") }},
+		{Expected: "", Actual: func(cond *Cond) string { return cond.Or() }},
+		{Expected: "", Actual: func(cond *Cond) string { return cond.Or("", "", "") }},
+	}
+
+	for _, f := range cases {
+		actual := callCond(f.Actual)
+		a.Equal(actual, f.Expected)
+	}
+}
+
+func TestAndCond(t *testing.T) {
+	a := assert.New(t)
+	cases := []TestPair{
+		{Expected: "(1 = 1 AND 2 = 2 AND 3 = 3)", Actual: func(cond *Cond) string { return cond.And("1 = 1", "2 = 2", "3 = 3") }},
+
+		{Expected: "(1 = 1 AND 2 = 2)", Actual: func(cond *Cond) string { return cond.And("", "1 = 1", "2 = 2") }},
+		{Expected: "(1 = 1 AND 2 = 2)", Actual: func(cond *Cond) string { return cond.And("1 = 1", "2 = 2", "") }},
+		{Expected: "(1 = 1 AND 2 = 2)", Actual: func(cond *Cond) string { return cond.And("1 = 1", "", "2 = 2") }},
+
+		{Expected: "(1 = 1)", Actual: func(cond *Cond) string { return cond.And("1 = 1", "", "") }},
+		{Expected: "(1 = 1)", Actual: func(cond *Cond) string { return cond.And("", "1 = 1", "") }},
+		{Expected: "(1 = 1)", Actual: func(cond *Cond) string { return cond.And("", "", "1 = 1") }},
+		{Expected: "(1 = 1)", Actual: func(cond *Cond) string { return cond.And("1 = 1") }},
+
+		{Expected: "", Actual: func(cond *Cond) string { return cond.And("") }},
+		{Expected: "", Actual: func(cond *Cond) string { return cond.And() }},
+		{Expected: "", Actual: func(cond *Cond) string { return cond.And("", "", "") }},
+	}
+
+	for _, f := range cases {
+		actual := callCond(f.Actual)
+		a.Equal(actual, f.Expected)
+	}
+}
+
+func TestEmptyCond(t *testing.T) {
+	a := assert.New(t)
+	cases := []func(cond *Cond) string{
+		func(cond *Cond) string { return cond.Equal("", 123) },
+		func(cond *Cond) string { return cond.NotEqual("", 123) },
+		func(cond *Cond) string { return cond.GreaterThan("", 123) },
+		func(cond *Cond) string { return cond.GreaterEqualThan("", 123) },
+		func(cond *Cond) string { return cond.LessThan("", 123) },
+		func(cond *Cond) string { return cond.LessEqualThan("", 123) },
+		func(cond *Cond) string { return cond.In("", 1, 2, 3) },
+		func(cond *Cond) string { return cond.NotIn("", 1, 2, 3) },
+		func(cond *Cond) string { return cond.Like("", "%Huan%") },
+		func(cond *Cond) string { return cond.ILike("", "%Huan%") },
+		func(cond *Cond) string { return cond.NotLike("", "%Huan%") },
+		func(cond *Cond) string { return cond.NotILike("", "%Huan%") },
+		func(cond *Cond) string { return cond.IsNull("") },
+		func(cond *Cond) string { return cond.IsNotNull("") },
+		func(cond *Cond) string { return cond.Between("", 123, 456) },
+		func(cond *Cond) string { return cond.NotBetween("", 123, 456) },
+		func(cond *Cond) string { return cond.Not("") },
+
+		func(cond *Cond) string { return cond.Any("", "", 1, 2) },
+		func(cond *Cond) string { return cond.Any("", ">", 1, 2) },
+		func(cond *Cond) string { return cond.Any("$a", "", 1, 2) },
+
+		func(cond *Cond) string { return cond.All("", "", 1) },
+		func(cond *Cond) string { return cond.All("", ">", 1) },
+		func(cond *Cond) string { return cond.All("$a", "", 1) },
+
+		func(cond *Cond) string { return cond.Some("", "", 1, 2, 3) },
+		func(cond *Cond) string { return cond.Some("", ">", 1, 2, 3) },
+		func(cond *Cond) string { return cond.Some("$a", "", 1, 2, 3) },
+
+		func(cond *Cond) string { return cond.IsDistinctFrom("", 1) },
+		func(cond *Cond) string { return cond.IsNotDistinctFrom("", 1) },
+	}
+
+	expected := ""
+	for _, f := range cases {
 		actual := callCond(f)
 		a.Equal(actual, expected)
 	}

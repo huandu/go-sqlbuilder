@@ -92,6 +92,12 @@ func (wc *WhereClause) AddWhereExpr(args *Args, andExpr ...string) *WhereClause 
 		return wc
 	}
 
+	andExprsBytesLen := estimateStringsBytes(andExpr)
+
+	if andExprsBytesLen == 0 {
+		return wc
+	}
+
 	// Merge with last clause if possible.
 	if len(wc.clauses) > 0 {
 		lastClause := &wc.clauses[len(wc.clauses)-1]

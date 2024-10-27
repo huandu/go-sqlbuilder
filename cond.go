@@ -25,6 +25,10 @@ func NewCond() *Cond {
 
 // Equal is used to construct the expression "field = value".
 func (c *Cond) Equal(field string, value interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -46,6 +50,10 @@ func (c *Cond) EQ(field string, value interface{}) string {
 
 // NotEqual is used to construct the expression "field <> value".
 func (c *Cond) NotEqual(field string, value interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -67,6 +75,10 @@ func (c *Cond) NEQ(field string, value interface{}) string {
 
 // GreaterThan is used to construct the expression "field > value".
 func (c *Cond) GreaterThan(field string, value interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -88,6 +100,10 @@ func (c *Cond) GT(field string, value interface{}) string {
 
 // GreaterEqualThan is used to construct the expression "field >= value".
 func (c *Cond) GreaterEqualThan(field string, value interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -109,6 +125,10 @@ func (c *Cond) GTE(field string, value interface{}) string {
 
 // LessThan is used to construct the expression "field < value".
 func (c *Cond) LessThan(field string, value interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -130,6 +150,9 @@ func (c *Cond) LT(field string, value interface{}) string {
 
 // LessEqualThan is used to construct the expression "field <= value".
 func (c *Cond) LessEqualThan(field string, value interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -151,6 +174,10 @@ func (c *Cond) LTE(field string, value interface{}) string {
 
 // In is used to construct the expression "field IN (value...)".
 func (c *Cond) In(field string, values ...interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -163,6 +190,10 @@ func (c *Cond) In(field string, values ...interface{}) string {
 
 // NotIn is used to construct the expression "field NOT IN (value...)".
 func (c *Cond) NotIn(field string, values ...interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -175,6 +206,10 @@ func (c *Cond) NotIn(field string, values ...interface{}) string {
 
 // Like is used to construct the expression "field LIKE value".
 func (c *Cond) Like(field string, value interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -190,6 +225,10 @@ func (c *Cond) Like(field string, value interface{}) string {
 // the ILike method will return "LOWER(field) LIKE LOWER(value)"
 // to simulate the behavior of the ILIKE operator.
 func (c *Cond) ILike(field string, value interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			switch ctx.Flavor {
@@ -212,6 +251,10 @@ func (c *Cond) ILike(field string, value interface{}) string {
 
 // NotLike is used to construct the expression "field NOT LIKE value".
 func (c *Cond) NotLike(field string, value interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -227,6 +270,10 @@ func (c *Cond) NotLike(field string, value interface{}) string {
 // the NotILike method will return "LOWER(field) NOT LIKE LOWER(value)"
 // to simulate the behavior of the ILIKE operator.
 func (c *Cond) NotILike(field string, value interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			switch ctx.Flavor {
@@ -249,6 +296,10 @@ func (c *Cond) NotILike(field string, value interface{}) string {
 
 // IsNull is used to construct the expression "field IS NULL".
 func (c *Cond) IsNull(field string) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -259,6 +310,9 @@ func (c *Cond) IsNull(field string) string {
 
 // IsNotNull is used to construct the expression "field IS NOT NULL".
 func (c *Cond) IsNotNull(field string) string {
+	if len(field) == 0 {
+		return ""
+	}
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -269,6 +323,10 @@ func (c *Cond) IsNotNull(field string) string {
 
 // Between is used to construct the expression "field BETWEEN lower AND upper".
 func (c *Cond) Between(field string, lower, upper interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -282,6 +340,10 @@ func (c *Cond) Between(field string, lower, upper interface{}) string {
 
 // NotBetween is used to construct the expression "field NOT BETWEEN lower AND upper".
 func (c *Cond) NotBetween(field string, lower, upper interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -299,10 +361,15 @@ func (c *Cond) Or(orExpr ...string) string {
 		return ""
 	}
 
+	exprByteLen := estimateStringsBytes(orExpr)
+	if exprByteLen == 0 {
+		return ""
+	}
+
 	buf := newStringBuilder()
 
 	// Ensure that there is only 1 memory allocation.
-	size := len(lparen) + len(rparen) + (len(orExpr)-1)*len(opOR) + estimateStringsBytes(orExpr)
+	size := len(lparen) + len(rparen) + (len(orExpr)-1)*len(opOR) + exprByteLen
 	buf.Grow(size)
 
 	buf.WriteString(lparen)
@@ -317,10 +384,15 @@ func (c *Cond) And(andExpr ...string) string {
 		return ""
 	}
 
+	exprByteLen := estimateStringsBytes(andExpr)
+	if exprByteLen == 0 {
+		return ""
+	}
+
 	buf := newStringBuilder()
 
 	// Ensure that there is only 1 memory allocation.
-	size := len(lparen) + len(rparen) + (len(andExpr)-1)*len(opAND) + estimateStringsBytes(andExpr)
+	size := len(lparen) + len(rparen) + (len(andExpr)-1)*len(opAND) + exprByteLen
 	buf.Grow(size)
 
 	buf.WriteString(lparen)
@@ -331,6 +403,9 @@ func (c *Cond) And(andExpr ...string) string {
 
 // Not is used to construct the expression "NOT expr".
 func (c *Cond) Not(notExpr string) string {
+	if len(notExpr) == 0 {
+		return ""
+	}
 	buf := newStringBuilder()
 
 	// Ensure that there is only 1 memory allocation.
@@ -366,6 +441,10 @@ func (c *Cond) NotExists(subquery interface{}) string {
 
 // Any is used to construct the expression "field op ANY (value...)".
 func (c *Cond) Any(field, op string, values ...interface{}) string {
+	if len(field) == 0 || len(op) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -380,6 +459,10 @@ func (c *Cond) Any(field, op string, values ...interface{}) string {
 
 // All is used to construct the expression "field op ALL (value...)".
 func (c *Cond) All(field, op string, values ...interface{}) string {
+	if len(field) == 0 || len(op) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -394,6 +477,10 @@ func (c *Cond) All(field, op string, values ...interface{}) string {
 
 // Some is used to construct the expression "field op SOME (value...)".
 func (c *Cond) Some(field, op string, values ...interface{}) string {
+	if len(field) == 0 || len(op) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -413,6 +500,10 @@ func (c *Cond) Some(field, op string, values ...interface{}) string {
 // "CASE ... WHEN ... ELSE ... END" expression to simulate the behavior of
 // the IS DISTINCT FROM operator.
 func (c *Cond) IsDistinctFrom(field string, value interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			switch ctx.Flavor {
@@ -458,6 +549,10 @@ func (c *Cond) IsDistinctFrom(field string, value interface{}) string {
 // "CASE ... WHEN ... ELSE ... END" expression to simulate the behavior of
 // the IS NOT DISTINCT FROM operator.
 func (c *Cond) IsNotDistinctFrom(field string, value interface{}) string {
+	if len(field) == 0 {
+		return ""
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			switch ctx.Flavor {
