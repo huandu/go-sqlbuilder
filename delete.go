@@ -80,7 +80,7 @@ func (db *DeleteBuilder) DeleteFrom(table string) *DeleteBuilder {
 
 // Where sets expressions of WHERE in DELETE.
 func (db *DeleteBuilder) Where(andExpr ...string) *DeleteBuilder {
-	if len(andExpr) == 0 {
+	if len(andExpr) == 0 || estimateStringsBytes(andExpr) == 0 {
 		return db
 	}
 

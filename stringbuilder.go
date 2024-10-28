@@ -39,11 +39,20 @@ func (sb *stringBuilder) WriteStrings(ss []string, sep string) {
 		return
 	}
 
-	sb.WriteString(ss[0])
+	firstAdded := false
+	if len(ss[0]) != 0 {
+		sb.WriteString(ss[0])
+		firstAdded = true
+	}
 
 	for _, s := range ss[1:] {
-		sb.WriteString(sep)
-		sb.WriteString(s)
+		if len(s) != 0 {
+			if firstAdded {
+				sb.WriteString(sep)
+			}
+			sb.WriteString(s)
+			firstAdded = true
+		}
 	}
 }
 
