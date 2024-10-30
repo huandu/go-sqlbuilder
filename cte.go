@@ -112,6 +112,10 @@ func (cteb *CTEBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
+func (cteb *CTEBuilder) GetFlavor() Flavor {
+	return cteb.args.Flavor
+}
+
 // SQL adds an arbitrary sql to current position.
 func (cteb *CTEBuilder) SQL(sql string) *CTEBuilder {
 	cteb.injection.SQL(cteb.marker, sql)

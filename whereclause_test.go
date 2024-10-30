@@ -311,3 +311,24 @@ func TestEmptyStringsWhereAddWhereExpr(t *testing.T) {
 	a.Equal(ub.String(), "UPDATE t SET foo = 1 ")
 	a.Equal(db.String(), "DELETE FROM t ")
 }
+
+func TestWhereClauseGetFlavor(t *testing.T) {
+	a := assert.New(t)
+	wc := NewWhereClause()
+	postgresFlavor := PostgreSQL
+	wc.SetFlavor(postgresFlavor)
+	flavor := wc.GetFlavor()
+	a.Equal(postgresFlavor, flavor)
+}
+
+func TestWhereClauseCopyGetFlavor(t *testing.T) {
+	a := assert.New(t)
+
+	wc := NewWhereClause()
+	postgresFlavor := PostgreSQL
+	wc.SetFlavor(postgresFlavor)
+
+	wcCopy := CopyWhereClause(wc)
+	flavor := wcCopy.GetFlavor()
+	a.Equal(postgresFlavor, flavor)
+}

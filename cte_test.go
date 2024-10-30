@@ -130,3 +130,31 @@ func TestRecursiveCTEBuilder(t *testing.T) {
 	sql = ctetb.String()
 	a.Equal(sql, "/* table init */ t (a, b) /* after table */ AS (SELECT a, b FROM t) /* after table as */")
 }
+
+func TestCTEGetFlavor(t *testing.T) {
+	a := assert.New(t)
+	cteb := newCTEBuilder()
+	postgresFlavor := PostgreSQL
+	clickhouseFlavor := ClickHouse
+	cteb.SetFlavor(postgresFlavor)
+	flavor := cteb.GetFlavor()
+	a.Equal(postgresFlavor, flavor)
+
+	ctebClick := clickhouseFlavor.NewCTEBuilder()
+	flavor = ctebClick.GetFlavor()
+	a.Equal(clickhouseFlavor, flavor)
+}
+
+func TestCTEQueryBuilderGetFlavor(t *testing.T) {
+	a := assert.New(t)
+	ctetb := newCTEQueryBuilder()
+	postgresFlavor := PostgreSQL
+	clickhouseFlavor := ClickHouse
+	ctetb.SetFlavor(postgresFlavor)
+	flavor := ctetb.GetFlavor()
+	a.Equal(postgresFlavor, flavor)
+
+	ctetbClick := clickhouseFlavor.NewCTEQueryBuilder()
+	flavor = ctetbClick.GetFlavor()
+	a.Equal(clickhouseFlavor, flavor)
+}

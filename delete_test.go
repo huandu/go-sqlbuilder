@@ -5,6 +5,9 @@ package sqlbuilder
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/huandu/go-assert"
 )
 
 func ExampleDeleteFrom() {
@@ -79,4 +82,18 @@ func ExampleDeleteBuilder_With() {
 
 	// Output:
 	// WITH users AS (SELECT id, name FROM users WHERE name IS NULL) DELETE FROM orders WHERE users.id = orders.user_id
+}
+
+func TestDeleteBuilderGetFlavor(t *testing.T) {
+	a := assert.New(t)
+	db := newDeleteBuilder()
+	postgresFlavor := PostgreSQL
+	clickhouseFlavor := ClickHouse
+	db.SetFlavor(postgresFlavor)
+	flavor := db.GetFlavor()
+	a.Equal(postgresFlavor, flavor)
+
+	dbClick := clickhouseFlavor.NewDeleteBuilder()
+	flavor = dbClick.GetFlavor()
+	a.Equal(clickhouseFlavor, flavor)
 }

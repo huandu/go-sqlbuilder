@@ -213,6 +213,10 @@ func (ib *InsertBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
+func (ib *InsertBuilder) GetFlavor() Flavor {
+	return ib.args.Flavor
+}
+
 // Var returns a placeholder for value.
 func (ib *InsertBuilder) Var(arg interface{}) string {
 	return ib.args.Add(arg)

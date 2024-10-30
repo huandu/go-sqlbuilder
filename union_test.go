@@ -91,3 +91,17 @@ func TestUnionForSQLite(t *testing.T) {
 
 	a.Equal(sql, "SELECT id, name FROM users WHERE created_at > DATE('now', '-15 days') UNION ALL SELECT id, nick_name FROM user_extras WHERE status IN (1, 2, 3) ORDER BY id")
 }
+
+func TestUnionBuilderGetFlavor(t *testing.T) {
+	a := assert.New(t)
+	ub := newUnionBuilder()
+	postgresFlavor := PostgreSQL
+	clickhouseFlavor := ClickHouse
+	ub.SetFlavor(postgresFlavor)
+	flavor := ub.GetFlavor()
+	a.Equal(postgresFlavor, flavor)
+
+	ubClick := clickhouseFlavor.NewUnionBuilder()
+	flavor = ubClick.GetFlavor()
+	a.Equal(clickhouseFlavor, flavor)
+}

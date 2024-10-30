@@ -200,6 +200,10 @@ func (db *DeleteBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
+func (db *DeleteBuilder) GetFlavor() Flavor {
+	return db.args.Flavor
+}
+
 // SQL adds an arbitrary sql to current position.
 func (db *DeleteBuilder) SQL(sql string) *DeleteBuilder {
 	db.injection.SQL(db.marker, sql)

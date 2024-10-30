@@ -158,6 +158,10 @@ func (ctb *CreateTableBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
+func (ctb *CreateTableBuilder) GetFlavor() Flavor {
+	return ctb.args.Flavor
+}
+
 // Var returns a placeholder for value.
 func (ctb *CreateTableBuilder) Var(arg interface{}) string {
 	return ctb.args.Add(arg)

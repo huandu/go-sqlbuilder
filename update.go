@@ -269,6 +269,10 @@ func (ub *UpdateBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
+func (ub *UpdateBuilder) GetFlavor() Flavor {
+	return ub.args.Flavor
+}
+
 // SQL adds an arbitrary sql to current position.
 func (ub *UpdateBuilder) SQL(sql string) *UpdateBuilder {
 	ub.injection.SQL(ub.marker, sql)

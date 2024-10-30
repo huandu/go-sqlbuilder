@@ -5,6 +5,9 @@ package sqlbuilder
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/huandu/go-assert"
 )
 
 func ExampleInsertInto() {
@@ -240,4 +243,18 @@ func ExampleInsertBuilder_NumValue() {
 
 	// Output:
 	// 2
+}
+
+func TestInsertBuilderGetFlavor(t *testing.T) {
+	a := assert.New(t)
+	ib := newInsertBuilder()
+	postgresFlavor := PostgreSQL
+	clickhouseFlavor := ClickHouse
+	ib.SetFlavor(postgresFlavor)
+	flavor := ib.GetFlavor()
+	a.Equal(postgresFlavor, flavor)
+
+	ibClick := clickhouseFlavor.NewInsertBuilder()
+	flavor = ibClick.GetFlavor()
+	a.Equal(clickhouseFlavor, flavor)
 }
