@@ -112,7 +112,8 @@ func (cteb *CTEBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
-func (cteb *CTEBuilder) GetFlavor() Flavor {
+// Flavor returns flavor of builder
+func (cteb *CTEBuilder) Flavor() Flavor {
 	return cteb.args.Flavor
 }
 

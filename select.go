@@ -537,7 +537,8 @@ func (sb *SelectBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
-func (sb *SelectBuilder) GetFlavor() Flavor {
+// Flavor returns flavor of builder
+func (sb *SelectBuilder) Flavor() Flavor {
 	return sb.args.Flavor
 }
 

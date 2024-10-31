@@ -379,13 +379,12 @@ func TestSelectBuilderSelectMore(t *testing.T) {
 func TestSelectBuilderGetFlavor(t *testing.T) {
 	a := assert.New(t)
 	sb := newSelectBuilder()
-	postgresFlavor := PostgreSQL
-	clickhouseFlavor := ClickHouse
-	sb.SetFlavor(postgresFlavor)
-	flavor := sb.GetFlavor()
-	a.Equal(postgresFlavor, flavor)
 
-	sbClick := clickhouseFlavor.NewSelectBuilder()
-	flavor = sbClick.GetFlavor()
-	a.Equal(clickhouseFlavor, flavor)
+	sb.SetFlavor(PostgreSQL)
+	flavor := sb.Flavor()
+	a.Equal(PostgreSQL, flavor)
+
+	sbClick := ClickHouse.NewSelectBuilder()
+	flavor = sbClick.Flavor()
+	a.Equal(ClickHouse, flavor)
 }

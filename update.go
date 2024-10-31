@@ -269,7 +269,8 @@ func (ub *UpdateBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
-func (ub *UpdateBuilder) GetFlavor() Flavor {
+// Flavor returns flavor of builder
+func (ub *UpdateBuilder) Flavor() Flavor {
 	return ub.args.Flavor
 }
 

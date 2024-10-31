@@ -200,7 +200,8 @@ func (db *DeleteBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
-func (db *DeleteBuilder) GetFlavor() Flavor {
+// Flavor returns flavor of builder
+func (db *DeleteBuilder) Flavor() Flavor {
 	return db.args.Flavor
 }
 

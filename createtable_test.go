@@ -93,13 +93,12 @@ func ExampleCreateTableBuilder_NumDefine() {
 func TestCreateTableGetFlavor(t *testing.T) {
 	a := assert.New(t)
 	ctb := newCreateTableBuilder()
-	postgresFlavor := PostgreSQL
-	clickhouseFlavor := ClickHouse
-	ctb.SetFlavor(postgresFlavor)
-	flavor := ctb.GetFlavor()
-	a.Equal(postgresFlavor, flavor)
 
-	ctbClick := clickhouseFlavor.NewCreateTableBuilder()
-	flavor = ctbClick.GetFlavor()
-	a.Equal(clickhouseFlavor, flavor)
+	ctb.SetFlavor(PostgreSQL)
+	flavor := ctb.Flavor()
+	a.Equal(PostgreSQL, flavor)
+
+	ctbClick := ClickHouse.NewCreateTableBuilder()
+	flavor = ctbClick.Flavor()
+	a.Equal(ClickHouse, flavor)
 }

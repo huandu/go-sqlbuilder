@@ -213,7 +213,8 @@ func (ib *InsertBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
-func (ib *InsertBuilder) GetFlavor() Flavor {
+// Flavor returns flavor of builder
+func (ib *InsertBuilder) Flavor() Flavor {
 	return ib.args.Flavor
 }
 

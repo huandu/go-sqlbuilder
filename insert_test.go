@@ -248,13 +248,12 @@ func ExampleInsertBuilder_NumValue() {
 func TestInsertBuilderGetFlavor(t *testing.T) {
 	a := assert.New(t)
 	ib := newInsertBuilder()
-	postgresFlavor := PostgreSQL
-	clickhouseFlavor := ClickHouse
-	ib.SetFlavor(postgresFlavor)
-	flavor := ib.GetFlavor()
-	a.Equal(postgresFlavor, flavor)
 
-	ibClick := clickhouseFlavor.NewInsertBuilder()
-	flavor = ibClick.GetFlavor()
-	a.Equal(clickhouseFlavor, flavor)
+	ib.SetFlavor(PostgreSQL)
+	flavor := ib.Flavor()
+	a.Equal(PostgreSQL, flavor)
+
+	ibClick := ClickHouse.NewInsertBuilder()
+	flavor = ibClick.Flavor()
+	a.Equal(ClickHouse, flavor)
 }

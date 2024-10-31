@@ -87,13 +87,12 @@ func ExampleDeleteBuilder_With() {
 func TestDeleteBuilderGetFlavor(t *testing.T) {
 	a := assert.New(t)
 	db := newDeleteBuilder()
-	postgresFlavor := PostgreSQL
-	clickhouseFlavor := ClickHouse
-	db.SetFlavor(postgresFlavor)
-	flavor := db.GetFlavor()
-	a.Equal(postgresFlavor, flavor)
 
-	dbClick := clickhouseFlavor.NewDeleteBuilder()
-	flavor = dbClick.GetFlavor()
-	a.Equal(clickhouseFlavor, flavor)
+	db.SetFlavor(PostgreSQL)
+	flavor := db.Flavor()
+	a.Equal(PostgreSQL, flavor)
+
+	dbClick := ClickHouse.NewDeleteBuilder()
+	flavor = dbClick.Flavor()
+	a.Equal(ClickHouse, flavor)
 }

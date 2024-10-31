@@ -86,7 +86,8 @@ func (wc *WhereClause) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
-func (wc *WhereClause) GetFlavor() Flavor {
+// Flavor returns flavor of clause
+func (wc *WhereClause) Flavor() Flavor {
 	return wc.flavor
 }
 

@@ -95,13 +95,12 @@ func TestUnionForSQLite(t *testing.T) {
 func TestUnionBuilderGetFlavor(t *testing.T) {
 	a := assert.New(t)
 	ub := newUnionBuilder()
-	postgresFlavor := PostgreSQL
-	clickhouseFlavor := ClickHouse
-	ub.SetFlavor(postgresFlavor)
-	flavor := ub.GetFlavor()
-	a.Equal(postgresFlavor, flavor)
 
-	ubClick := clickhouseFlavor.NewUnionBuilder()
-	flavor = ubClick.GetFlavor()
-	a.Equal(clickhouseFlavor, flavor)
+	ub.SetFlavor(PostgreSQL)
+	flavor := ub.Flavor()
+	a.Equal(PostgreSQL, flavor)
+
+	ubClick := ClickHouse.NewUnionBuilder()
+	flavor = ubClick.Flavor()
+	a.Equal(ClickHouse, flavor)
 }

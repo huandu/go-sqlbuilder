@@ -13,6 +13,7 @@ import (
 type Builder interface {
 	Build() (sql string, args []interface{})
 	BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{})
+	Flavor() Flavor
 }
 
 type compiledBuilder struct {
@@ -30,6 +31,12 @@ func (cb *compiledBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interfac
 	return cb.args.CompileWithFlavor(cb.format, flavor, initialArg...)
 }
 
+// Flavor returns flavor of builder
+// Always returns DefaultFlavor
+func (cb *compiledBuilder) Flavor() Flavor {
+	return cb.args.Flavor
+}
+
 type flavoredBuilder struct {
 	builder Builder
 	flavor  Flavor
@@ -41,6 +48,11 @@ func (fb *flavoredBuilder) Build() (sql string, args []interface{}) {
 
 func (fb *flavoredBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
 	return fb.builder.BuildWithFlavor(flavor, initialArg...)
+}
+
+// Flavor returns flavor of builder
+func (fb *flavoredBuilder) Flavor() Flavor {
+	return fb.flavor
 }
 
 // WithFlavor creates a new Builder based on builder with a default flavor.

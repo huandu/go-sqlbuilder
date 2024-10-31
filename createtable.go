@@ -158,7 +158,8 @@ func (ctb *CreateTableBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
-func (ctb *CreateTableBuilder) GetFlavor() Flavor {
+// Flavor returns flavor of builder
+func (ctb *CreateTableBuilder) Flavor() Flavor {
 	return ctb.args.Flavor
 }
 

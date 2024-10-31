@@ -124,7 +124,8 @@ func (ctetb *CTEQueryBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
-func (ctetb *CTEQueryBuilder) GetFlavor() Flavor {
+// Flavor returns flavor of builder
+func (ctetb *CTEQueryBuilder) Flavor() Flavor {
 	return ctetb.args.Flavor
 }
 

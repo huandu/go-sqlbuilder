@@ -204,7 +204,8 @@ func (ub *UnionBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
-func (ub *UnionBuilder) GetFlavor() Flavor {
+// Flavor returns flavor of builder
+func (ub *UnionBuilder) Flavor() Flavor {
 	return ub.args.Flavor
 }
 

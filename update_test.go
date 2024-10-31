@@ -153,13 +153,12 @@ func ExampleUpdateBuilder_With() {
 func TestUpdateBuilderGetFlavor(t *testing.T) {
 	a := assert.New(t)
 	ub := newUpdateBuilder()
-	postgresFlavor := PostgreSQL
-	clickhouseFlavor := ClickHouse
-	ub.SetFlavor(postgresFlavor)
-	flavor := ub.GetFlavor()
-	a.Equal(postgresFlavor, flavor)
 
-	ubClick := clickhouseFlavor.NewUpdateBuilder()
-	flavor = ubClick.GetFlavor()
-	a.Equal(clickhouseFlavor, flavor)
+	ub.SetFlavor(PostgreSQL)
+	flavor := ub.Flavor()
+	a.Equal(PostgreSQL, flavor)
+
+	ubClick := ClickHouse.NewUpdateBuilder()
+	flavor = ubClick.Flavor()
+	a.Equal(ClickHouse, flavor)
 }

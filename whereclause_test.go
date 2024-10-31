@@ -315,20 +315,18 @@ func TestEmptyStringsWhereAddWhereExpr(t *testing.T) {
 func TestWhereClauseGetFlavor(t *testing.T) {
 	a := assert.New(t)
 	wc := NewWhereClause()
-	postgresFlavor := PostgreSQL
-	wc.SetFlavor(postgresFlavor)
-	flavor := wc.GetFlavor()
-	a.Equal(postgresFlavor, flavor)
+	wc.SetFlavor(PostgreSQL)
+	flavor := wc.Flavor()
+	a.Equal(PostgreSQL, flavor)
 }
 
 func TestWhereClauseCopyGetFlavor(t *testing.T) {
 	a := assert.New(t)
 
 	wc := NewWhereClause()
-	postgresFlavor := PostgreSQL
-	wc.SetFlavor(postgresFlavor)
+	wc.SetFlavor(PostgreSQL)
 
 	wcCopy := CopyWhereClause(wc)
-	flavor := wcCopy.GetFlavor()
-	a.Equal(postgresFlavor, flavor)
+	flavor := wcCopy.Flavor()
+	a.Equal(PostgreSQL, flavor)
 }
