@@ -86,6 +86,11 @@ func (wc *WhereClause) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
+// Flavor returns flavor of clause
+func (wc *WhereClause) Flavor() Flavor {
+	return wc.flavor
+}
+
 // AddWhereExpr adds an AND expression to WHERE clause with the specified arguments.
 func (wc *WhereClause) AddWhereExpr(args *Args, andExpr ...string) *WhereClause {
 	if len(andExpr) == 0 {

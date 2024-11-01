@@ -5,6 +5,9 @@ package sqlbuilder
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/huandu/go-assert"
 )
 
 func ExampleCreateTable() {
@@ -85,4 +88,17 @@ func ExampleCreateTableBuilder_NumDefine() {
 
 	// Output:
 	// 5
+}
+
+func TestCreateTableGetFlavor(t *testing.T) {
+	a := assert.New(t)
+	ctb := newCreateTableBuilder()
+
+	ctb.SetFlavor(PostgreSQL)
+	flavor := ctb.Flavor()
+	a.Equal(PostgreSQL, flavor)
+
+	ctbClick := ClickHouse.NewCreateTableBuilder()
+	flavor = ctbClick.Flavor()
+	a.Equal(ClickHouse, flavor)
 }

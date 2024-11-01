@@ -132,3 +132,22 @@ func TestBuildWithCQL(t *testing.T) {
 	a.Equal(sql, "BEGIN BATCH USING TIMESTAMP ? INSERT INTO t1 (col1, col2) VALUES (?, ?); INSERT INTO t2 (col3, col4) VALUES (?, ?); APPLY BATCH;")
 	a.Equal(args, []interface{}{1481124356754405, 1, 2, 3, 4})
 }
+
+func TestBuilderGetFlavor(t *testing.T) {
+	a := assert.New(t)
+
+	defaultBuilder := Build("SELECT * FROM foo WHERE id = $0", 1234)
+	a.Equal(DefaultFlavor, defaultBuilder.Flavor())
+
+	buildfBuilder := Buildf("SELECT * FROM foo WHERE id = %v", 1234)
+	a.Equal(DefaultFlavor, buildfBuilder.Flavor())
+
+	namedBuilder := Buildf("SELECT * FROM ${table} WHERE id = 1234", map[string]interface{}{
+		"table": "foo",
+	})
+	a.Equal(DefaultFlavor, namedBuilder.Flavor())
+
+	flavoredBuilder := WithFlavor(Build("SELECT * FROM foo WHERE id = $0", 1234), PostgreSQL)
+	a.Equal(PostgreSQL, flavoredBuilder.Flavor())
+
+}

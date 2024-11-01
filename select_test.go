@@ -375,3 +375,16 @@ func TestSelectBuilderSelectMore(t *testing.T) {
 	).SQL("/* second */").SelectMore("name").SQL("/* third */")
 	a.Equal(sb.String(), "SELECT id, name /* first */ /* third */ WHERE name IS NOT NULL /* second */")
 }
+
+func TestSelectBuilderGetFlavor(t *testing.T) {
+	a := assert.New(t)
+	sb := newSelectBuilder()
+
+	sb.SetFlavor(PostgreSQL)
+	flavor := sb.Flavor()
+	a.Equal(PostgreSQL, flavor)
+
+	sbClick := ClickHouse.NewSelectBuilder()
+	flavor = sbClick.Flavor()
+	a.Equal(ClickHouse, flavor)
+}

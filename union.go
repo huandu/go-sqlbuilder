@@ -204,6 +204,11 @@ func (ub *UnionBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
+// Flavor returns flavor of builder
+func (ub *UnionBuilder) Flavor() Flavor {
+	return ub.args.Flavor
+}
+
 // Var returns a placeholder for value.
 func (ub *UnionBuilder) Var(arg interface{}) string {
 	return ub.args.Add(arg)

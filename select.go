@@ -537,6 +537,11 @@ func (sb *SelectBuilder) SetFlavor(flavor Flavor) (old Flavor) {
 	return
 }
 
+// Flavor returns flavor of builder
+func (sb *SelectBuilder) Flavor() Flavor {
+	return sb.args.Flavor
+}
+
 // SQL adds an arbitrary sql to current position.
 func (sb *SelectBuilder) SQL(sql string) *SelectBuilder {
 	sb.injection.SQL(sb.marker, sql)

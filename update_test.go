@@ -149,3 +149,16 @@ func ExampleUpdateBuilder_With() {
 	// Output:
 	// WITH users AS (SELECT id, name FROM users WHERE prime IS NOT NULL) UPDATE orders SET orders.transport_fee = 0 WHERE users.id = orders.user_id
 }
+
+func TestUpdateBuilderGetFlavor(t *testing.T) {
+	a := assert.New(t)
+	ub := newUpdateBuilder()
+
+	ub.SetFlavor(PostgreSQL)
+	flavor := ub.Flavor()
+	a.Equal(PostgreSQL, flavor)
+
+	ubClick := ClickHouse.NewUpdateBuilder()
+	flavor = ubClick.Flavor()
+	a.Equal(ClickHouse, flavor)
+}
