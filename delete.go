@@ -45,8 +45,10 @@ type DeleteBuilder struct {
 	whereClauseProxy *whereClauseProxy
 	whereClauseExpr  string
 
-	cteBuilder  string
-	table       string
+	cteBuilderVar string
+	cteBuilder    *CTEBuilder
+
+	tables      []string
 	orderByCols []string
 	order       string
 	limit       int
@@ -60,22 +62,46 @@ type DeleteBuilder struct {
 var _ Builder = new(DeleteBuilder)
 
 // DeleteFrom sets table name in DELETE.
-func DeleteFrom(table string) *DeleteBuilder {
-	return DefaultFlavor.NewDeleteBuilder().DeleteFrom(table)
+func DeleteFrom(table ...string) *DeleteBuilder {
+	return DefaultFlavor.NewDeleteBuilder().DeleteFrom(table...)
 }
 
 // With sets WITH clause (the Common Table Expression) before DELETE.
 func (db *DeleteBuilder) With(builder *CTEBuilder) *DeleteBuilder {
 	db.marker = deleteMarkerAfterWith
-	db.cteBuilder = db.Var(builder)
+	db.cteBuilderVar = db.Var(builder)
+	db.cteBuilder = builder
 	return db
 }
 
 // DeleteFrom sets table name in DELETE.
-func (db *DeleteBuilder) DeleteFrom(table string) *DeleteBuilder {
-	db.table = Escape(table)
+func (db *DeleteBuilder) DeleteFrom(table ...string) *DeleteBuilder {
+	db.tables = table
 	db.marker = deleteMarkerAfterDeleteFrom
 	return db
+}
+
+// TableNames returns all table names in this DELETE statement.
+func (db *DeleteBuilder) TableNames() []string {
+	var additionalTableNames []string
+
+	if db.cteBuilder != nil {
+		additionalTableNames = db.cteBuilder.tableNamesForFrom()
+	}
+
+	var tableNames []string
+
+	if len(db.tables) > 0 && len(additionalTableNames) > 0 {
+		tableNames = make([]string, len(db.tables)+len(additionalTableNames))
+		copy(tableNames, db.tables)
+		copy(tableNames[len(db.tables):], additionalTableNames)
+	} else if len(db.tables) > 0 {
+		tableNames = db.tables
+	} else if len(additionalTableNames) > 0 {
+		tableNames = additionalTableNames
+	}
+
+	return tableNames
 }
 
 // Where sets expressions of WHERE in DELETE.
@@ -146,17 +172,20 @@ func (db *DeleteBuilder) Build() (sql string, args []interface{}) {
 // BuildWithFlavor returns compiled DELETE string and args with flavor and initial args.
 // They can be used in `DB#Query` of package `database/sql` directly.
 func (db *DeleteBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
+
 	buf := newStringBuilder()
 	db.injection.WriteTo(buf, deleteMarkerInit)
 
-	if db.cteBuilder != "" {
-		buf.WriteLeadingString(db.cteBuilder)
+	if db.cteBuilder != nil {
+		buf.WriteLeadingString(db.cteBuilderVar)
 		db.injection.WriteTo(buf, deleteMarkerAfterWith)
 	}
 
-	if len(db.table) > 0 {
+	tableNames := db.TableNames()
+
+	if len(tableNames) > 0 {
 		buf.WriteLeadingString("DELETE FROM ")
-		buf.WriteString(db.table)
+		buf.WriteStrings(tableNames, ", ")
 	}
 
 	db.injection.WriteTo(buf, deleteMarkerAfterDeleteFrom)
