@@ -96,12 +96,12 @@ func Select(col ...string) *SelectBuilder {
 	return DefaultFlavor.NewSelectBuilder().Select(col...)
 }
 
-// TableNames returns all table names in a SELECT.
+// TableNames returns all table names in this SELECT statement.
 func (sb *SelectBuilder) TableNames() []string {
 	var additionalTableNames []string
 
 	if sb.cteBuilder != nil {
-		additionalTableNames = sb.cteBuilder.tableNamesForSelect()
+		additionalTableNames = sb.cteBuilder.tableNamesForFrom()
 	}
 
 	var tableNames []string
