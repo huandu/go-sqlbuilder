@@ -11,6 +11,8 @@ const (
 	opNOT  = "NOT "
 )
 
+const minIndexBase = 256
+
 // Cond provides several helper methods to build conditions.
 type Cond struct {
 	Args *Args
@@ -19,7 +21,17 @@ type Cond struct {
 // NewCond returns a new Cond.
 func NewCond() *Cond {
 	return &Cond{
-		Args: &Args{},
+		Args: &Args{
+			// Based on the discussion in #174, users may call this method to create
+			// `Cond` for building various conditions, which is a misuse, but we
+			// cannot completely prevent this error. To facilitate users in
+			// identifying the issue when they make mistakes and to avoid
+			// unexpected stackoverflows, the base index for `Args` is
+			// deliberately set to a larger non-zero value here. This can
+			// significantly reduce the likelihood of issues and allows for
+			// timely error notification to users.
+			indexBase: minIndexBase,
+		},
 	}
 }
 

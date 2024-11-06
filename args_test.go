@@ -23,7 +23,7 @@ func TestArgs(t *testing.T) {
 	cases := map[string][]interface{}{
 		"abc ? def\n[123]":                   {"abc $? def", 123},
 		"abc ? def\n[456]":                   {"abc $0 def", 456},
-		"abc  def\n[]":                       {"abc $1 def", 123},
+		"abc /* INVALID ARG $1 */ def\n[]":   {"abc $1 def", 123},
 		"abc  def \n[]":                      {"abc ${unknown} def ", 123},
 		"abc $ def\n[]":                      {"abc $$ def", 123},
 		"abcdef$\n[]":                        {"abcdef$", 123},

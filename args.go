@@ -16,6 +16,7 @@ type Args struct {
 	// The default flavor used by `Args#Compile`
 	Flavor Flavor
 
+	indexBase    int
 	argValues    []interface{}
 	namedArgs    map[string]int
 	sqlNamedArgs map[string]int
@@ -47,7 +48,7 @@ func (args *Args) Add(arg interface{}) string {
 }
 
 func (args *Args) add(arg interface{}) int {
-	idx := len(args.argValues)
+	idx := len(args.argValues) + args.indexBase
 
 	switch a := arg.(type) {
 	case sql.NamedArg:
@@ -164,7 +165,7 @@ func (args *Args) compileNamed(ctx *argsCompileContext, format string) string {
 	format = format[i+1:]
 
 	if p, ok := args.namedArgs[name]; ok {
-		format, _ = args.compileSuccessive(ctx, format, p)
+		format, _ = args.compileSuccessive(ctx, format, p-args.indexBase)
 	}
 
 	return format
@@ -181,14 +182,17 @@ func (args *Args) compileDigits(ctx *argsCompileContext, format string, offset i
 	format = format[i:]
 
 	if pointer, err := strconv.Atoi(digits); err == nil {
-		return args.compileSuccessive(ctx, format, pointer)
+		return args.compileSuccessive(ctx, format, pointer-args.indexBase)
 	}
 
 	return format, offset
 }
 
 func (args *Args) compileSuccessive(ctx *argsCompileContext, format string, offset int) (string, int) {
-	if offset >= len(args.argValues) {
+	if offset < 0 || offset >= len(args.argValues) {
+		ctx.WriteString("/* INVALID ARG $")
+		ctx.WriteString(strconv.Itoa(offset))
+		ctx.WriteString(" */")
 		return format, offset
 	}
 

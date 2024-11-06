@@ -230,3 +230,16 @@ func TestCondExpr(t *testing.T) {
 		a.Equal(actual, expected)
 	}
 }
+
+func TestCondMisuse(t *testing.T) {
+	a := assert.New(t)
+
+	cond := NewCond()
+	sb := Select("*").
+		From("t1").
+		Where(cond.Equal("a", 123))
+	sql, args := sb.Build()
+
+	a.Equal(sql, "SELECT * FROM t1 WHERE /* INVALID ARG $256 */")
+	a.Equal(args, nil)
+}
