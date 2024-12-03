@@ -388,3 +388,29 @@ func TestSelectBuilderGetFlavor(t *testing.T) {
 	flavor = sbClick.Flavor()
 	a.Equal(ClickHouse, flavor)
 }
+
+func ExampleSelectBuilder_LateralAs() {
+	// Demo SQL comes from a sample on https://dev.mysql.com/doc/refman/8.4/en/lateral-derived-tables.html.
+	sb := Select(
+		"salesperson.name",
+		"max_sale.amount",
+		"max_sale.customer_name",
+	)
+	sb.From(
+		"salesperson",
+		sb.LateralAs(
+			Select("amount", "customer_name").
+				From("all_sales").
+				Where(
+					"all_sales.salesperson_id = salesperson.id",
+				).
+				OrderBy("amount").Desc().Limit(1),
+			"max_sale",
+		),
+	)
+
+	fmt.Println(sb)
+
+	// Output:
+	// SELECT salesperson.name, max_sale.amount, max_sale.customer_name FROM salesperson, LATERAL (SELECT amount, customer_name FROM all_sales WHERE all_sales.salesperson_id = salesperson.id ORDER BY amount DESC LIMIT 1) AS max_sale
+}

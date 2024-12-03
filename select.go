@@ -286,6 +286,11 @@ func (sb *SelectBuilder) BuilderAs(builder Builder, alias string) string {
 	return fmt.Sprintf("(%s) AS %s", sb.Var(builder), alias)
 }
 
+// LateralAs returns a LATERAL derived table expression wrapping a complex SQL.
+func (sb *SelectBuilder) LateralAs(builder Builder, alias string) string {
+	return fmt.Sprintf("LATERAL (%s) AS %s", sb.Var(builder), alias)
+}
+
 // NumCol returns the number of columns to select.
 func (sb *SelectBuilder) NumCol() int {
 	return len(sb.selectCols)
