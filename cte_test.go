@@ -101,7 +101,7 @@ func ExampleCTEBuilder_update() {
 
 	// Output:
 	// WITH users (user_id) AS (SELECT user_id FROM vip_users) UPDATE orders, users SET orders.transport_fee = 0 WHERE users.user_id = orders.user_id
-	// WITH users (user_id) AS (SELECT user_id FROM vip_users) UPDATE orders FROM users SET orders.transport_fee = 0 WHERE users.user_id = orders.user_id
+	// WITH users (user_id) AS (SELECT user_id FROM vip_users) UPDATE orders SET orders.transport_fee = 0 FROM users WHERE users.user_id = orders.user_id
 }
 
 func ExampleCTEBuilder_delete() {

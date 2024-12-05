@@ -255,16 +255,6 @@ func (ub *UpdateBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		if len(ub.tables) > 0 {
 			buf.WriteLeadingString("UPDATE ")
 			buf.WriteStrings(ub.tables, ", ")
-
-			// For ISO SQL, CTE table names should be written after FROM keyword.
-			if ub.cteBuilder != nil {
-				cteTableNames := ub.cteBuilder.tableNamesForFrom()
-
-				if len(cteTableNames) > 0 {
-					buf.WriteLeadingString("FROM ")
-					buf.WriteStrings(cteTableNames, ", ")
-				}
-			}
 		}
 	}
 
@@ -276,6 +266,18 @@ func (ub *UpdateBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	}
 
 	ub.injection.WriteTo(buf, updateMarkerAfterSet)
+
+	if flavor != MySQL {
+		// For ISO SQL, CTE table names should be written after FROM keyword.
+		if ub.cteBuilder != nil {
+			cteTableNames := ub.cteBuilder.tableNamesForFrom()
+
+			if len(cteTableNames) > 0 {
+				buf.WriteLeadingString("FROM ")
+				buf.WriteStrings(cteTableNames, ", ")
+			}
+		}
+	}
 
 	if ub.WhereClause != nil {
 		ub.whereClauseProxy.WhereClause = ub.WhereClause
