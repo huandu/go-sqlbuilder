@@ -190,6 +190,11 @@ func (c *Cond) In(field string, values ...interface{}) string {
 		return ""
 	}
 
+	if len(values) == 0 {
+		// An empty list of values for an "in", means we want to filter out all results.
+		return c.Not("2 = 2")
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -202,7 +207,8 @@ func (c *Cond) In(field string, values ...interface{}) string {
 
 // NotIn is used to construct the expression "field NOT IN (value...)".
 func (c *Cond) NotIn(field string, values ...interface{}) string {
-	if len(field) == 0 {
+	if len(field) == 0 || len(values) == 0 {
+		// An empty list of values for a "not in", means we don't want this condition to filter.
 		return ""
 	}
 
