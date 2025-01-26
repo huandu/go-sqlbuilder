@@ -390,9 +390,9 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		buf.WriteLeadingString("JOIN ")
 		buf.WriteString(sb.joinTables[i])
 
-		if exprs := sb.joinExprs[i]; len(exprs) > 0 {
+		if exprs := filterEmptyStrings(sb.joinExprs[i]); len(exprs) > 0 {
 			buf.WriteString(" ON ")
-			buf.WriteStrings(sb.joinExprs[i], " AND ")
+			buf.WriteStrings(exprs, " AND ")
 		}
 	}
 
@@ -414,9 +414,9 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		buf.WriteLeadingString("GROUP BY ")
 		buf.WriteStrings(sb.groupByCols, ", ")
 
-		if len(sb.havingExprs) > 0 {
+		if havingExprs := filterEmptyStrings(sb.havingExprs); len(havingExprs) > 0 {
 			buf.WriteString(" HAVING ")
-			buf.WriteStrings(sb.havingExprs, " AND ")
+			buf.WriteStrings(havingExprs, " AND ")
 		}
 
 		sb.injection.WriteTo(buf, selectMarkerAfterGroupBy)

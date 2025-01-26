@@ -75,3 +75,29 @@ func (sb *stringBuilder) Reset() {
 func (sb *stringBuilder) Grow(n int) {
 	sb.builder.Grow(n)
 }
+
+// filterEmptyStrings removes empty strings from ss.
+// As ss rarely contains empty strings, filterEmptyStrings tries to avoid allocation if possible.
+func filterEmptyStrings(ss []string) []string {
+	emptyStrings := 0
+
+	for _, s := range ss {
+		if len(s) == 0 {
+			emptyStrings++
+		}
+	}
+
+	if emptyStrings == 0 {
+		return ss
+	}
+
+	filtered := make([]string, 0, len(ss)-emptyStrings)
+
+	for _, s := range ss {
+		if len(s) != 0 {
+			filtered = append(filtered, s)
+		}
+	}
+
+	return filtered
+}

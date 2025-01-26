@@ -123,7 +123,9 @@ func TestEmptyCond(t *testing.T) {
 		func(cond *Cond) string { return cond.LessThan("", 123) },
 		func(cond *Cond) string { return cond.LessEqualThan("", 123) },
 		func(cond *Cond) string { return cond.In("", 1, 2, 3) },
+		func(cond *Cond) string { return cond.In("a") },
 		func(cond *Cond) string { return cond.NotIn("", 1, 2, 3) },
+		func(cond *Cond) string { return cond.NotIn("a") },
 		func(cond *Cond) string { return cond.Like("", "%Huan%") },
 		func(cond *Cond) string { return cond.ILike("", "%Huan%") },
 		func(cond *Cond) string { return cond.NotLike("", "%Huan%") },
@@ -137,14 +139,17 @@ func TestEmptyCond(t *testing.T) {
 		func(cond *Cond) string { return cond.Any("", "", 1, 2) },
 		func(cond *Cond) string { return cond.Any("", ">", 1, 2) },
 		func(cond *Cond) string { return cond.Any("$a", "", 1, 2) },
+		func(cond *Cond) string { return cond.Any("$a", ">") },
 
 		func(cond *Cond) string { return cond.All("", "", 1) },
 		func(cond *Cond) string { return cond.All("", ">", 1) },
 		func(cond *Cond) string { return cond.All("$a", "", 1) },
+		func(cond *Cond) string { return cond.All("$a", ">") },
 
 		func(cond *Cond) string { return cond.Some("", "", 1, 2, 3) },
 		func(cond *Cond) string { return cond.Some("", ">", 1, 2, 3) },
 		func(cond *Cond) string { return cond.Some("$a", "", 1, 2, 3) },
+		func(cond *Cond) string { return cond.Some("$a", ">") },
 
 		func(cond *Cond) string { return cond.IsDistinctFrom("", 1) },
 		func(cond *Cond) string { return cond.IsNotDistinctFrom("", 1) },
