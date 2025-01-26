@@ -5,7 +5,6 @@ package sqlbuilder
 
 import (
 	"fmt"
-	"strconv"
 )
 
 const (
@@ -33,7 +32,6 @@ func newUpdateBuilder() *UpdateBuilder {
 		Cond: Cond{
 			Args: args,
 		},
-		limit:     -1,
 		args:      args,
 		injection: newInjection(),
 	}
@@ -54,7 +52,7 @@ type UpdateBuilder struct {
 	assignments []string
 	orderByCols []string
 	order       string
-	limit       int
+	limitVar    string
 
 	args *Args
 
@@ -208,7 +206,12 @@ func (ub *UpdateBuilder) Desc() *UpdateBuilder {
 
 // Limit sets the LIMIT in UPDATE.
 func (ub *UpdateBuilder) Limit(limit int) *UpdateBuilder {
-	ub.limit = limit
+	if limit < 0 {
+		ub.limitVar = ""
+		return ub
+	}
+
+	ub.limitVar = ub.Var(limit)
 	ub.marker = updateMarkerAfterLimit
 	return ub
 }
@@ -300,9 +303,9 @@ func (ub *UpdateBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		ub.injection.WriteTo(buf, updateMarkerAfterOrderBy)
 	}
 
-	if ub.limit >= 0 {
+	if len(ub.limitVar) > 0 {
 		buf.WriteLeadingString("LIMIT ")
-		buf.WriteString(strconv.Itoa(ub.limit))
+		buf.WriteString(ub.limitVar)
 
 		ub.injection.WriteTo(buf, updateMarkerAfterLimit)
 	}

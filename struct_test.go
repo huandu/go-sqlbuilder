@@ -1036,6 +1036,6 @@ func ExampleFieldMapperFunc() {
 	fmt.Println(sql1 == sql2)
 
 	// Output:
-	// SELECT orders.id, orders.user_id, orders.product_name, orders.status, orders.user_addr_line1, orders.user_addr_line2, orders.created_at FROM orders LIMIT 10
+	// SELECT orders.id, orders.user_id, orders.product_name, orders.status, orders.user_addr_line1, orders.user_addr_line2, orders.created_at FROM orders LIMIT ?
 	// true
 }

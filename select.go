@@ -5,7 +5,6 @@ package sqlbuilder
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -51,8 +50,6 @@ func newSelectBuilder() *SelectBuilder {
 		Cond: Cond{
 			Args: args,
 		},
-		limit:     -1,
-		offset:    -1,
 		args:      args,
 		injection: newInjection(),
 	}
@@ -79,8 +76,8 @@ type SelectBuilder struct {
 	groupByCols []string
 	orderByCols []string
 	order       string
-	limit       int
-	offset      int
+	limitVar    string
+	offsetVar   string
 	forWhat     string
 
 	args *Args
@@ -249,14 +246,24 @@ func (sb *SelectBuilder) Desc() *SelectBuilder {
 
 // Limit sets the LIMIT in SELECT.
 func (sb *SelectBuilder) Limit(limit int) *SelectBuilder {
-	sb.limit = limit
+	if limit < 0 {
+		sb.limitVar = ""
+		return sb
+	}
+
+	sb.limitVar = sb.Var(limit)
 	sb.marker = selectMarkerAfterLimit
 	return sb
 }
 
 // Offset sets the LIMIT offset in SELECT.
 func (sb *SelectBuilder) Offset(offset int) *SelectBuilder {
-	sb.offset = offset
+	if offset < 0 {
+		sb.offsetVar = ""
+		return sb
+	}
+
+	sb.offsetVar = sb.Var(offset)
 	sb.marker = selectMarkerAfterLimit
 	return sb
 }
@@ -314,7 +321,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	buf := newStringBuilder()
 	sb.injection.WriteTo(buf, selectMarkerInit)
 
-	oraclePage := flavor == Oracle && (sb.limit >= 0 || sb.offset >= 0)
+	oraclePage := flavor == Oracle && (len(sb.limitVar) > 0 || len(sb.offsetVar) > 0)
 
 	if sb.cteBuilderVar != "" {
 		buf.WriteLeadingString(sb.cteBuilderVar)
@@ -349,7 +356,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 	if oraclePage {
 		if len(sb.selectCols) > 0 {
-			buf.WriteLeadingString("FROM ( SELECT ")
+			buf.WriteLeadingString("FROM (SELECT ")
 
 			if sb.distinct {
 				buf.WriteString("DISTINCT ")
@@ -368,7 +375,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			}
 
 			buf.WriteStrings(selectCols, ", ")
-			buf.WriteLeadingString("FROM ( SELECT ")
+			buf.WriteLeadingString("FROM (SELECT ")
 			buf.WriteStrings(sb.selectCols, ", ")
 		}
 	}
@@ -436,92 +443,100 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 	switch flavor {
 	case MySQL, SQLite, ClickHouse:
-		if sb.limit >= 0 {
+		if len(sb.limitVar) > 0 {
 			buf.WriteLeadingString("LIMIT ")
-			buf.WriteString(strconv.Itoa(sb.limit))
+			buf.WriteString(sb.limitVar)
 
-			if sb.offset >= 0 {
+			if len(sb.offsetVar) > 0 {
 				buf.WriteLeadingString("OFFSET ")
-				buf.WriteString(strconv.Itoa(sb.offset))
+				buf.WriteString(sb.offsetVar)
 			}
 		}
 	case CQL:
-		if sb.limit >= 0 {
+		if len(sb.limitVar) > 0 {
 			buf.WriteLeadingString("LIMIT ")
-			buf.WriteString(strconv.Itoa(sb.limit))
+			buf.WriteString(sb.limitVar)
 		}
 	case PostgreSQL, Presto:
-		if sb.limit >= 0 {
+		if len(sb.limitVar) > 0 {
 			buf.WriteLeadingString("LIMIT ")
-			buf.WriteString(strconv.Itoa(sb.limit))
+			buf.WriteString(sb.limitVar)
 		}
 
-		if sb.offset >= 0 {
+		if len(sb.offsetVar) > 0 {
 			buf.WriteLeadingString("OFFSET ")
-			buf.WriteString(strconv.Itoa(sb.offset))
+			buf.WriteString(sb.offsetVar)
 		}
 
 	case SQLServer:
 		// If ORDER BY is not set, sort column #1 by default.
 		// It's required to make OFFSET...FETCH work.
-		if len(sb.orderByCols) == 0 && (sb.limit >= 0 || sb.offset >= 0) {
+		if len(sb.orderByCols) == 0 && (len(sb.limitVar) > 0 || len(sb.offsetVar) > 0) {
 			buf.WriteLeadingString("ORDER BY 1")
 		}
 
-		if sb.offset >= 0 {
+		if len(sb.offsetVar) > 0 {
 			buf.WriteLeadingString("OFFSET ")
-			buf.WriteString(strconv.Itoa(sb.offset))
+			buf.WriteString(sb.offsetVar)
 			buf.WriteString(" ROWS")
 		}
 
-		if sb.limit >= 0 {
-			if sb.offset < 0 {
+		if len(sb.limitVar) > 0 {
+			if len(sb.offsetVar) == 0 {
 				buf.WriteLeadingString("OFFSET 0 ROWS")
 			}
 
 			buf.WriteLeadingString("FETCH NEXT ")
-			buf.WriteString(strconv.Itoa(sb.limit))
+			buf.WriteString(sb.limitVar)
 			buf.WriteString(" ROWS ONLY")
 		}
 
 	case Oracle:
 		if oraclePage {
-			buf.WriteString(" ) ")
+			buf.WriteString(") ")
+
 			if len(sb.tables) > 0 {
 				buf.WriteStrings(sb.tables, ", ")
 			}
 
-			min := sb.offset
-			if min < 0 {
-				min = 0
-			}
+			buf.WriteString(") WHERE ")
 
-			buf.WriteString(" ) WHERE ")
-			if sb.limit >= 0 {
+			if len(sb.limitVar) > 0 {
 				buf.WriteString("r BETWEEN ")
-				buf.WriteString(strconv.Itoa(min + 1))
-				buf.WriteString(" AND ")
-				buf.WriteString(strconv.Itoa(sb.limit + min))
+
+				if len(sb.offsetVar) > 0 {
+					buf.WriteString(sb.offsetVar)
+					buf.WriteString(" + 1 AND ")
+					buf.WriteString(sb.limitVar)
+					buf.WriteString(" + ")
+					buf.WriteString(sb.offsetVar)
+				} else {
+					buf.WriteString("1 AND ")
+					buf.WriteString(sb.limitVar)
+					buf.WriteString(" + 1")
+				}
 			} else {
+				// As oraclePage is true, sb.offsetVar must not be empty.
 				buf.WriteString("r >= ")
-				buf.WriteString(strconv.Itoa(min + 1))
+				buf.WriteString(sb.offsetVar)
+				buf.WriteString(" + 1")
 			}
 		}
 	case Informix:
 		// [SKIP N] FIRST M
 		// M must be greater than 0
-		if sb.limit > 0 {
-			if sb.offset >= 0 {
+		if len(sb.limitVar) > 0 {
+			if len(sb.offsetVar) > 0 {
 				buf.WriteLeadingString("SKIP ")
-				buf.WriteString(strconv.Itoa(sb.offset))
+				buf.WriteString(sb.offsetVar)
 			}
 
 			buf.WriteLeadingString("FIRST ")
-			buf.WriteString(strconv.Itoa(sb.limit))
+			buf.WriteString(sb.limitVar)
 		}
 	}
 
-	if sb.limit >= 0 {
+	if len(sb.limitVar) > 0 {
 		sb.injection.WriteTo(buf, selectMarkerAfterLimit)
 	}
 

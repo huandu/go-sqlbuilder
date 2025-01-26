@@ -3,10 +3,6 @@
 
 package sqlbuilder
 
-import (
-	"strconv"
-)
-
 const (
 	deleteMarkerInit injectionMarker = iota
 	deleteMarkerAfterWith
@@ -31,7 +27,6 @@ func newDeleteBuilder() *DeleteBuilder {
 		Cond: Cond{
 			Args: args,
 		},
-		limit:     -1,
 		args:      args,
 		injection: newInjection(),
 	}
@@ -51,7 +46,7 @@ type DeleteBuilder struct {
 	tables      []string
 	orderByCols []string
 	order       string
-	limit       int
+	limitVar    string
 
 	args *Args
 
@@ -152,7 +147,12 @@ func (db *DeleteBuilder) Desc() *DeleteBuilder {
 
 // Limit sets the LIMIT in DELETE.
 func (db *DeleteBuilder) Limit(limit int) *DeleteBuilder {
-	db.limit = limit
+	if limit < 0 {
+		db.limitVar = ""
+		return db
+	}
+
+	db.limitVar = db.Var(limit)
 	db.marker = deleteMarkerAfterLimit
 	return db
 }
@@ -212,9 +212,9 @@ func (db *DeleteBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		db.injection.WriteTo(buf, deleteMarkerAfterOrderBy)
 	}
 
-	if db.limit >= 0 {
+	if len(db.limitVar) > 0 {
 		buf.WriteLeadingString("LIMIT ")
-		buf.WriteString(strconv.Itoa(db.limit))
+		buf.WriteString(db.limitVar)
 
 		db.injection.WriteTo(buf, deleteMarkerAfterLimit)
 	}

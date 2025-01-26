@@ -21,7 +21,7 @@ func ExampleDeleteFrom() {
 	fmt.Println(sql)
 
 	// Output:
-	// DELETE FROM demo.user WHERE status = 1 LIMIT 10
+	// DELETE FROM demo.user WHERE status = 1 LIMIT ?
 }
 
 func ExampleDeleteBuilder() {
@@ -65,8 +65,8 @@ func ExampleDeleteBuilder_SQL() {
 	fmt.Println(args)
 
 	// Output:
-	// /* before */ DELETE FROM demo.user PARTITION (p0) WHERE id > ? /* after where */ ORDER BY id /* after order by */ LIMIT 10 /* after limit */
-	// [1234]
+	// /* before */ DELETE FROM demo.user PARTITION (p0) WHERE id > ? /* after where */ ORDER BY id /* after order by */ LIMIT ? /* after limit */
+	// [1234 10]
 }
 
 func ExampleDeleteBuilder_With() {
