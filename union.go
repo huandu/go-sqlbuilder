@@ -3,10 +3,6 @@
 
 package sqlbuilder
 
-import (
-	"strconv"
-)
-
 const (
 	unionDistinct = " UNION " // Default union type is DISTINCT.
 	unionAll      = " UNION ALL "
@@ -26,9 +22,6 @@ func NewUnionBuilder() *UnionBuilder {
 
 func newUnionBuilder() *UnionBuilder {
 	return &UnionBuilder{
-		limit:  -1,
-		offset: -1,
-
 		args:      &Args{},
 		injection: newInjection(),
 	}
@@ -40,8 +33,8 @@ type UnionBuilder struct {
 	builderVars []string
 	orderByCols []string
 	order       string
-	limit       int
-	offset      int
+	limitVar    string
+	offsetVar   string
 
 	args *Args
 
@@ -107,14 +100,24 @@ func (ub *UnionBuilder) Desc() *UnionBuilder {
 
 // Limit sets the LIMIT in SELECT.
 func (ub *UnionBuilder) Limit(limit int) *UnionBuilder {
-	ub.limit = limit
+	if limit < 0 {
+		ub.limitVar = ""
+		return ub
+	}
+
+	ub.limitVar = ub.Var(limit)
 	ub.marker = unionMarkerAfterLimit
 	return ub
 }
 
 // Offset sets the LIMIT offset in SELECT.
 func (ub *UnionBuilder) Offset(offset int) *UnionBuilder {
-	ub.offset = offset
+	if offset < 0 {
+		ub.offsetVar = ""
+		return ub
+	}
+
+	ub.offsetVar = ub.Var(offset)
 	ub.marker = unionMarkerAfterLimit
 	return ub
 }
@@ -177,20 +180,20 @@ func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 		ub.injection.WriteTo(buf, unionMarkerAfterOrderBy)
 	}
 
-	if ub.limit >= 0 {
+	if len(ub.limitVar) > 0 {
 		buf.WriteLeadingString("LIMIT ")
-		buf.WriteString(strconv.Itoa(ub.limit))
+		buf.WriteString(ub.limitVar)
 
 	}
 
-	if ((MySQL == flavor || Informix == flavor) && ub.limit >= 0) || PostgreSQL == flavor {
-		if ub.offset >= 0 {
+	if ((MySQL == flavor || Informix == flavor) && len(ub.limitVar) > 0) || PostgreSQL == flavor {
+		if len(ub.offsetVar) > 0 {
 			buf.WriteLeadingString("OFFSET ")
-			buf.WriteString(strconv.Itoa(ub.offset))
+			buf.WriteString(ub.offsetVar)
 		}
 	}
 
-	if ub.limit >= 0 {
+	if len(ub.limitVar) > 0 {
 		ub.injection.WriteTo(buf, unionMarkerAfterLimit)
 	}
 

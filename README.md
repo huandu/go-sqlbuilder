@@ -96,7 +96,6 @@ sql := sqlbuilder.CreateTable("users").
     SQL(
         sqlbuilder.Select("columns[0] id", "columns[1] name", "columns[2] year").
             From("`all-users.csv`").
-            Limit(100).
             String(),
     ).
     String()
@@ -104,7 +103,7 @@ sql := sqlbuilder.CreateTable("users").
 fmt.Println(sql)
 
 // Output:
-// CREATE TABLE users PARTITION BY (year) AS SELECT columns[0] id, columns[1] name, columns[2] year FROM `all-users.csv` LIMIT 100
+// CREATE TABLE users PARTITION BY (year) AS SELECT columns[0] id, columns[1] name, columns[2] year FROM `all-users.csv`
 ```
 
 Below are several utility methods designed to address special cases.

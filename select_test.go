@@ -12,22 +12,18 @@ import (
 )
 
 func ExampleSelect() {
-	// Build a SQL to create a HIVE table.
-	s := CreateTable("users").
-		SQL("PARTITION BY (year)").
-		SQL("AS").
-		SQL(
-			Select("columns[0] id", "columns[1] name", "columns[2] year").
-				From("`all-users.csv`").
-				Limit(100).
-				String(),
-		).
-		String()
+	// Build a SQL to create a HIVE table using MySQL-like SQL syntax.
+	sql, args := Select("columns[0] id", "columns[1] name", "columns[2] year").
+		From(MySQL.Quote("all-users.csv")).
+		Limit(100).
+		Build()
 
-	fmt.Println(s)
+	fmt.Println(sql)
+	fmt.Println(args)
 
 	// Output:
-	// CREATE TABLE users PARTITION BY (year) AS SELECT columns[0] id, columns[1] name, columns[2] year FROM `all-users.csv` LIMIT 100
+	// SELECT columns[0] id, columns[1] name, columns[2] year FROM `all-users.csv` LIMIT ?
+	// [100]
 }
 
 func ExampleSelectBuilder() {
@@ -56,8 +52,8 @@ func ExampleSelectBuilder() {
 	fmt.Println(args)
 
 	// Output:
-	// SELECT DISTINCT id, name, COUNT(*) AS t FROM demo.user WHERE id > ? AND name LIKE ? AND (id_card IS NULL OR status IN (?, ?, ?)) AND id NOT IN (SELECT id FROM banned) AND modified_at > created_at + ? GROUP BY status HAVING status NOT IN (?, ?) ORDER BY modified_at ASC LIMIT 10 OFFSET 5
-	// [1234 %Du 1 2 5 86400 4 5]
+	// SELECT DISTINCT id, name, COUNT(*) AS t FROM demo.user WHERE id > ? AND name LIKE ? AND (id_card IS NULL OR status IN (?, ?, ?)) AND id NOT IN (SELECT id FROM banned) AND modified_at > created_at + ? GROUP BY status HAVING status NOT IN (?, ?) ORDER BY modified_at ASC LIMIT ? OFFSET ?
+	// [1234 %Du 1 2 5 86400 4 5 10 5]
 }
 
 func ExampleSelectBuilder_advancedUsage() {
@@ -191,65 +187,65 @@ func ExampleSelectBuilder_limit_offset() {
 	// MySQL
 	// #1: SELECT * FROM user
 	// #2: SELECT * FROM user
-	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
-	// #4: SELECT * FROM user LIMIT 1
-	// #5: SELECT * FROM user ORDER BY id LIMIT 1 OFFSET 1
+	// #3: SELECT * FROM user LIMIT ? OFFSET ?
+	// #4: SELECT * FROM user LIMIT ?
+	// #5: SELECT * FROM user ORDER BY id LIMIT ? OFFSET ?
 	//
 	// PostgreSQL
 	// #1: SELECT * FROM user
-	// #2: SELECT * FROM user OFFSET 0
-	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
-	// #4: SELECT * FROM user LIMIT 1
-	// #5: SELECT * FROM user ORDER BY id LIMIT 1 OFFSET 1
+	// #2: SELECT * FROM user OFFSET $1
+	// #3: SELECT * FROM user LIMIT $1 OFFSET $2
+	// #4: SELECT * FROM user LIMIT $1
+	// #5: SELECT * FROM user ORDER BY id LIMIT $1 OFFSET $2
 	//
 	// SQLite
 	// #1: SELECT * FROM user
 	// #2: SELECT * FROM user
-	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
-	// #4: SELECT * FROM user LIMIT 1
-	// #5: SELECT * FROM user ORDER BY id LIMIT 1 OFFSET 1
+	// #3: SELECT * FROM user LIMIT ? OFFSET ?
+	// #4: SELECT * FROM user LIMIT ?
+	// #5: SELECT * FROM user ORDER BY id LIMIT ? OFFSET ?
 	//
 	// SQLServer
 	// #1: SELECT * FROM user
-	// #2: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS
-	// #3: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
-	// #4: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
-	// #5: SELECT * FROM user ORDER BY id OFFSET 1 ROWS FETCH NEXT 1 ROWS ONLY
+	// #2: SELECT * FROM user ORDER BY 1 OFFSET @p1 ROWS
+	// #3: SELECT * FROM user ORDER BY 1 OFFSET @p1 ROWS FETCH NEXT @p2 ROWS ONLY
+	// #4: SELECT * FROM user ORDER BY 1 OFFSET 0 ROWS FETCH NEXT @p1 ROWS ONLY
+	// #5: SELECT * FROM user ORDER BY id OFFSET @p1 ROWS FETCH NEXT @p2 ROWS ONLY
 	//
 	// CQL
 	// #1: SELECT * FROM user
 	// #2: SELECT * FROM user
-	// #3: SELECT * FROM user LIMIT 1
-	// #4: SELECT * FROM user LIMIT 1
-	// #5: SELECT * FROM user ORDER BY id LIMIT 1
+	// #3: SELECT * FROM user LIMIT ?
+	// #4: SELECT * FROM user LIMIT ?
+	// #5: SELECT * FROM user ORDER BY id LIMIT ?
 	//
 	// ClickHouse
 	// #1: SELECT * FROM user
 	// #2: SELECT * FROM user
-	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
-	// #4: SELECT * FROM user LIMIT 1
-	// #5: SELECT * FROM user ORDER BY id LIMIT 1 OFFSET 1
+	// #3: SELECT * FROM user LIMIT ? OFFSET ?
+	// #4: SELECT * FROM user LIMIT ?
+	// #5: SELECT * FROM user ORDER BY id LIMIT ? OFFSET ?
 	//
 	// Presto
 	// #1: SELECT * FROM user
-	// #2: SELECT * FROM user OFFSET 0
-	// #3: SELECT * FROM user LIMIT 1 OFFSET 0
-	// #4: SELECT * FROM user LIMIT 1
-	// #5: SELECT * FROM user ORDER BY id LIMIT 1 OFFSET 1
+	// #2: SELECT * FROM user OFFSET ?
+	// #3: SELECT * FROM user LIMIT ? OFFSET ?
+	// #4: SELECT * FROM user LIMIT ?
+	// #5: SELECT * FROM user ORDER BY id LIMIT ? OFFSET ?
 	//
 	// Oracle
 	// #1: SELECT * FROM user
-	// #2: SELECT * FROM ( SELECT ROWNUM r, * FROM ( SELECT * FROM user ) user ) WHERE r >= 1
-	// #3: SELECT * FROM ( SELECT ROWNUM r, * FROM ( SELECT * FROM user ) user ) WHERE r BETWEEN 1 AND 1
-	// #4: SELECT * FROM ( SELECT ROWNUM r, * FROM ( SELECT * FROM user ) user ) WHERE r BETWEEN 1 AND 1
-	// #5: SELECT * FROM ( SELECT ROWNUM r, * FROM ( SELECT * FROM user ORDER BY id ) user ) WHERE r BETWEEN 2 AND 2
+	// #2: SELECT * FROM (SELECT ROWNUM r, * FROM (SELECT * FROM user) user) WHERE r >= :1 + 1
+	// #3: SELECT * FROM (SELECT ROWNUM r, * FROM (SELECT * FROM user) user) WHERE r BETWEEN :1 + 1 AND :2 + :3
+	// #4: SELECT * FROM (SELECT ROWNUM r, * FROM (SELECT * FROM user) user) WHERE r BETWEEN 1 AND :1 + 1
+	// #5: SELECT * FROM (SELECT ROWNUM r, * FROM (SELECT * FROM user ORDER BY id) user) WHERE r BETWEEN :1 + 1 AND :2 + :3
 	//
 	// Informix
 	// #1: SELECT * FROM user
 	// #2: SELECT * FROM user
-	// #3: SELECT * FROM user SKIP 0 FIRST 1
-	// #4: SELECT * FROM user FIRST 1
-	// #5: SELECT * FROM user ORDER BY id SKIP 1 FIRST 1
+	// #3: SELECT * FROM user SKIP ? FIRST ?
+	// #4: SELECT * FROM user FIRST ?
+	// #5: SELECT * FROM user ORDER BY id SKIP ? FIRST ?
 }
 
 func ExampleSelectBuilder_ForUpdate() {
@@ -314,7 +310,7 @@ func ExampleSelectBuilder_SQL() {
 	fmt.Println(s)
 
 	// Output:
-	// /* before */ SELECT u.id, u.name, c.type, p.nickname /* after select */ FROM user u /* after from */ JOIN contract c ON u.id = c.user_id RIGHT OUTER JOIN person p ON u.id = p.user_id /* after join */ WHERE u.modified_at > u.created_at /* after where */ ORDER BY id /* after order by */ LIMIT 10 /* after limit */ FOR SHARE /* after for */
+	// /* before */ SELECT u.id, u.name, c.type, p.nickname /* after select */ FROM user u /* after from */ JOIN contract c ON u.id = c.user_id RIGHT OUTER JOIN person p ON u.id = p.user_id /* after join */ WHERE u.modified_at > u.created_at /* after where */ ORDER BY id /* after order by */ LIMIT ? /* after limit */ FOR SHARE /* after for */
 }
 
 // Example for issue #115.
@@ -365,7 +361,7 @@ func ExampleSelectBuilder_With() {
 	fmt.Println(sql)
 
 	// Output:
-	// WITH users AS (SELECT id, name FROM users WHERE prime IS NOT NULL), orders AS (SELECT id, user_id FROM orders) SELECT orders.id FROM orders JOIN users ON orders.user_id = users.id LIMIT 10
+	// WITH users AS (SELECT id, name FROM users WHERE prime IS NOT NULL), orders AS (SELECT id, user_id FROM orders) SELECT orders.id FROM orders JOIN users ON orders.user_id = users.id LIMIT ?
 }
 
 func TestSelectBuilderSelectMore(t *testing.T) {
@@ -412,5 +408,5 @@ func ExampleSelectBuilder_LateralAs() {
 	fmt.Println(sb)
 
 	// Output:
-	// SELECT salesperson.name, max_sale.amount, max_sale.customer_name FROM salesperson, LATERAL (SELECT amount, customer_name FROM all_sales WHERE all_sales.salesperson_id = salesperson.id ORDER BY amount DESC LIMIT 1) AS max_sale
+	// SELECT salesperson.name, max_sale.amount, max_sale.customer_name FROM salesperson, LATERAL (SELECT amount, customer_name FROM all_sales WHERE all_sales.salesperson_id = salesperson.id ORDER BY amount DESC LIMIT ?) AS max_sale
 }

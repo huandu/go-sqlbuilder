@@ -114,7 +114,7 @@ func ExampleUpdateBuilder_SQL() {
 	fmt.Println(sql)
 
 	// Output:
-	// /* before */ UPDATE demo.user /* after update */ SET type = ? /* after set */ ORDER BY id DESC /* after order by */ LIMIT 10 /* after limit */
+	// /* before */ UPDATE demo.user /* after update */ SET type = ? /* after set */ ORDER BY id DESC /* after order by */ LIMIT ? /* after limit */
 }
 
 func ExampleUpdateBuilder_NumAssignment() {
