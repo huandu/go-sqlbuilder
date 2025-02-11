@@ -245,6 +245,54 @@ func ExampleInsertBuilder_NumValue() {
 	// 2
 }
 
+func ExampleInsertBuilder_Returning() {
+	sql, args := InsertInto("user").
+		Cols("name").Values("Huan Du").
+		Returning("id").
+		BuildWithFlavor(PostgreSQL)
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// INSERT INTO user (name) VALUES ($1) RETURNING id
+	// [Huan Du]
+}
+
+func TestInsertBuilderReturning(test *testing.T) {
+	a := assert.New(test)
+	ib := InsertInto("user").
+		Cols("name").Values("Huan Du").
+		Returning("id")
+
+	sql, _ := ib.BuildWithFlavor(MySQL)
+	a.Equal("INSERT INTO user (name) VALUES (?)", sql)
+
+	sql, _ = ib.BuildWithFlavor(PostgreSQL)
+	a.Equal("INSERT INTO user (name) VALUES ($1) RETURNING id", sql)
+
+	sql, _ = ib.BuildWithFlavor(SQLite)
+	a.Equal("INSERT INTO user (name) VALUES (?) RETURNING id", sql)
+
+	sql, _ = ib.BuildWithFlavor(SQLServer)
+	a.Equal("INSERT INTO user (name) VALUES (@p1)", sql)
+
+	sql, _ = ib.BuildWithFlavor(CQL)
+	a.Equal("INSERT INTO user (name) VALUES (?)", sql)
+
+	sql, _ = ib.BuildWithFlavor(ClickHouse)
+	a.Equal("INSERT INTO user (name) VALUES (?)", sql)
+
+	sql, _ = ib.BuildWithFlavor(Presto)
+	a.Equal("INSERT INTO user (name) VALUES (?)", sql)
+
+	sql, _ = ib.BuildWithFlavor(Oracle)
+	a.Equal("INSERT INTO user (name) VALUES (:1)", sql)
+
+	sql, _ = ib.BuildWithFlavor(Informix)
+	a.Equal("INSERT INTO user (name) VALUES (?)", sql)
+}
+
 func TestInsertBuilderGetFlavor(t *testing.T) {
 	a := assert.New(t)
 	ib := newInsertBuilder()
