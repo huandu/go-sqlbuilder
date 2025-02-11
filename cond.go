@@ -186,8 +186,13 @@ func (c *Cond) LTE(field string, value interface{}) string {
 
 // In is used to construct the expression "field IN (value...)".
 func (c *Cond) In(field string, values ...interface{}) string {
-	if len(field) == 0 || len(values) == 0 {
+	if len(field) == 0 {
 		return ""
+	}
+
+	// Empty values means "false".
+	if len(values) == 0 {
+		return "0 = 1"
 	}
 
 	return c.Var(condBuilder{
@@ -457,8 +462,13 @@ func (c *Cond) NotExists(subquery interface{}) string {
 
 // Any is used to construct the expression "field op ANY (value...)".
 func (c *Cond) Any(field, op string, values ...interface{}) string {
-	if len(field) == 0 || len(op) == 0 || len(values) == 0 {
+	if len(field) == 0 || len(op) == 0 {
 		return ""
+	}
+
+	// Empty values means "false".
+	if len(values) == 0 {
+		return "0 = 1"
 	}
 
 	return c.Var(condBuilder{
@@ -475,8 +485,13 @@ func (c *Cond) Any(field, op string, values ...interface{}) string {
 
 // All is used to construct the expression "field op ALL (value...)".
 func (c *Cond) All(field, op string, values ...interface{}) string {
-	if len(field) == 0 || len(op) == 0 || len(values) == 0 {
+	if len(field) == 0 || len(op) == 0 {
 		return ""
+	}
+
+	// Empty values means "false".
+	if len(values) == 0 {
+		return "0 = 1"
 	}
 
 	return c.Var(condBuilder{
@@ -493,8 +508,13 @@ func (c *Cond) All(field, op string, values ...interface{}) string {
 
 // Some is used to construct the expression "field op SOME (value...)".
 func (c *Cond) Some(field, op string, values ...interface{}) string {
-	if len(field) == 0 || len(op) == 0 || len(values) == 0 {
+	if len(field) == 0 || len(op) == 0 {
 		return ""
+	}
+
+	// Empty values means "false".
+	if len(values) == 0 {
+		return "0 = 1"
 	}
 
 	return c.Var(condBuilder{
