@@ -245,10 +245,10 @@ func TestWhereClauseSharedInstances(t *testing.T) {
 
 func TestEmptyWhereExpr(t *testing.T) {
 	a := assert.New(t)
-	var emptyExpr []string
-	sb := Select("*").From("t").Where(emptyExpr...)
-	ub := Update("t").Set("foo = 1").Where(emptyExpr...)
-	db := DeleteFrom("t").Where(emptyExpr...)
+	blankExprs := []string{"", ""}
+	sb := Select("*").From("t").Where(blankExprs...)
+	ub := Update("t").Set("foo = 1").Where(blankExprs...)
+	db := DeleteFrom("t").Where(blankExprs...)
 
 	a.Equal(sb.String(), "SELECT * FROM t")
 	a.Equal(ub.String(), "UPDATE t SET foo = 1")

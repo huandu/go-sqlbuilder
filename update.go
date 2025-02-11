@@ -260,9 +260,9 @@ func (ub *UpdateBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 	ub.injection.WriteTo(buf, updateMarkerAfterUpdate)
 
-	if len(ub.assignments) > 0 {
+	if assignments := filterEmptyStrings(ub.assignments); len(assignments) > 0 {
 		buf.WriteLeadingString("SET ")
-		buf.WriteStrings(ub.assignments, ", ")
+		buf.WriteStrings(assignments, ", ")
 	}
 
 	ub.injection.WriteTo(buf, updateMarkerAfterSet)

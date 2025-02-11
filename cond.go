@@ -190,6 +190,11 @@ func (c *Cond) In(field string, values ...interface{}) string {
 		return ""
 	}
 
+	// Empty values means "false".
+	if len(values) == 0 {
+		return "0 = 1"
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -202,7 +207,7 @@ func (c *Cond) In(field string, values ...interface{}) string {
 
 // NotIn is used to construct the expression "field NOT IN (value...)".
 func (c *Cond) NotIn(field string, values ...interface{}) string {
-	if len(field) == 0 {
+	if len(field) == 0 || len(values) == 0 {
 		return ""
 	}
 
@@ -369,6 +374,8 @@ func (c *Cond) NotBetween(field string, lower, upper interface{}) string {
 
 // Or is used to construct the expression OR logic like "expr1 OR expr2 OR expr3".
 func (c *Cond) Or(orExpr ...string) string {
+	orExpr = filterEmptyStrings(orExpr)
+
 	if len(orExpr) == 0 {
 		return ""
 	}
@@ -392,6 +399,8 @@ func (c *Cond) Or(orExpr ...string) string {
 
 // And is used to construct the expression AND logic like "expr1 AND expr2 AND expr3".
 func (c *Cond) And(andExpr ...string) string {
+	andExpr = filterEmptyStrings(andExpr)
+
 	if len(andExpr) == 0 {
 		return ""
 	}
@@ -457,6 +466,11 @@ func (c *Cond) Any(field, op string, values ...interface{}) string {
 		return ""
 	}
 
+	// Empty values means "false".
+	if len(values) == 0 {
+		return "0 = 1"
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -475,6 +489,11 @@ func (c *Cond) All(field, op string, values ...interface{}) string {
 		return ""
 	}
 
+	// Empty values means "false".
+	if len(values) == 0 {
+		return "0 = 1"
+	}
+
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			ctx.WriteString(field)
@@ -491,6 +510,11 @@ func (c *Cond) All(field, op string, values ...interface{}) string {
 func (c *Cond) Some(field, op string, values ...interface{}) string {
 	if len(field) == 0 || len(op) == 0 {
 		return ""
+	}
+
+	// Empty values means "false".
+	if len(values) == 0 {
+		return "0 = 1"
 	}
 
 	return c.Var(condBuilder{

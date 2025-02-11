@@ -38,8 +38,14 @@ type clause struct {
 }
 
 func (c *clause) Build(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
+	exprs := filterEmptyStrings(c.andExprs)
+
+	if len(exprs) == 0 {
+		return
+	}
+
 	buf := newStringBuilder()
-	buf.WriteStrings(c.andExprs, " AND ")
+	buf.WriteStrings(exprs, " AND ")
 	sql, args = c.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
 	return
 }
