@@ -457,7 +457,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			buf.WriteLeadingString("LIMIT ")
 			buf.WriteString(sb.limitVar)
 		}
-	case PostgreSQL, Presto:
+	case PostgreSQL:
 		if len(sb.limitVar) > 0 {
 			buf.WriteLeadingString("LIMIT ")
 			buf.WriteString(sb.limitVar)
@@ -466,6 +466,20 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		if len(sb.offsetVar) > 0 {
 			buf.WriteLeadingString("OFFSET ")
 			buf.WriteString(sb.offsetVar)
+		}
+	case Presto:
+		// There might be a hidden constraint in Presto requiring offset to be set before limit.
+		// The select statement documentation (https://prestodb.io/docs/current/sql/select.html)
+		// puts offset before limit, and Trino, which is based on Presto, seems
+		// to require this specific order.
+		if len(sb.offsetVar) > 0 {
+			buf.WriteLeadingString("OFFSET ")
+			buf.WriteString(sb.offsetVar)
+		}
+
+		if len(sb.limitVar) > 0 {
+			buf.WriteLeadingString("LIMIT ")
+			buf.WriteString(sb.limitVar)
 		}
 
 	case SQLServer:

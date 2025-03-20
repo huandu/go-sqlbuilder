@@ -229,9 +229,9 @@ func ExampleSelectBuilder_limit_offset() {
 	// Presto
 	// #1: SELECT * FROM user
 	// #2: SELECT * FROM user OFFSET ?
-	// #3: SELECT * FROM user LIMIT ? OFFSET ?
+	// #3: SELECT * FROM user OFFSET ? LIMIT ?
 	// #4: SELECT * FROM user LIMIT ?
-	// #5: SELECT * FROM user ORDER BY id LIMIT ? OFFSET ?
+	// #5: SELECT * FROM user ORDER BY id OFFSET ? LIMIT ?
 	//
 	// Oracle
 	// #1: SELECT * FROM user
