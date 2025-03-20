@@ -452,11 +452,13 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 				buf.WriteString(sb.offsetVar)
 			}
 		}
+
 	case CQL:
 		if len(sb.limitVar) > 0 {
 			buf.WriteLeadingString("LIMIT ")
 			buf.WriteString(sb.limitVar)
 		}
+
 	case PostgreSQL:
 		if len(sb.limitVar) > 0 {
 			buf.WriteLeadingString("LIMIT ")
@@ -467,6 +469,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			buf.WriteLeadingString("OFFSET ")
 			buf.WriteString(sb.offsetVar)
 		}
+
 	case Presto:
 		// There might be a hidden constraint in Presto requiring offset to be set before limit.
 		// The select statement documentation (https://prestodb.io/docs/current/sql/select.html)
@@ -536,6 +539,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 				buf.WriteString(" + 1")
 			}
 		}
+
 	case Informix:
 		// [SKIP N] FIRST M
 		// M must be greater than 0
@@ -547,6 +551,18 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 			buf.WriteLeadingString("FIRST ")
 			buf.WriteString(sb.limitVar)
+		}
+
+	case Doris:
+		// #192: Doris doesn't support ? in OFFSET and LIMIT.
+		if len(sb.limitVar) > 0 {
+			buf.WriteLeadingString("LIMIT ")
+			buf.WriteString(fmt.Sprint(sb.args.Value(sb.limitVar)))
+
+			if len(sb.offsetVar) > 0 {
+				buf.WriteLeadingString("OFFSET ")
+				buf.WriteString(fmt.Sprint(sb.args.Value(sb.offsetVar)))
+			}
 		}
 	}
 

@@ -371,6 +371,11 @@ func TestFlavorInterpolate(t *testing.T) {
 			"SELECT ?", []interface{}{errorValuer(1)},
 			"", ErrErrorValuer,
 		},
+		{
+			Doris,
+			"SELECT ?", []interface{}{errorValuer(1)},
+			"", ErrErrorValuer,
+		},
 	}
 
 	for idx, c := range cases {

@@ -149,6 +149,18 @@ func (args *Args) CompileWithFlavor(format string, flavor Flavor, initialValue .
 	return
 }
 
+// Value returns the value of the arg.
+// The arg must be the value returned by `Add`.
+func (args *Args) Value(arg string) interface{} {
+	_, values := args.Compile(arg)
+
+	if len(values) == 0 {
+		return nil
+	}
+
+	return values[0]
+}
+
 func (args *Args) compileNamed(ctx *argsCompileContext, format string) string {
 	i := 1
 
@@ -324,7 +336,7 @@ func (ctx *argsCompileContext) WriteValue(arg interface{}) {
 
 	default:
 		switch ctx.Flavor {
-		case MySQL, SQLite, CQL, ClickHouse, Presto, Informix:
+		case MySQL, SQLite, CQL, ClickHouse, Presto, Informix, Doris:
 			ctx.WriteRune('?')
 		case PostgreSQL:
 			fmt.Fprintf(ctx, "$%d", len(ctx.Values)+1)

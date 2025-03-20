@@ -22,6 +22,7 @@ func TestFlavor(t *testing.T) {
 		ClickHouse: "ClickHouse",
 		Oracle:     "Oracle",
 		Informix:   "Informix",
+		Doris:      "Doris",
 	}
 
 	for f, expected := range cases {

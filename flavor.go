@@ -21,6 +21,7 @@ const (
 	Presto
 	Oracle
 	Informix
+	Doris
 )
 
 var (
@@ -64,6 +65,8 @@ func (f Flavor) String() string {
 		return "Oracle"
 	case Informix:
 		return "Informix"
+	case Doris:
+		return "Doris"
 	}
 
 	return "<invalid>"
@@ -94,6 +97,8 @@ func (f Flavor) Interpolate(sql string, args []interface{}) (string, error) {
 		return oracleInterpolate(sql, args...)
 	case Informix:
 		return informixInterpolate(sql, args...)
+	case Doris:
+		return dorisInterpolate(sql, args...)
 	}
 
 	return "", ErrInterpolateNotImplemented
@@ -162,7 +167,7 @@ func (f Flavor) NewCTEQueryBuilder() *CTEQueryBuilder {
 //   - For PostgreSQL, SQL Server and SQLite, use double quote (") to quote name.
 func (f Flavor) Quote(name string) string {
 	switch f {
-	case MySQL, ClickHouse:
+	case MySQL, ClickHouse, Doris:
 		return fmt.Sprintf("`%s`", name)
 	case PostgreSQL, SQLServer, SQLite, Presto, Oracle, Informix:
 		return fmt.Sprintf(`"%s"`, name)
@@ -190,7 +195,7 @@ func (f Flavor) PrepareInsertIgnore(table string, ib *InsertBuilder) {
 		// see https://www.sqlite.org/lang_insert.html
 		ib.verb = "INSERT OR IGNORE"
 
-	case ClickHouse, CQL, SQLServer, Presto, Informix:
+	case ClickHouse, CQL, SQLServer, Presto, Informix, Doris:
 		// All other databases do not support insert ignore
 		ib.verb = "INSERT"
 

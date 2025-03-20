@@ -138,3 +138,17 @@ func TestArgsAdd(t *testing.T) {
 		a.Equal(actual, fmt.Sprintf("$%v", i))
 	}
 }
+
+func TestArgsValue(t *testing.T) {
+	a := assert.New(t)
+	args := &Args{}
+
+	v1 := 123
+	arg1 := args.Add(v1)
+	argInvalid := "invalid"
+	argLooselyTyped := arg1 + "something else"
+
+	a.Equal(v1, args.Value(arg1))
+	a.Equal(nil, args.Value(argInvalid))
+	a.Equal(v1, args.Value(argLooselyTyped))
+}
