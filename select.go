@@ -457,7 +457,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			buf.WriteLeadingString("LIMIT ")
 			buf.WriteString(sb.limitVar)
 		}
-	case PostgreSQL, Presto:
+	case PostgreSQL:
 		if len(sb.limitVar) > 0 {
 			buf.WriteLeadingString("LIMIT ")
 			buf.WriteString(sb.limitVar)
@@ -466,6 +466,16 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		if len(sb.offsetVar) > 0 {
 			buf.WriteLeadingString("OFFSET ")
 			buf.WriteString(sb.offsetVar)
+		}
+	case Presto:
+		if len(sb.offsetVar) > 0 {
+			buf.WriteLeadingString("OFFSET ")
+			buf.WriteString(sb.offsetVar)
+		}
+
+		if len(sb.limitVar) > 0 {
+			buf.WriteLeadingString("LIMIT ")
+			buf.WriteString(sb.limitVar)
 		}
 
 	case SQLServer:
