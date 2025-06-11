@@ -69,6 +69,7 @@ func TestCond(t *testing.T) {
 		newTestPair("$a IS DISTINCT FROM $1", func(c *Cond) string { return c.IsDistinctFrom("$a", 1) }),
 		newTestPair("$a IS NOT DISTINCT FROM $1", func(c *Cond) string { return c.IsNotDistinctFrom("$a", 1) }),
 		newTestPair("$1", func(c *Cond) string { return c.Var(123) }),
+		newTestPair("$a @> $1", func(c *Cond) string {	return c.Contains("$a","one","two")}),
 	}
 
 	for _, f := range cases {
@@ -166,6 +167,15 @@ func TestEmptyCond(t *testing.T) {
 	for _, actual := range cases {
 		a.Equal(actual, expected)
 	}
+}
+
+func callCond(fn func(cond *Cond) string) (actual string) {
+	cond := &Cond{
+		Args: &Args{},
+	}
+	format := fn(cond)
+	actual, _ = cond.Args.CompileWithFlavor(format, PostgreSQL)
+	return
 }
 
 func TestCondWithFlavor(t *testing.T) {

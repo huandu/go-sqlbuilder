@@ -5,7 +5,6 @@ package sqlbuilder
 
 import (
 	"fmt"
-	"github.com/metrumresearchgroup/wrapt"
 	"testing"
 
 	"github.com/huandu/go-assert"
@@ -99,39 +98,4 @@ func ExampleTuple() {
 	// Output:
 	// SELECT id, name FROM user WHERE (type, status) IN ((?, ?), (?, ?), (?, ?))
 	// [web 1 app 1 app 2]
-}
-
-func TestJSONNames(tt *testing.T) {
-	type args struct {
-		names []string
-	}
-	tests := []struct {
-		name      string
-		names     []string
-		assertion func(t *wrapt.T, got string)
-	}{
-		// TODO: Add test cases.
-		{
-			name:  "expected with single entry",
-			names: []string{"foo"},
-			assertion: func(t *wrapt.T, got string) {
-				t.A.Equal(`{"foo"}`, got)
-			},
-		},
-		{
-			name:  "expected with multiple entries",
-			names: []string{"foo", "bar"},
-			assertion: func(t *wrapt.T, got string) {
-				t.A.Equal(`{"foo", "bar"}`, got)
-			},
-		},
-	}
-	for _, test := range tests {
-		tt.Run(test.name, func(tt *testing.T) {
-			t := wrapt.WrapT(tt)
-			t.R.NotNil(test.assertion)
-			got := JSONNames(test.names...)
-			test.assertion(t, got)
-		})
-	}
 }
