@@ -207,8 +207,13 @@ func (c *Cond) In(field string, values ...interface{}) string {
 
 // NotIn is used to construct the expression "field NOT IN (value...)".
 func (c *Cond) NotIn(field string, values ...interface{}) string {
-	if len(field) == 0 || len(values) == 0 {
+	if len(field) == 0 {
 		return ""
+	}
+
+	// Empty values means "true".
+	if len(values) == 0 {
+		return "0 = 0"
 	}
 
 	return c.Var(condBuilder{
@@ -427,6 +432,7 @@ func (c *Cond) Not(notExpr string) string {
 	if len(notExpr) == 0 {
 		return ""
 	}
+
 	buf := newStringBuilder()
 
 	// Ensure that there is only 1 memory allocation.
