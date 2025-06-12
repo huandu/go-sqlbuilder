@@ -197,10 +197,7 @@ func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		buf.WriteString(ib.sbHolder)
 
 		ib.injection.WriteTo(buf, insertMarkerAfterSelect)
-		return ib.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
-	}
-
-	if len(ib.values) > 0 {
+	} else if len(ib.values) > 0 {
 		buf.WriteLeadingString("VALUES ")
 		values := make([]string, 0, len(ib.values))
 

@@ -305,3 +305,15 @@ func TestInsertBuilderGetFlavor(t *testing.T) {
 	flavor = ibClick.Flavor()
 	a.Equal(ClickHouse, flavor)
 }
+
+func TestIssue200(t *testing.T) {
+	a := assert.New(t)
+	ib := PostgreSQL.NewInsertBuilder()
+	ib.InsertIgnoreInto("table")
+	ib.Cols("data")
+	sb := ib.Select("id", "data").From("table")
+	sb.Where(sb.Equal("id", 1))
+
+	query, _ := ib.Build()
+	a.Equal(query, "INSERT INTO table (data) SELECT id, data FROM table WHERE id = $1 ON CONFLICT DO NOTHING")
+}
