@@ -420,4 +420,5 @@ func ExampleSelectBuilder_LateralAs() {
 
 func TestNilPointerWhere(t *testing.T) {
 	NewSelectBuilder().SQL("$0").Build()
+	NewSelectBuilder().SQL("$0").BuildWithFlavor(DefaultFlavor)
 }
