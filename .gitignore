@@ -38,3 +38,6 @@ debug_test
 # go work
 go.work
 go.work.sum
+
+# running the fuzzer locally may create this folder, lets ignore it
+testdata/fuzz/
