@@ -60,7 +60,7 @@ var _ Builder = new(whereClauseProxy)
 
 // BuildWithFlavor builds a WHERE clause with the specified flavor and initial arguments.
 func (wc *WhereClause) BuildWithFlavor(flavor Flavor, initialArg ...interface{}) (sql string, args []interface{}) {
-	if len(wc.clauses) == 0 {
+	if wc == nil || len(wc.clauses) == 0 {
 		return "", nil
 	}
 
@@ -128,6 +128,9 @@ func (wc *WhereClause) AddWhereExpr(args *Args, andExpr ...string) *WhereClause 
 
 // AddWhereClause adds all clauses in the whereClause to the wc.
 func (wc *WhereClause) AddWhereClause(whereClause *WhereClause) *WhereClause {
+	if wc == nil {
+		return nil
+	}
 	if whereClause == nil {
 		return wc
 	}

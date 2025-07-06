@@ -417,3 +417,8 @@ func ExampleSelectBuilder_LateralAs() {
 	// Output:
 	// SELECT salesperson.name, max_sale.amount, max_sale.customer_name FROM salesperson, LATERAL (SELECT amount, customer_name FROM all_sales WHERE all_sales.salesperson_id = salesperson.id ORDER BY amount DESC LIMIT ?) AS max_sale
 }
+
+func TestNilPointerWhere(t *testing.T) {
+	NewSelectBuilder().SQL("$0").Build()
+	NewSelectBuilder().SQL("$0").BuildWithFlavor(DefaultFlavor)
+}
