@@ -15,6 +15,7 @@ const (
 	updateMarkerAfterWhere
 	updateMarkerAfterOrderBy
 	updateMarkerAfterLimit
+	updateMarkerAfterReturning
 )
 
 // NewUpdateBuilder creates a new UPDATE builder.
@@ -53,6 +54,7 @@ type UpdateBuilder struct {
 	orderByCols []string
 	order       string
 	limitVar    string
+	returning   []string
 
 	args *Args
 
@@ -216,6 +218,14 @@ func (ub *UpdateBuilder) Limit(limit int) *UpdateBuilder {
 	return ub
 }
 
+// Returning sets returning columns.
+// For DBMS that doesn't support RETURNING, e.g. MySQL, it will be ignored.
+func (ub *UpdateBuilder) Returning(col ...string) *UpdateBuilder {
+	ub.returning = col
+	ub.marker = updateMarkerAfterReturning
+	return ub
+}
+
 // NumAssignment returns the number of assignments to update.
 func (ub *UpdateBuilder) NumAssignment() int {
 	return len(ub.assignments)
@@ -308,6 +318,15 @@ func (ub *UpdateBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		buf.WriteString(ub.limitVar)
 
 		ub.injection.WriteTo(buf, updateMarkerAfterLimit)
+	}
+
+	if flavor == PostgreSQL || flavor == SQLite {
+		if len(ub.returning) > 0 {
+			buf.WriteLeadingString("RETURNING ")
+			buf.WriteStrings(ub.returning, ", ")
+		}
+
+		ub.injection.WriteTo(buf, updateMarkerAfterReturning)
 	}
 
 	return ub.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
