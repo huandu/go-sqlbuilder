@@ -162,3 +162,107 @@ func TestUpdateBuilderGetFlavor(t *testing.T) {
 	flavor = ubClick.Flavor()
 	a.Equal(ClickHouse, flavor)
 }
+
+func ExampleUpdateBuilder_Returning() {
+	ub := NewUpdateBuilder()
+	ub.Update("user")
+	ub.Set(ub.Assign("name", "Huan Du"))
+	ub.Where(ub.Equal("id", 123))
+	ub.Returning("id", "updated_at")
+
+	sql, args := ub.BuildWithFlavor(PostgreSQL)
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// UPDATE user SET name = $1 WHERE id = $2 RETURNING id, updated_at
+	// [Huan Du 123]
+}
+
+func TestUpdateBuilderReturning(t *testing.T) {
+	a := assert.New(t)
+	ub := NewUpdateBuilder()
+	ub.Update("user")
+	ub.Set(ub.Assign("name", "Huan Du"))
+	ub.Where(ub.Equal("id", 123))
+	ub.Returning("id", "updated_at")
+
+	sql, _ := ub.BuildWithFlavor(MySQL)
+	a.Equal("UPDATE user SET name = ? WHERE id = ?", sql)
+
+	sql, _ = ub.BuildWithFlavor(PostgreSQL)
+	a.Equal("UPDATE user SET name = $1 WHERE id = $2 RETURNING id, updated_at", sql)
+
+	sql, _ = ub.BuildWithFlavor(SQLite)
+	a.Equal("UPDATE user SET name = ? WHERE id = ? RETURNING id, updated_at", sql)
+
+	sql, _ = ub.BuildWithFlavor(SQLServer)
+	a.Equal("UPDATE user SET name = @p1 WHERE id = @p2", sql)
+
+	sql, _ = ub.BuildWithFlavor(CQL)
+	a.Equal("UPDATE user SET name = ? WHERE id = ?", sql)
+
+	sql, _ = ub.BuildWithFlavor(ClickHouse)
+	a.Equal("UPDATE user SET name = ? WHERE id = ?", sql)
+
+	sql, _ = ub.BuildWithFlavor(Presto)
+	a.Equal("UPDATE user SET name = ? WHERE id = ?", sql)
+
+	// Test with no returning columns
+	ub2 := NewUpdateBuilder()
+	ub2.Update("user")
+	ub2.Set(ub2.Assign("name", "Test"))
+	ub2.Where(ub2.Equal("id", 1))
+	ub2.Returning() // Empty returning
+
+	sql, _ = ub2.BuildWithFlavor(PostgreSQL)
+	a.Equal("UPDATE user SET name = $1 WHERE id = $2", sql)
+
+	// Test with single column
+	ub3 := NewUpdateBuilder()
+	ub3.Update("user")
+	ub3.Set(ub3.Assign("name", "Test"))
+	ub3.Where(ub3.Equal("id", 1))
+	ub3.Returning("id")
+
+	sql, _ = ub3.BuildWithFlavor(PostgreSQL)
+	a.Equal("UPDATE user SET name = $1 WHERE id = $2 RETURNING id", sql)
+
+	// Test with ORDER BY and LIMIT
+	ub4 := NewUpdateBuilder()
+	ub4.Update("user")
+	ub4.Set(ub4.Assign("name", "Test"))
+	ub4.Where(ub4.Equal("status", 1))
+	ub4.OrderBy("id").Asc()
+	ub4.Limit(5)
+	ub4.Returning("id", "name")
+
+	sql, _ = ub4.BuildWithFlavor(PostgreSQL)
+	a.Equal("UPDATE user SET name = $1 WHERE status = $2 ORDER BY id ASC LIMIT $3 RETURNING id, name", sql)
+
+	// Test chaining
+	ub5 := NewUpdateBuilder().Update("user").Set("status = 1").Returning("id").Returning("name", "updated_at")
+	sql, _ = ub5.BuildWithFlavor(PostgreSQL)
+	a.Equal("UPDATE user SET status = 1 RETURNING name, updated_at", sql) // Last Returning call overwrites
+
+	// Test SQL injection after RETURNING
+	ub6 := NewUpdateBuilder()
+	ub6.Update("user")
+	ub6.Set(ub6.Assign("name", "Test"))
+	ub6.Where(ub6.Equal("id", 1))
+	ub6.Returning("id", "name")
+	ub6.SQL("/* comment after returning */")
+
+	sql, _ = ub6.BuildWithFlavor(PostgreSQL)
+	a.Equal("UPDATE user SET name = $1 WHERE id = $2 RETURNING id, name /* comment after returning */", sql)
+
+	// Test with CTE (WITH clause)
+	cte := With(CTETable("temp_user").As(Select("id").From("active_users")))
+	ub7 := cte.Update("user")
+	ub7.Set(ub7.Assign("status", "active"))
+	ub7.Where("user.id IN (SELECT id FROM temp_user)")
+	ub7.Returning("id", "status")
+
+	sql, _ = ub7.BuildWithFlavor(PostgreSQL)
+	a.Equal("WITH temp_user AS (SELECT id FROM active_users) UPDATE user SET status = $1 FROM temp_user WHERE user.id IN (SELECT id FROM temp_user) RETURNING id, status", sql)
+}

@@ -10,6 +10,7 @@ const (
 	deleteMarkerAfterWhere
 	deleteMarkerAfterOrderBy
 	deleteMarkerAfterLimit
+	deleteMarkerAfterReturning
 )
 
 // NewDeleteBuilder creates a new DELETE builder.
@@ -47,6 +48,7 @@ type DeleteBuilder struct {
 	orderByCols []string
 	order       string
 	limitVar    string
+	returning   []string
 
 	args *Args
 
@@ -157,6 +159,14 @@ func (db *DeleteBuilder) Limit(limit int) *DeleteBuilder {
 	return db
 }
 
+// Returning sets returning columns.
+// For DBMS that doesn't support RETURNING, e.g. MySQL, it will be ignored.
+func (db *DeleteBuilder) Returning(col ...string) *DeleteBuilder {
+	db.returning = col
+	db.marker = deleteMarkerAfterReturning
+	return db
+}
+
 // String returns the compiled DELETE string.
 func (db *DeleteBuilder) String() string {
 	s, _ := db.Build()
@@ -216,6 +226,15 @@ func (db *DeleteBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		buf.WriteString(db.limitVar)
 
 		db.injection.WriteTo(buf, deleteMarkerAfterLimit)
+	}
+
+	if flavor == PostgreSQL || flavor == SQLite {
+		if len(db.returning) > 0 {
+			buf.WriteLeadingString("RETURNING ")
+			buf.WriteStrings(db.returning, ", ")
+		}
+
+		db.injection.WriteTo(buf, deleteMarkerAfterReturning)
 	}
 
 	return db.args.CompileWithFlavor(buf.String(), flavor, initialArg...)
