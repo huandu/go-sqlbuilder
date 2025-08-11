@@ -618,11 +618,21 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 			buf = append(buf, "', 'YYYY-MM-DD HH24:MI:SS.FF')"...)
 		}
 
-	case fmt.Stringer:
-		buf = quoteStringValue(buf, v.String(), flavor)
-
 	default:
 		primative := reflect.ValueOf(arg)
+
+		// Handle typed nil values (e.g. (*string)(nil), (*time.Time)(nil))
+		// This check must come before fmt.Stringer check since nil pointers may implement interfaces
+		if !primative.IsValid() || (primative.Kind() == reflect.Ptr && primative.IsNil()) {
+			buf = append(buf, "NULL"...)
+			return buf, nil
+		}
+
+		// Check for fmt.Stringer after nil pointer check
+		if stringer, ok := arg.(fmt.Stringer); ok {
+			buf = quoteStringValue(buf, stringer.String(), flavor)
+			return buf, nil
+		}
 
 		switch k := primative.Kind(); k {
 		case reflect.Bool:

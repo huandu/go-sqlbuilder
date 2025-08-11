@@ -389,3 +389,109 @@ func TestFlavorInterpolate(t *testing.T) {
 		})
 	}
 }
+
+func TestTypedNilInterpolation(t *testing.T) {
+	a := assert.New(t)
+
+	// Test various typed nil pointers
+	cases := []struct {
+		name     string
+		flavor   Flavor
+		sql      string
+		args     []interface{}
+		expected string
+	}{
+		{
+			name:     "string pointer nil",
+			flavor:   MySQL,
+			sql:      "SELECT ?",
+			args:     []interface{}{(*string)(nil)},
+			expected: "SELECT NULL",
+		},
+		{
+			name:     "int pointer nil",
+			flavor:   MySQL,
+			sql:      "SELECT ?",
+			args:     []interface{}{(*int)(nil)},
+			expected: "SELECT NULL",
+		},
+		{
+			name:     "float64 pointer nil",
+			flavor:   MySQL,
+			sql:      "SELECT ?",
+			args:     []interface{}{(*float64)(nil)},
+			expected: "SELECT NULL",
+		},
+		{
+			name:     "time.Time pointer nil",
+			flavor:   MySQL,
+			sql:      "SELECT ?",
+			args:     []interface{}{(*time.Time)(nil)},
+			expected: "SELECT NULL",
+		},
+		{
+			name:     "byte slice pointer nil",
+			flavor:   MySQL,
+			sql:      "SELECT ?",
+			args:     []interface{}{(*[]byte)(nil)},
+			expected: "SELECT NULL",
+		},
+		{
+			name:     "PostgreSQL string pointer nil",
+			flavor:   PostgreSQL,
+			sql:      "SELECT $1",
+			args:     []interface{}{(*string)(nil)},
+			expected: "SELECT NULL",
+		},
+		{
+			name:     "SQLite int pointer nil",
+			flavor:   SQLite,
+			sql:      "SELECT ?",
+			args:     []interface{}{(*int)(nil)},
+			expected: "SELECT NULL",
+		},
+		{
+			name:     "Oracle float pointer nil",
+			flavor:   Oracle,
+			sql:      "SELECT :1",
+			args:     []interface{}{(*float64)(nil)},
+			expected: "SELECT NULL",
+		},
+		{
+			name:     "mixed nil types",
+			flavor:   MySQL,
+			sql:      "SELECT ?, ?, ?, ?",
+			args:     []interface{}{(*string)(nil), nil, (*int)(nil), (*[]byte)(nil)},
+			expected: "SELECT NULL, NULL, NULL, NULL",
+		},
+		{
+			name:     "interface pointer nil",
+			flavor:   MySQL,
+			sql:      "SELECT ?",
+			args:     []interface{}{(*fmt.Stringer)(nil)},
+			expected: "SELECT NULL",
+		},
+		{
+			name:     "slice pointer nil",
+			flavor:   MySQL,
+			sql:      "SELECT ?",
+			args:     []interface{}{(*[]int)(nil)},
+			expected: "SELECT NULL",
+		},
+		{
+			name:     "map pointer nil",
+			flavor:   MySQL,
+			sql:      "SELECT ?",
+			args:     []interface{}{(*map[string]int)(nil)},
+			expected: "SELECT NULL",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			query, err := tc.flavor.Interpolate(tc.sql, tc.args)
+			a.NilError(err)
+			a.Equal(tc.expected, query)
+		})
+	}
+}
