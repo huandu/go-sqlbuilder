@@ -5,6 +5,9 @@ package sqlbuilder
 
 import (
 	"fmt"
+	"reflect"
+
+	"github.com/huandu/go-clone"
 )
 
 const (
@@ -31,14 +34,35 @@ func newUnionBuilder() *UnionBuilder {
 	}
 }
 
+// Clone returns a deep copy of UnionBuilder.
+// It's useful when you want to create a base builder and clone it to build similar queries.
+func (ub *UnionBuilder) Clone() *UnionBuilder {
+	return clone.Clone(ub).(*UnionBuilder)
+}
+
+func init() {
+	t := reflect.TypeOf(UnionBuilder{})
+	clone.SetCustomFunc(t, func(allocator *clone.Allocator, old, new reflect.Value) {
+		cloned := allocator.CloneSlowly(old)
+		new.Set(cloned)
+
+		ub := cloned.Addr().Interface().(*UnionBuilder)
+		for i, b := range ub.builders {
+			ub.args.Replace(ub.builderVars[i], b)
+		}
+	})
+}
+
 // UnionBuilder is a builder to build UNION.
 type UnionBuilder struct {
 	opt         string
-	builderVars []string
 	orderByCols []string
 	order       string
 	limitVar    string
 	offsetVar   string
+
+	builders    []Builder
+	builderVars []string
 
 	args *Args
 
@@ -76,6 +100,7 @@ func (ub *UnionBuilder) union(opt string, builders ...Builder) *UnionBuilder {
 	}
 
 	ub.opt = opt
+	ub.builders = append([]Builder(nil), builders...)
 	ub.builderVars = builderVars
 	ub.marker = unionMarkerAfterUnion
 	return ub

@@ -245,3 +245,21 @@ func ExampleUnionBuilder_limit_offset() {
 	// #4: (SELECT * FROM user1) UNION (SELECT * FROM user2) LIMIT 1
 	// #5: (SELECT * FROM user1) UNION (SELECT * FROM user2) ORDER BY id LIMIT 1 OFFSET 1
 }
+
+func TestUnionBuilderClone(t *testing.T) {
+	a := assert.New(t)
+	sb1 := Select("id", "name").From("users").Where("active = 1")
+	sb2 := Select("id", "nick").From("profiles").Where("status IN (1,2)")
+
+	ub := UnionAll(sb1, sb2).OrderBy("id").Desc().Limit(5).Offset(1)
+	clone := ub.Clone()
+
+	s1, args1 := ub.Build()
+	s2, args2 := clone.Build()
+	a.Equal(s1, s2)
+	a.Equal(args1, args2)
+
+	// Change clone and ensure original unchanged
+	clone.Asc().Limit(10)
+	a.NotEqual(ub.String(), clone.String())
+}

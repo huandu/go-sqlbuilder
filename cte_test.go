@@ -193,3 +193,53 @@ func TestCTEQueryBuilderGetFlavor(t *testing.T) {
 	flavor = ctetbClick.Flavor()
 	a.Equal(ClickHouse, flavor)
 }
+
+func TestCTEBuildClone(t *testing.T) {
+	a := assert.New(t)
+	cteb := With(
+		CTETable("users", "id", "name").As(
+			Select("id", "name").From("users").Where("name IS NOT NULL"),
+		),
+	)
+	ctebClone := cteb.Clone()
+	a.Equal(cteb.String(), ctebClone.String())
+
+	sb := Select("users.id", "users.name", "orders.id").From("users").With(cteb)
+	sbClone := sb.Clone()
+	a.Equal(sb.String(), sbClone.String())
+
+	sql, args := sb.Build()
+	sqlClone, argsClone := sbClone.Build()
+	a.Equal(sql, sqlClone)
+	a.Equal(args, argsClone)
+
+	sb.Limit(20)
+	a.NotEqual(sb.String(), sbClone.String())
+}
+
+func TestCTEQueryBuilderClone(t *testing.T) {
+	a := assert.New(t)
+	ctetb := CTETable("users", "id", "name").As(Select("id", "name").From("users").Where("id > 0"))
+	// Ensure AddToTableList flag is respected in clone as default for CTETable
+	clone := ctetb.Clone()
+	a.Equal(ctetb.String(), clone.String())
+	a.Equal(ctetb.ShouldAddToTableList(), clone.ShouldAddToTableList())
+}
+
+func TestCTEBuilderClone(t *testing.T) {
+	a := assert.New(t)
+	q1 := CTETable("u", "id").As(Select("id").From("users"))
+	q2 := CTEQuery("o", "id").As(Select("id").From("orders"))
+	cte := With(q1, q2)
+	clone := cte.Clone()
+
+	s1, args1 := cte.Build()
+	s2, args2 := clone.Build()
+	a.Equal(s1, s2)
+	a.Equal(args1, args2)
+
+	// mutate clone and verify original unchanged
+	q3 := CTETable("p", "id").As(Select("id").From("profiles"))
+	clone.With(q3)
+	a.NotEqual(cte.String(), clone.String())
+}
