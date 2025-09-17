@@ -266,3 +266,20 @@ func TestUpdateBuilderReturning(t *testing.T) {
 	sql, _ = ub7.BuildWithFlavor(PostgreSQL)
 	a.Equal("WITH temp_user AS (SELECT id FROM active_users) UPDATE user SET status = $1 FROM temp_user WHERE user.id IN (SELECT id FROM temp_user) RETURNING id, status", sql)
 }
+
+func TestUpdateBuilderClone(t *testing.T) {
+	a := assert.New(t)
+	cte := With(
+		CTETable("vip").As(Select("user_id").From("vip_users")),
+	)
+	ub := cte.Update("orders").Set("discount = 1").Where("orders.user_id = vip.user_id").OrderBy("orders.id").Desc().Limit(2).Returning("orders.id")
+
+	clone := ub.Clone()
+	s1, args1 := ub.BuildWithFlavor(PostgreSQL)
+	s2, args2 := clone.BuildWithFlavor(PostgreSQL)
+	a.Equal(s1, s2)
+	a.Equal(args1, args2)
+
+	clone.Asc().Limit(5)
+	a.NotEqual(ub.String(), clone.String())
+}

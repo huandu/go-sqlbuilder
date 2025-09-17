@@ -317,3 +317,21 @@ func TestIssue200(t *testing.T) {
 	query, _ := ib.Build()
 	a.Equal(query, "INSERT INTO table (data) SELECT id, data FROM table WHERE id = $1 ON CONFLICT DO NOTHING")
 }
+
+func TestInsertBuilderClone(t *testing.T) {
+	a := assert.New(t)
+
+	ib := InsertInto("demo.user").Cols("id", "name")
+	ib.Values(1, "A")
+
+	clone := ib.Clone()
+
+	s1, args1 := ib.Build()
+	s2, args2 := clone.Build()
+	a.Equal(s1, s2)
+	a.Equal(args1, args2)
+
+	// mutate clone and verify original unchanged
+	clone.Values(2, "B")
+	a.NotEqual(ib.String(), clone.String())
+}

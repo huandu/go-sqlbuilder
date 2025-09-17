@@ -422,3 +422,30 @@ func TestNilPointerWhere(t *testing.T) {
 	NewSelectBuilder().SQL("$0").Build()
 	NewSelectBuilder().SQL("$0").BuildWithFlavor(DefaultFlavor)
 }
+
+func TestSelectBuilderClone(t *testing.T) {
+	a := assert.New(t)
+
+	cte := With(
+		CTETable("users").As(
+			Select("id", "name").From("users").Where("name IS NOT NULL"),
+		),
+	)
+
+	sb := cte.Select("users.id", "orders.id").From("orders").Where(
+		"users.id = orders.user_id",
+	).OrderBy("orders.id").Desc().Limit(10).Offset(2)
+
+	// Clone and compare
+	clone := sb.Clone()
+	s1, args1 := sb.Build()
+	s2, args2 := clone.Build()
+	a.Equal(s1, s2)
+	a.Equal(args1, args2)
+
+	// Mutate clone and ensure original unchanged
+	clone.Limit(100).Asc()
+	s1After := sb.String()
+	s2After := clone.String()
+	a.NotEqual(s1After, s2After)
+}

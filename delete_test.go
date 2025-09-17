@@ -193,3 +193,20 @@ func TestDeleteBuilderReturning(t *testing.T) {
 	sql, _ = db7.BuildWithFlavor(PostgreSQL)
 	a.Equal("WITH temp_user AS (SELECT id FROM inactive_users) DELETE FROM user, temp_user WHERE user.id IN (SELECT id FROM temp_user) RETURNING id, deleted_at", sql)
 }
+
+func TestDeleteBuilderClone(t *testing.T) {
+	a := assert.New(t)
+	cte := With(
+		CTETable("temp").As(Select("id").From("to_delete")),
+	)
+	db := cte.DeleteFrom("target").Where("temp.id = target.id").OrderBy("id").Asc().Limit(3).Returning("id")
+
+	clone := db.Clone()
+	s1, args1 := db.BuildWithFlavor(PostgreSQL)
+	s2, args2 := clone.BuildWithFlavor(PostgreSQL)
+	a.Equal(s1, s2)
+	a.Equal(args1, args2)
+
+	clone.Desc().Limit(5)
+	a.NotEqual(db.String(), clone.String())
+}

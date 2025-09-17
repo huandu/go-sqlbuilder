@@ -328,13 +328,14 @@ func (rows testRows) Close() error {
 }
 
 func (rows testRows) Scan(dest ...interface{}) error {
-	if rows == 0 {
+	switch rows {
+	case 0:
 		fmt.Sscan("1234 huandu 1", dest...)
-	} else if rows == 1 {
+	case 1:
 		fmt.Sscan("1234 34 huandu 1456725903636000000", dest...)
-	} else if rows == 2 {
+	case 2:
 		fmt.Sscan("1 1456725903636000000", dest...)
-	} else {
+	default:
 		panic("invalid rows")
 	}
 

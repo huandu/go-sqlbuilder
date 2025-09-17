@@ -102,3 +102,22 @@ func TestCreateTableGetFlavor(t *testing.T) {
 	flavor = ctbClick.Flavor()
 	a.Equal(ClickHouse, flavor)
 }
+
+func TestCreateTableClone(t *testing.T) {
+	a := assert.New(t)
+	ctb := CreateTable("demo.user").IfNotExists().
+		Define("id", "BIGINT(20)", "NOT NULL", "AUTO_INCREMENT", "PRIMARY KEY", `COMMENT "user id"`).
+		Option("DEFAULT CHARACTER SET", "utf8mb4")
+
+	ctb2 := ctb.Clone()
+	ctb2.Define("name", "VARCHAR(255)", "NOT NULL", `COMMENT "user name"`)
+
+	sql1, args1 := ctb.Build()
+	sql2, args2 := ctb2.Build()
+
+	a.Equal("CREATE TABLE IF NOT EXISTS demo.user (id BIGINT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT \"user id\") DEFAULT CHARACTER SET utf8mb4", sql1)
+	a.Equal(0, len(args1))
+
+	a.Equal("CREATE TABLE IF NOT EXISTS demo.user (id BIGINT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT \"user id\", name VARCHAR(255) NOT NULL COMMENT \"user name\") DEFAULT CHARACTER SET utf8mb4", sql2)
+	a.Equal(0, len(args2))
+}
