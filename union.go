@@ -3,6 +3,10 @@
 
 package sqlbuilder
 
+import (
+	"fmt"
+)
+
 const (
 	unionDistinct = " UNION " // Default union type is DISTINCT.
 	unionAll      = " UNION ALL "
@@ -140,8 +144,15 @@ func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 	buf := newStringBuilder()
 	ub.injection.WriteTo(buf, unionMarkerInit)
 
+	nestedSelect := (flavor == Oracle && (len(ub.limitVar) > 0 || len(ub.offsetVar) > 0)) ||
+		(flavor == Informix && len(ub.limitVar) > 0)
+
 	if len(ub.builderVars) > 0 {
 		needParen := flavor != SQLite
+
+		if nestedSelect {
+			buf.WriteLeadingString("SELECT * FROM (")
+		}
 
 		if needParen {
 			buf.WriteLeadingString("(")
@@ -164,6 +175,10 @@ func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 				buf.WriteRune(')')
 			}
 		}
+
+		if nestedSelect {
+			buf.WriteLeadingString(")")
+		}
 	}
 
 	ub.injection.WriteTo(buf, unionMarkerAfterUnion)
@@ -180,16 +195,114 @@ func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 		ub.injection.WriteTo(buf, unionMarkerAfterOrderBy)
 	}
 
-	if len(ub.limitVar) > 0 {
-		buf.WriteLeadingString("LIMIT ")
-		buf.WriteString(ub.limitVar)
+	switch flavor {
+	case MySQL, SQLite, ClickHouse:
+		if len(ub.limitVar) > 0 {
+			buf.WriteLeadingString("LIMIT ")
+			buf.WriteString(ub.limitVar)
 
-	}
+			if len(ub.offsetVar) > 0 {
+				buf.WriteLeadingString("OFFSET ")
+				buf.WriteString(ub.offsetVar)
+			}
+		}
 
-	if ((MySQL == flavor || Informix == flavor) && len(ub.limitVar) > 0) || PostgreSQL == flavor {
+	case CQL:
+		if len(ub.limitVar) > 0 {
+			buf.WriteLeadingString("LIMIT ")
+			buf.WriteString(ub.limitVar)
+		}
+
+	case PostgreSQL:
+		if len(ub.limitVar) > 0 {
+			buf.WriteLeadingString("LIMIT ")
+			buf.WriteString(ub.limitVar)
+		}
+
 		if len(ub.offsetVar) > 0 {
 			buf.WriteLeadingString("OFFSET ")
 			buf.WriteString(ub.offsetVar)
+		}
+
+	case Presto:
+		// There might be a hidden constraint in Presto requiring offset to be set before limit.
+		// The select statement documentation (https://prestodb.io/docs/current/sql/select.html)
+		// puts offset before limit, and Trino, which is based on Presto, seems
+		// to require this specific order.
+		if len(ub.offsetVar) > 0 {
+			buf.WriteLeadingString("OFFSET ")
+			buf.WriteString(ub.offsetVar)
+		}
+
+		if len(ub.limitVar) > 0 {
+			buf.WriteLeadingString("LIMIT ")
+			buf.WriteString(ub.limitVar)
+		}
+
+	case SQLServer:
+		// If ORDER BY is not set, sort column #1 by default.
+		// It's required to make OFFSET...FETCH work.
+		if len(ub.orderByCols) == 0 && (len(ub.limitVar) > 0 || len(ub.offsetVar) > 0) {
+			buf.WriteLeadingString("ORDER BY 1")
+		}
+
+		if len(ub.offsetVar) > 0 {
+			buf.WriteLeadingString("OFFSET ")
+			buf.WriteString(ub.offsetVar)
+			buf.WriteString(" ROWS")
+		}
+
+		if len(ub.limitVar) > 0 {
+			if len(ub.offsetVar) == 0 {
+				buf.WriteLeadingString("OFFSET 0 ROWS")
+			}
+
+			buf.WriteLeadingString("FETCH NEXT ")
+			buf.WriteString(ub.limitVar)
+			buf.WriteString(" ROWS ONLY")
+		}
+
+	case Oracle:
+		// It's required to make OFFSET...FETCH work.
+		if len(ub.offsetVar) > 0 {
+			buf.WriteLeadingString("OFFSET ")
+			buf.WriteString(ub.offsetVar)
+			buf.WriteString(" ROWS")
+		}
+
+		if len(ub.limitVar) > 0 {
+			if len(ub.offsetVar) == 0 {
+				buf.WriteLeadingString("OFFSET 0 ROWS")
+			}
+
+			buf.WriteLeadingString("FETCH NEXT ")
+			buf.WriteString(ub.limitVar)
+			buf.WriteString(" ROWS ONLY")
+		}
+
+	case Informix:
+		// [SKIP N] FIRST M
+		// M must be greater than 0
+		if len(ub.limitVar) > 0 {
+			if len(ub.offsetVar) > 0 {
+				buf.WriteLeadingString("SKIP ")
+				buf.WriteString(ub.offsetVar)
+			}
+
+			buf.WriteLeadingString("FIRST ")
+			buf.WriteString(ub.limitVar)
+		}
+
+	case Doris:
+		// #192: Doris doesn't support ? in OFFSET and LIMIT.
+		if len(ub.limitVar) > 0 {
+			buf.WriteLeadingString("LIMIT ")
+			buf.WriteString(fmt.Sprint(ub.args.Value(ub.limitVar)))
+
+			if len(ub.offsetVar) > 0 {
+				buf.WriteLeadingString("OFFSET ")
+				buf.WriteString(fmt.Sprint(ub.args.Value(ub.offsetVar)))
+			}
 		}
 	}
 
