@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"reflect"
 	"slices"
+	"sync"
 	"testing"
 )
 
@@ -381,4 +382,117 @@ func generateArgumentForType(argType reflect.Type, data []byte) reflect.Value {
 		// For other types, use zero value
 		return reflect.Zero(argType)
 	}
+}
+
+// FuzzSelectClone fuzzes SelectBuilder.Clone behavior under concurrent usage
+// and ensures cloned instances are independent and safe to mutate.
+func FuzzSelectClone(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte, seed int64, numberOfChainedFunction uint8) {
+		if len(data) == 0 {
+			return
+		}
+
+		methodList, methodNames := getSelectBuilderMethods()
+
+		r := rand.New(rand.NewSource(seed))
+		r.Shuffle(len(methodNames), func(i, j int) {
+			methodNames[i], methodNames[j] = methodNames[j], methodNames[i]
+		})
+
+		// Build a base template SelectBuilder via fuzzed method chains.
+		base := NewSelectBuilder()
+		baseState := &fuzzState{
+			data:                    data,
+			dataIndex:               0,
+			callchainRepresentation: "NewSelectBuilder()",
+			currentBuilder:          reflect.ValueOf(base),
+			usedMethods:             make(map[string]bool),
+		}
+
+		maxChains := numberOfChainedFunction
+		if maxChains > 10 {
+			maxChains = 10
+		}
+		executeMethodChain(methodList, methodNames, baseState, maxChains, t)
+
+		baseSQLBefore, baseArgsBefore := base.Build()
+
+		// Clone concurrently and mutate clones with fuzzed chains.
+		cloneCount := int(r.Uint32()%4) + 1 // 1..4 clones
+		var wg sync.WaitGroup
+		wg.Add(cloneCount)
+		start := make(chan struct{})
+
+		type result struct {
+			sql  string
+			args []interface{}
+		}
+		results := make(chan result, cloneCount)
+
+		for i := 0; i < cloneCount; i++ {
+			// Use different offsets into the same fuzz data for variety.
+			offset := 0
+			if len(data) > 0 {
+				offset = (i * 17) % len(data)
+			}
+			go func(off int) {
+				defer wg.Done()
+				<-start // start all goroutines roughly at the same time
+
+				c := base.Clone()
+				st := &fuzzState{
+					data:                    data,
+					dataIndex:               off,
+					callchainRepresentation: "Clone()",
+					currentBuilder:          reflect.ValueOf(c),
+					usedMethods:             make(map[string]bool),
+				}
+				executeMethodChain(methodList, methodNames, st, maxChains, t)
+				finalizeBuild(st) // ensure no panic on Build
+				s, a := c.Build()
+				results <- result{sql: s, args: a}
+			}(offset)
+		}
+
+		close(start)
+		wg.Wait()
+		close(results)
+
+		// Ensure base builder stays unchanged after concurrent cloning/mutation of clones.
+		baseSQLAfter, baseArgsAfter := base.Build()
+		if baseSQLBefore != baseSQLAfter || !reflect.DeepEqual(baseArgsBefore, baseArgsAfter) {
+			t.Fatalf("base builder mutated by clones:\n before: %s %v\n after: %s %v", baseSQLBefore, baseArgsBefore, baseSQLAfter, baseArgsAfter)
+		}
+
+		// Independence check: mutating one clone does not affect another clone.
+		cloneA := base.Clone()
+		sA1, aA1 := cloneA.Build()
+
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			c2 := base.Clone()
+			// Apply a deterministic small change; should not affect cloneA.
+			c2.OrderBy("id").Desc().Limit(1).Offset(0)
+			_, _ = c2.Build()
+		}()
+
+		sA2, aA2 := cloneA.Build()
+		if sA1 != sA2 || !reflect.DeepEqual(aA1, aA2) {
+			t.Fatalf("cloneA changed after mutating another clone")
+		}
+		<-done
+
+		// Further independence: modifying cloneA should not affect the base.
+		cloneA.Limit(3).Asc()
+		_ = cloneA.String()
+		baseSQLFinal, baseArgsFinal := base.Build()
+		if baseSQLFinal != baseSQLAfter || !reflect.DeepEqual(baseArgsFinal, baseArgsAfter) {
+			t.Fatalf("base changed after modifying a clone")
+		}
+
+		// Drain results to ensure all builds completed; mainly to use the values and avoid lints.
+		for range results {
+		}
+	})
 }
