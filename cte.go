@@ -117,12 +117,6 @@ func (cteb *CTEBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 			queryBuilderVars = append(queryBuilderVars, cteb.args.Add(query))
 		}
 		buf.WriteStrings(queryBuilderVars, ", ")
-
-		// buf.WriteString(cteb.args.Add(cteb.queries[0]))
-		// for i := range cteb.queries[1:] {
-		// 	buf.WriteString(", ")
-		// 	buf.WriteString(cteb.args.Add(cteb.queries[i]))
-		// }
 	}
 
 	cteb.injection.WriteTo(buf, cteMarkerAfterWith)
