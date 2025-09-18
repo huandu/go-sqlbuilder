@@ -48,7 +48,6 @@ func newSelectBuilder() *SelectBuilder {
 	proxy := &whereClauseProxy{}
 	return &SelectBuilder{
 		whereClauseProxy: proxy,
-		whereClauseExpr:  args.Add(proxy),
 
 		Cond: Cond{
 			Args: args,
@@ -69,10 +68,6 @@ func init() {
 	clone.SetCustomFunc(t, func(allocator *clone.Allocator, old, new reflect.Value) {
 		cloned := allocator.CloneSlowly(old)
 		new.Set(cloned)
-
-		sb := cloned.Addr().Interface().(*SelectBuilder)
-		sb.args.Replace(sb.whereClauseExpr, sb.whereClauseProxy)
-		sb.args.Replace(sb.cteBuilderVar, sb.cteBuilder)
 	})
 }
 
@@ -82,10 +77,8 @@ type SelectBuilder struct {
 	Cond
 
 	whereClauseProxy *whereClauseProxy
-	whereClauseExpr  string
 
-	cteBuilderVar string
-	cteBuilder    *CTEBuilder
+	cteBuilder *CTEBuilder
 
 	distinct    bool
 	tables      []string
@@ -140,7 +133,6 @@ func (sb *SelectBuilder) TableNames() []string {
 // With sets WITH clause (the Common Table Expression) before SELECT.
 func (sb *SelectBuilder) With(builder *CTEBuilder) *SelectBuilder {
 	sb.marker = selectMarkerAfterWith
-	sb.cteBuilderVar = sb.Var(builder)
 	sb.cteBuilder = builder
 	return sb
 }
@@ -344,8 +336,8 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 	oraclePage := flavor == Oracle && (len(sb.limitVar) > 0 || len(sb.offsetVar) > 0)
 
-	if sb.cteBuilderVar != "" {
-		buf.WriteLeadingString(sb.cteBuilderVar)
+	if sb.cteBuilder != nil {
+		buf.WriteLeadingString(sb.Var(sb.cteBuilder))
 		sb.injection.WriteTo(buf, selectMarkerAfterWith)
 	}
 
@@ -434,7 +426,7 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			sb.whereClauseProxy.WhereClause = nil
 		}()
 
-		buf.WriteLeadingString(sb.whereClauseExpr)
+		buf.WriteLeadingString(sb.args.Add(sb.whereClauseProxy))
 		sb.injection.WriteTo(buf, selectMarkerAfterWhere)
 	}
 

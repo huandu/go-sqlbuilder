@@ -31,7 +31,6 @@ func newUpdateBuilder() *UpdateBuilder {
 	proxy := &whereClauseProxy{}
 	return &UpdateBuilder{
 		whereClauseProxy: proxy,
-		whereClauseExpr:  args.Add(proxy),
 
 		Cond: Cond{
 			Args: args,
@@ -52,10 +51,6 @@ func init() {
 	clone.SetCustomFunc(t, func(allocator *clone.Allocator, old, new reflect.Value) {
 		cloned := allocator.CloneSlowly(old)
 		new.Set(cloned)
-
-		ub := cloned.Addr().Interface().(*UpdateBuilder)
-		ub.args.Replace(ub.whereClauseExpr, ub.whereClauseProxy)
-		ub.args.Replace(ub.cteBuilderVar, ub.cteBuilder)
 	})
 }
 
@@ -65,10 +60,7 @@ type UpdateBuilder struct {
 	Cond
 
 	whereClauseProxy *whereClauseProxy
-	whereClauseExpr  string
-
-	cteBuilderVar string
-	cteBuilder    *CTEBuilder
+	cteBuilder       *CTEBuilder
 
 	tables      []string
 	assignments []string
@@ -93,7 +85,6 @@ func Update(table ...string) *UpdateBuilder {
 // With sets WITH clause (the Common Table Expression) before UPDATE.
 func (ub *UpdateBuilder) With(builder *CTEBuilder) *UpdateBuilder {
 	ub.marker = updateMarkerAfterWith
-	ub.cteBuilderVar = ub.Var(builder)
 	ub.cteBuilder = builder
 	return ub
 }
@@ -271,7 +262,7 @@ func (ub *UpdateBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	ub.injection.WriteTo(buf, updateMarkerInit)
 
 	if ub.cteBuilder != nil {
-		buf.WriteLeadingString(ub.cteBuilderVar)
+		buf.WriteLeadingString(ub.Var(ub.cteBuilder))
 		ub.injection.WriteTo(buf, updateMarkerAfterWith)
 	}
 
@@ -319,7 +310,7 @@ func (ub *UpdateBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			ub.whereClauseProxy.WhereClause = nil
 		}()
 
-		buf.WriteLeadingString(ub.whereClauseExpr)
+		buf.WriteLeadingString(ub.args.Add(ub.whereClauseProxy))
 		ub.injection.WriteTo(buf, updateMarkerAfterWhere)
 	}
 

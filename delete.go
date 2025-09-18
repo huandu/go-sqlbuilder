@@ -29,7 +29,6 @@ func newDeleteBuilder() *DeleteBuilder {
 	proxy := &whereClauseProxy{}
 	return &DeleteBuilder{
 		whereClauseProxy: proxy,
-		whereClauseExpr:  args.Add(proxy),
 
 		Cond: Cond{
 			Args: args,
@@ -50,10 +49,6 @@ func init() {
 	clone.SetCustomFunc(t, func(allocator *clone.Allocator, old, new reflect.Value) {
 		cloned := allocator.CloneSlowly(old)
 		new.Set(cloned)
-
-		db := cloned.Addr().Interface().(*DeleteBuilder)
-		db.args.Replace(db.whereClauseExpr, db.whereClauseProxy)
-		db.args.Replace(db.cteBuilderVar, db.cteBuilder)
 	})
 }
 
@@ -63,10 +58,7 @@ type DeleteBuilder struct {
 	Cond
 
 	whereClauseProxy *whereClauseProxy
-	whereClauseExpr  string
-
-	cteBuilderVar string
-	cteBuilder    *CTEBuilder
+	cteBuilder       *CTEBuilder
 
 	tables      []string
 	orderByCols []string
@@ -90,7 +82,6 @@ func DeleteFrom(table ...string) *DeleteBuilder {
 // With sets WITH clause (the Common Table Expression) before DELETE.
 func (db *DeleteBuilder) With(builder *CTEBuilder) *DeleteBuilder {
 	db.marker = deleteMarkerAfterWith
-	db.cteBuilderVar = db.Var(builder)
 	db.cteBuilder = builder
 	return db
 }
@@ -210,7 +201,7 @@ func (db *DeleteBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	db.injection.WriteTo(buf, deleteMarkerInit)
 
 	if db.cteBuilder != nil {
-		buf.WriteLeadingString(db.cteBuilderVar)
+		buf.WriteLeadingString(db.Var(db.cteBuilder))
 		db.injection.WriteTo(buf, deleteMarkerAfterWith)
 	}
 
@@ -229,7 +220,7 @@ func (db *DeleteBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 			db.whereClauseProxy.WhereClause = nil
 		}()
 
-		buf.WriteLeadingString(db.whereClauseExpr)
+		buf.WriteLeadingString(db.args.Add(db.whereClauseProxy))
 		db.injection.WriteTo(buf, deleteMarkerAfterWhere)
 	}
 

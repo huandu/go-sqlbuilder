@@ -46,18 +46,14 @@ func init() {
 	clone.SetCustomFunc(t, func(allocator *clone.Allocator, old, new reflect.Value) {
 		cloned := allocator.CloneSlowly(old)
 		new.Set(cloned)
-
-		ctetb := cloned.Addr().Interface().(*CTEQueryBuilder)
-		ctetb.args.Replace(ctetb.builderVar, ctetb.builder)
 	})
 }
 
 // CTEQueryBuilder is a builder to build one table in CTE (Common Table Expression).
 type CTEQueryBuilder struct {
-	name       string
-	cols       []string
-	builder    Builder
-	builderVar string
+	name    string
+	cols    []string
+	builder Builder
 
 	// if true, this query's table name will be automatically added to the table list
 	// in FROM clause of SELECT statement.
@@ -87,7 +83,6 @@ func (ctetb *CTEQueryBuilder) Table(name string, cols ...string) *CTEQueryBuilde
 // As sets the builder to select data.
 func (ctetb *CTEQueryBuilder) As(builder Builder) *CTEQueryBuilder {
 	ctetb.builder = builder
-	ctetb.builderVar = ctetb.args.Add(builder)
 	ctetb.marker = cteQueryMarkerAfterAs
 	return ctetb
 }
@@ -131,9 +126,9 @@ func (ctetb *CTEQueryBuilder) BuildWithFlavor(flavor Flavor, initialArg ...inter
 		ctetb.injection.WriteTo(buf, cteQueryMarkerAfterTable)
 	}
 
-	if ctetb.builderVar != "" {
+	if ctetb.builder != nil {
 		buf.WriteLeadingString("AS (")
-		buf.WriteString(ctetb.builderVar)
+		buf.WriteString(ctetb.args.Add(ctetb.builder))
 		buf.WriteRune(')')
 
 		ctetb.injection.WriteTo(buf, cteQueryMarkerAfterAs)

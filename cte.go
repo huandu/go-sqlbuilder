@@ -42,19 +42,13 @@ func init() {
 	clone.SetCustomFunc(t, func(allocator *clone.Allocator, old, new reflect.Value) {
 		cloned := allocator.CloneSlowly(old)
 		new.Set(cloned)
-
-		cteb := cloned.Addr().Interface().(*CTEBuilder)
-		for i, b := range cteb.queries {
-			cteb.args.Replace(cteb.queryBuilderVars[i], b)
-		}
 	})
 }
 
 // CTEBuilder is a CTE (Common Table Expression) builder.
 type CTEBuilder struct {
-	recursive        bool
-	queries          []*CTEQueryBuilder
-	queryBuilderVars []string
+	recursive bool
+	queries   []*CTEQueryBuilder
 
 	args *Args
 
@@ -66,14 +60,8 @@ var _ Builder = new(CTEBuilder)
 
 // With sets the CTE name and columns.
 func (cteb *CTEBuilder) With(queries ...*CTEQueryBuilder) *CTEBuilder {
-	queryBuilderVars := make([]string, 0, len(queries))
-
-	for _, query := range queries {
-		queryBuilderVars = append(queryBuilderVars, cteb.args.Add(query))
-	}
 
 	cteb.queries = append([]*CTEQueryBuilder(nil), queries...)
-	cteb.queryBuilderVars = queryBuilderVars
 	cteb.marker = cteMarkerAfterWith
 	return cteb
 }
@@ -118,12 +106,23 @@ func (cteb *CTEBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 	buf := newStringBuilder()
 	cteb.injection.WriteTo(buf, cteMarkerInit)
 
-	if len(cteb.queryBuilderVars) > 0 {
+	if len(cteb.queries) > 0 {
 		buf.WriteLeadingString("WITH ")
 		if cteb.recursive {
 			buf.WriteString("RECURSIVE ")
 		}
-		buf.WriteStrings(cteb.queryBuilderVars, ", ")
+		queryBuilderVars := make([]string, 0, len(cteb.queries))
+
+		for _, query := range cteb.queries {
+			queryBuilderVars = append(queryBuilderVars, cteb.args.Add(query))
+		}
+		buf.WriteStrings(queryBuilderVars, ", ")
+
+		// buf.WriteString(cteb.args.Add(cteb.queries[0]))
+		// for i := range cteb.queries[1:] {
+		// 	buf.WriteString(", ")
+		// 	buf.WriteString(cteb.args.Add(cteb.queries[i]))
+		// }
 	}
 
 	cteb.injection.WriteTo(buf, cteMarkerAfterWith)
@@ -150,7 +149,7 @@ func (cteb *CTEBuilder) SQL(sql string) *CTEBuilder {
 
 // TableNames returns all table names in a CTE.
 func (cteb *CTEBuilder) TableNames() []string {
-	if len(cteb.queryBuilderVars) == 0 {
+	if len(cteb.queries) == 0 {
 		return nil
 	}
 

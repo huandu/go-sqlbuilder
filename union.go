@@ -45,11 +45,6 @@ func init() {
 	clone.SetCustomFunc(t, func(allocator *clone.Allocator, old, new reflect.Value) {
 		cloned := allocator.CloneSlowly(old)
 		new.Set(cloned)
-
-		ub := cloned.Addr().Interface().(*UnionBuilder)
-		for i, b := range ub.builders {
-			ub.args.Replace(ub.builderVars[i], b)
-		}
 	})
 }
 
@@ -61,8 +56,7 @@ type UnionBuilder struct {
 	limitVar    string
 	offsetVar   string
 
-	builders    []Builder
-	builderVars []string
+	builders []Builder
 
 	args *Args
 
@@ -93,15 +87,9 @@ func (ub *UnionBuilder) UnionAll(builders ...Builder) *UnionBuilder {
 }
 
 func (ub *UnionBuilder) union(opt string, builders ...Builder) *UnionBuilder {
-	builderVars := make([]string, 0, len(builders))
-
-	for _, b := range builders {
-		builderVars = append(builderVars, ub.Var(b))
-	}
 
 	ub.opt = opt
 	ub.builders = append([]Builder(nil), builders...)
-	ub.builderVars = builderVars
 	ub.marker = unionMarkerAfterUnion
 	return ub
 }
@@ -172,7 +160,7 @@ func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 	nestedSelect := (flavor == Oracle && (len(ub.limitVar) > 0 || len(ub.offsetVar) > 0)) ||
 		(flavor == Informix && len(ub.limitVar) > 0)
 
-	if len(ub.builderVars) > 0 {
+	if len(ub.builders) > 0 {
 		needParen := flavor != SQLite
 
 		if nestedSelect {
@@ -181,20 +169,20 @@ func (ub *UnionBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{}
 
 		if needParen {
 			buf.WriteLeadingString("(")
-			buf.WriteString(ub.builderVars[0])
+			buf.WriteString(ub.Var(ub.builders[0]))
 			buf.WriteRune(')')
 		} else {
-			buf.WriteLeadingString(ub.builderVars[0])
+			buf.WriteLeadingString(ub.Var(ub.builders[0]))
 		}
 
-		for _, b := range ub.builderVars[1:] {
+		for _, b := range ub.builders[1:] {
 			buf.WriteString(ub.opt)
 
 			if needParen {
 				buf.WriteRune('(')
 			}
 
-			buf.WriteString(b)
+			buf.WriteString(ub.Var(b))
 
 			if needParen {
 				buf.WriteRune(')')
