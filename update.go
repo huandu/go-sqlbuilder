@@ -301,6 +301,15 @@ func (ub *UpdateBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 	ub.injection.WriteTo(buf, updateMarkerAfterSet)
 
+	if flavor == SQLServer {
+		if len(ub.returning) > 0 {
+			buf.WriteLeadingString("OUTPUT ")
+			buf.WriteStringsPrefixed("INSERTED.", ub.returning, ", ")
+		}
+
+		ub.injection.WriteTo(buf, insertMarkerAfterReturning)
+	}
+
 	if flavor != MySQL {
 		// For ISO SQL, CTE table names should be written after FROM keyword.
 		if ub.cteBuilder != nil {

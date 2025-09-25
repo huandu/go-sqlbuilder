@@ -200,6 +200,15 @@ func (ib *InsertBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		ib.injection.WriteTo(buf, insertMarkerAfterCols)
 	}
 
+	if flavor == SQLServer {
+		if len(ib.returning) > 0 {
+			buf.WriteLeadingString("OUTPUT ")
+			buf.WriteStringsPrefixed("INSERTED.", ib.returning, ", ")
+		}
+
+		ib.injection.WriteTo(buf, insertMarkerAfterReturning)
+	}
+
 	if ib.sbHolder != "" {
 		buf.WriteString(" ")
 		buf.WriteString(ib.sbHolder)
