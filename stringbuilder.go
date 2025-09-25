@@ -56,6 +56,16 @@ func (sb *stringBuilder) WriteStrings(ss []string, sep string) {
 	}
 }
 
+func (sb *stringBuilder) WriteStringsPrefixed(prefix string, ss []string, sep string) {
+	prefixedSs := []string{}
+
+	for _, s := range ss {
+		prefixedSs = append(prefixedSs, prefix+s)
+	}
+
+	sb.WriteStrings(prefixedSs, sep)
+}
+
 func (sb *stringBuilder) WriteRune(r rune) {
 	sb.builder.WriteRune(r)
 }
