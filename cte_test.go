@@ -68,7 +68,7 @@ func ExampleCTEBuilder() {
 	sb.Where(
 		sb.LessEqualThan("orders.price", 200),
 		"valid_users.level < orders.min_level",
-	).OrderBy("orders.price").Desc()
+	).OrderByDesc("orders.price")
 
 	sql, args := sb.Build()
 	fmt.Println(sql)

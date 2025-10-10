@@ -26,7 +26,7 @@ func ExampleUnion() {
 	)
 
 	ub := Union(sb1, sb2)
-	ub.OrderBy("created_at").Desc()
+	ub.OrderByDesc("created_at")
 
 	sql, args := ub.Build()
 	fmt.Println(sql)
@@ -46,7 +46,7 @@ func ExampleUnionAll() {
 	)
 
 	ub := UnionAll(sb, Build("TABLE demo.user_profile"))
-	ub.OrderBy("created_at").Asc()
+	ub.OrderByAsc("created_at")
 	ub.Limit(100).Offset(5)
 
 	sql, args := ub.Build()

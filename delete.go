@@ -151,13 +151,40 @@ func (db *DeleteBuilder) AddWhereClause(whereClause *WhereClause) *DeleteBuilder
 }
 
 // OrderBy sets columns of ORDER BY in DELETE.
+//
+// Deprecated: Use OrderByAsc or OrderByDesc instead for better support of multiple ORDER BY columns with different directions.
+// OrderBy combined with Asc/Desc only supports a single direction for all columns.
 func (db *DeleteBuilder) OrderBy(col ...string) *DeleteBuilder {
 	db.orderByCols = col
 	db.marker = deleteMarkerAfterOrderBy
 	return db
 }
 
+// OrderByAsc sets a column of ORDER BY in DELETE with ASC order.
+// It supports chaining multiple calls to add multiple ORDER BY columns with different directions.
+//
+//	db.OrderByAsc("name").OrderByDesc("id")
+//	// Generates: ORDER BY name ASC, id DESC
+func (db *DeleteBuilder) OrderByAsc(col string) *DeleteBuilder {
+	db.orderByCols = append(db.orderByCols, col+" ASC")
+	db.marker = deleteMarkerAfterOrderBy
+	return db
+}
+
+// OrderByDesc sets a column of ORDER BY in DELETE with DESC order.
+// It supports chaining multiple calls to add multiple ORDER BY columns with different directions.
+//
+//	db.OrderByDesc("id").OrderByAsc("name")
+//	// Generates: ORDER BY id DESC, name ASC
+func (db *DeleteBuilder) OrderByDesc(col string) *DeleteBuilder {
+	db.orderByCols = append(db.orderByCols, col+" DESC")
+	db.marker = deleteMarkerAfterOrderBy
+	return db
+}
+
 // Asc sets order of ORDER BY to ASC.
+//
+// Deprecated: Use OrderByAsc instead. Asc only supports a single direction for all ORDER BY columns.
 func (db *DeleteBuilder) Asc() *DeleteBuilder {
 	db.order = "ASC"
 	db.marker = deleteMarkerAfterOrderBy
@@ -165,6 +192,8 @@ func (db *DeleteBuilder) Asc() *DeleteBuilder {
 }
 
 // Desc sets order of ORDER BY to DESC.
+//
+// Deprecated: Use OrderByDesc instead. Desc only supports a single direction for all ORDER BY columns.
 func (db *DeleteBuilder) Desc() *DeleteBuilder {
 	db.order = "DESC"
 	db.marker = deleteMarkerAfterOrderBy

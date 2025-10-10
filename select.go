@@ -245,13 +245,40 @@ func (sb *SelectBuilder) GroupBy(col ...string) *SelectBuilder {
 }
 
 // OrderBy sets columns of ORDER BY in SELECT.
+//
+// Deprecated: Use OrderByAsc or OrderByDesc instead for better support of multiple ORDER BY columns with different directions.
+// OrderBy combined with Asc/Desc only supports a single direction for all columns.
 func (sb *SelectBuilder) OrderBy(col ...string) *SelectBuilder {
 	sb.orderByCols = append(sb.orderByCols, col...)
 	sb.marker = selectMarkerAfterOrderBy
 	return sb
 }
 
+// OrderByAsc sets a column of ORDER BY in SELECT with ASC order.
+// It supports chaining multiple calls to add multiple ORDER BY columns with different directions.
+//
+//	sb.OrderByAsc("name").OrderByDesc("id")
+//	// Generates: ORDER BY name ASC, id DESC
+func (sb *SelectBuilder) OrderByAsc(col string) *SelectBuilder {
+	sb.orderByCols = append(sb.orderByCols, col+" ASC")
+	sb.marker = selectMarkerAfterOrderBy
+	return sb
+}
+
+// OrderByDesc sets a column of ORDER BY in SELECT with DESC order.
+// It supports chaining multiple calls to add multiple ORDER BY columns with different directions.
+//
+//	sb.OrderByDesc("id").OrderByAsc("name")
+//	// Generates: ORDER BY id DESC, name ASC
+func (sb *SelectBuilder) OrderByDesc(col string) *SelectBuilder {
+	sb.orderByCols = append(sb.orderByCols, col+" DESC")
+	sb.marker = selectMarkerAfterOrderBy
+	return sb
+}
+
 // Asc sets order of ORDER BY to ASC.
+//
+// Deprecated: Use OrderByAsc instead. Asc only supports a single direction for all ORDER BY columns.
 func (sb *SelectBuilder) Asc() *SelectBuilder {
 	sb.order = "ASC"
 	sb.marker = selectMarkerAfterOrderBy
@@ -259,6 +286,8 @@ func (sb *SelectBuilder) Asc() *SelectBuilder {
 }
 
 // Desc sets order of ORDER BY to DESC.
+//
+// Deprecated: Use OrderByDesc instead. Desc only supports a single direction for all ORDER BY columns.
 func (sb *SelectBuilder) Desc() *SelectBuilder {
 	sb.order = "DESC"
 	sb.marker = selectMarkerAfterOrderBy

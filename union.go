@@ -107,13 +107,40 @@ func (ub *UnionBuilder) union(opt string, builders ...Builder) *UnionBuilder {
 }
 
 // OrderBy sets columns of ORDER BY in SELECT.
+//
+// Deprecated: Use OrderByAsc or OrderByDesc instead for better support of multiple ORDER BY columns with different directions.
+// OrderBy combined with Asc/Desc only supports a single direction for all columns.
 func (ub *UnionBuilder) OrderBy(col ...string) *UnionBuilder {
 	ub.orderByCols = col
 	ub.marker = unionMarkerAfterOrderBy
 	return ub
 }
 
+// OrderByAsc sets a column of ORDER BY in SELECT with ASC order.
+// It supports chaining multiple calls to add multiple ORDER BY columns with different directions.
+//
+//	ub.OrderByAsc("name").OrderByDesc("id")
+//	// Generates: ORDER BY name ASC, id DESC
+func (ub *UnionBuilder) OrderByAsc(col string) *UnionBuilder {
+	ub.orderByCols = append(ub.orderByCols, col+" ASC")
+	ub.marker = unionMarkerAfterOrderBy
+	return ub
+}
+
+// OrderByDesc sets a column of ORDER BY in SELECT with DESC order.
+// It supports chaining multiple calls to add multiple ORDER BY columns with different directions.
+//
+//	ub.OrderByDesc("id").OrderByAsc("name")
+//	// Generates: ORDER BY id DESC, name ASC
+func (ub *UnionBuilder) OrderByDesc(col string) *UnionBuilder {
+	ub.orderByCols = append(ub.orderByCols, col+" DESC")
+	ub.marker = unionMarkerAfterOrderBy
+	return ub
+}
+
 // Asc sets order of ORDER BY to ASC.
+//
+// Deprecated: Use OrderByAsc instead. Asc only supports a single direction for all ORDER BY columns.
 func (ub *UnionBuilder) Asc() *UnionBuilder {
 	ub.order = "ASC"
 	ub.marker = unionMarkerAfterOrderBy
@@ -121,6 +148,8 @@ func (ub *UnionBuilder) Asc() *UnionBuilder {
 }
 
 // Desc sets order of ORDER BY to DESC.
+//
+// Deprecated: Use OrderByDesc instead. Desc only supports a single direction for all ORDER BY columns.
 func (ub *UnionBuilder) Desc() *UnionBuilder {
 	ub.order = "DESC"
 	ub.marker = unionMarkerAfterOrderBy

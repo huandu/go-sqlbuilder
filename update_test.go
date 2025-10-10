@@ -43,7 +43,7 @@ func ExampleUpdateBuilder() {
 		),
 		"modified_at > created_at + "+ub.Var(86400), // It's allowed to write arbitrary SQL.
 	)
-	ub.OrderBy("id").Asc()
+	ub.OrderByAsc("id")
 
 	sql, args := ub.Build()
 	fmt.Println(sql)
@@ -105,7 +105,7 @@ func ExampleUpdateBuilder_SQL() {
 		ub.Assign("type", "sys"),
 	)
 	ub.SQL("/* after set */")
-	ub.OrderBy("id").Desc()
+	ub.OrderByDesc("id")
 	ub.SQL("/* after order by */")
 	ub.Limit(10)
 	ub.SQL("/* after limit */")

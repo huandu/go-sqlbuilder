@@ -44,7 +44,7 @@ func ExampleSelectBuilder() {
 		"modified_at > created_at + "+sb.Var(86400), // It's allowed to write arbitrary SQL.
 	)
 	sb.GroupBy("status").Having(sb.NotIn("status", 4, 5))
-	sb.OrderBy("modified_at").Asc()
+	sb.OrderByAsc("modified_at")
 	sb.Limit(10).Offset(5)
 
 	s, args := sb.Build()
@@ -73,7 +73,7 @@ func ExampleSelectBuilder_advancedUsage() {
 		sb.In("status", Flatten([]int{1, 2, 3})...),
 		sb.Between("created_at", start, end),
 	)
-	sb.OrderBy("modified_at").Desc()
+	sb.OrderByDesc("modified_at")
 
 	innerSb.Select("*")
 	innerSb.From("banned")
@@ -407,7 +407,7 @@ func ExampleSelectBuilder_LateralAs() {
 				Where(
 					"all_sales.salesperson_id = salesperson.id",
 				).
-				OrderBy("amount").Desc().Limit(1),
+				OrderByDesc("amount").Limit(1),
 			"max_sale",
 		),
 	)
@@ -448,4 +448,107 @@ func TestSelectBuilderClone(t *testing.T) {
 	s1After := sb.String()
 	s2After := clone.String()
 	a.NotEqual(s1After, s2After)
+}
+
+func ExampleSelectBuilder_OrderByAsc() {
+	sb := NewSelectBuilder()
+	sb.Select("id", "name", "score")
+	sb.From("users")
+	sb.Where(sb.GreaterThan("score", 0))
+	sb.OrderByAsc("name")
+
+	sql, args := sb.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT id, name, score FROM users WHERE score > ? ORDER BY name ASC
+	// [0]
+}
+
+func ExampleSelectBuilder_OrderByDesc() {
+	sb := NewSelectBuilder()
+	sb.Select("id", "name", "score")
+	sb.From("users")
+	sb.Where(sb.GreaterThan("score", 0))
+	sb.OrderByDesc("score")
+
+	sql, args := sb.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT id, name, score FROM users WHERE score > ? ORDER BY score DESC
+	// [0]
+}
+
+func ExampleSelectBuilder_OrderByAsc_multiple() {
+	sb := NewSelectBuilder()
+	sb.Select("id", "name", "score")
+	sb.From("users")
+	sb.Where(sb.GreaterThan("score", 0))
+	// Chain multiple OrderByAsc and OrderByDesc calls with different directions
+	sb.OrderByDesc("score").OrderByAsc("name").OrderByDesc("id")
+
+	sql, args := sb.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT id, name, score FROM users WHERE score > ? ORDER BY score DESC, name ASC, id DESC
+	// [0]
+}
+
+func TestSelectBuilder_OrderByAscDesc(t *testing.T) {
+	a := assert.New(t)
+
+	// Test OrderByAsc with single column
+	sb := NewSelectBuilder()
+	sb.Select("*").From("users").OrderByAsc("name")
+	sql, _ := sb.Build()
+	a.Equal("SELECT * FROM users ORDER BY name ASC", sql)
+
+	// Test OrderByDesc with single column
+	sb = NewSelectBuilder()
+	sb.Select("*").From("users").OrderByDesc("id")
+	sql, _ = sb.Build()
+	a.Equal("SELECT * FROM users ORDER BY id DESC", sql)
+
+	// Test chaining OrderByAsc and OrderByDesc
+	sb = NewSelectBuilder()
+	sb.Select("*").From("users")
+	sb.OrderByDesc("score").OrderByAsc("name")
+	sql, _ = sb.Build()
+	a.Equal("SELECT * FROM users ORDER BY score DESC, name ASC", sql)
+
+	// Test multiple OrderByDesc calls
+	sb = NewSelectBuilder()
+	sb.Select("*").From("users")
+	sb.OrderByDesc("score").OrderByDesc("id")
+	sql, _ = sb.Build()
+	a.Equal("SELECT * FROM users ORDER BY score DESC, id DESC", sql)
+
+	// Test multiple OrderByAsc calls
+	sb = NewSelectBuilder()
+	sb.Select("*").From("users")
+	sb.OrderByAsc("name").OrderByAsc("email")
+	sql, _ = sb.Build()
+	a.Equal("SELECT * FROM users ORDER BY name ASC, email ASC", sql)
+
+	// Test mixed ordering with more complex scenario
+	sb = NewSelectBuilder()
+	sb.Select("id", "name", "score", "created_at").From("users")
+	sb.Where(sb.GreaterThan("score", 0))
+	sb.OrderByDesc("score").OrderByAsc("name").OrderByDesc("created_at")
+	sql, args := sb.Build()
+	a.Equal("SELECT id, name, score, created_at FROM users WHERE score > ? ORDER BY score DESC, name ASC, created_at DESC", sql)
+	a.Equal([]interface{}{0}, args)
+
+	// Test that OrderByAsc/OrderByDesc work with table aliases
+	sb = NewSelectBuilder()
+	sb.Select("u.id", "u.name", "o.total").From("users u")
+	sb.Join("orders o", "u.id = o.user_id")
+	sb.OrderByDesc("o.total").OrderByAsc("u.name")
+	sql, _ = sb.Build()
+	a.Equal("SELECT u.id, u.name, o.total FROM users u JOIN orders o ON u.id = o.user_id ORDER BY o.total DESC, u.name ASC", sql)
 }

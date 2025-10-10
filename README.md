@@ -11,6 +11,7 @@
   - [Pre-defined SQL builders](#pre-defined-sql-builders)
   - [Build `WHERE` clause](#build-where-clause)
   - [Share `WHERE` clause among builders](#share-where-clause-among-builders)
+  - [Build `ORDER BY` clause](#build-order-by-clause)
   - [Build SQL for different systems](#build-sql-for-different-systems)
   - [Using `Struct` as a light weight ORM](#using-struct-as-a-light-weight-orm)
   - [Nested SQL](#nested-sql)
@@ -202,6 +203,26 @@ fmt.Println(ub)
 ```
 
 Refer to the [WhereClause](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#WhereClause) examples to learn its usage.
+
+### Build `ORDER BY` clause
+
+The `ORDER BY` clause is commonly used to sort query results. This package provides convenient methods to build `ORDER BY` clauses with proper ordering directions.
+
+For scenarios where you need to order by multiple columns with different directions (ASC/DESC), use `OrderByAsc` and `OrderByDesc` methods. These methods can be chained to add multiple columns with their specific ordering.
+
+```go
+sb := sqlbuilder.NewSelectBuilder()
+sb.Select("id", "name", "score").From("users")
+sb.OrderByDesc("score").OrderByAsc("name")
+
+sql, args := sb.Build()
+fmt.Println(sql)
+
+// Output:
+// SELECT id, name, score FROM users ORDER BY score DESC, name ASC
+```
+
+The older `OrderBy` method combined with `Asc`/`Desc` is still available but deprecated, as it only supports a single ordering direction for all columns. The new `OrderByAsc` and `OrderByDesc` methods provide more flexibility and clarity when working with multiple columns.
 
 ### Build SQL for different systems
 
@@ -412,7 +433,7 @@ var baseUserSelect = sqlbuilder.NewSelectBuilder().
 
 func ListActiveUsers(limit, offset int) (string, []interface{}) {
     sb := baseUserSelect.Clone() // independent copy
-    sb.OrderBy("id").Asc()
+    sb.OrderByAsc("id")
     sb.Limit(limit).Offset(offset)
     return sb.Build()
 }
