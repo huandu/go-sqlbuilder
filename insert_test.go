@@ -275,7 +275,7 @@ func TestInsertBuilderReturning(test *testing.T) {
 	a.Equal("INSERT INTO user (name) VALUES (?) RETURNING id", sql)
 
 	sql, _ = ib.BuildWithFlavor(SQLServer)
-	a.Equal("INSERT INTO user (name) VALUES (@p1)", sql)
+	a.Equal("INSERT INTO user (name) OUTPUT INSERTED.id VALUES (@p1)", sql)
 
 	sql, _ = ib.BuildWithFlavor(CQL)
 	a.Equal("INSERT INTO user (name) VALUES (?)", sql)

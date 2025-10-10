@@ -197,7 +197,7 @@ func TestUpdateBuilderReturning(t *testing.T) {
 	a.Equal("UPDATE user SET name = ? WHERE id = ? RETURNING id, updated_at", sql)
 
 	sql, _ = ub.BuildWithFlavor(SQLServer)
-	a.Equal("UPDATE user SET name = @p1 WHERE id = @p2", sql)
+	a.Equal("UPDATE user SET name = @p1 OUTPUT INSERTED.id, INSERTED.updated_at WHERE id = @p2", sql)
 
 	sql, _ = ub.BuildWithFlavor(CQL)
 	a.Equal("UPDATE user SET name = ? WHERE id = ?", sql)

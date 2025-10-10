@@ -129,7 +129,7 @@ func TestDeleteBuilderReturning(t *testing.T) {
 	a.Equal("DELETE FROM user WHERE id = ? RETURNING id, deleted_at", sql)
 
 	sql, _ = db.BuildWithFlavor(SQLServer)
-	a.Equal("DELETE FROM user WHERE id = @p1", sql)
+	a.Equal("DELETE FROM user OUTPUT DELETED.id, DELETED.deleted_at WHERE id = @p1", sql)
 
 	sql, _ = db.BuildWithFlavor(CQL)
 	a.Equal("DELETE FROM user WHERE id = ?", sql)

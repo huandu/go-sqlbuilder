@@ -223,6 +223,15 @@ func (db *DeleteBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 	db.injection.WriteTo(buf, deleteMarkerAfterDeleteFrom)
 
+	if flavor == SQLServer {
+		if len(db.returning) > 0 {
+			buf.WriteLeadingString("OUTPUT ")
+			buf.WriteStringsPrefixed("DELETED.", db.returning, ", ")
+		}
+
+		db.injection.WriteTo(buf, insertMarkerAfterReturning)
+	}
+
 	if db.WhereClause != nil {
 		db.whereClauseProxy.WhereClause = db.WhereClause
 		defer func() {
