@@ -117,6 +117,32 @@ func ExampleSelectBuilder_join() {
 	// [1 2 5 %Du 86400]
 }
 
+func ExampleSelectBuilder_nestedJoin() {
+	sb := NewSelectBuilder()
+	nestedSb := NewSelectBuilder()
+
+	// Build the nested subquery
+	nestedSb.Select("b.id", "b.user_id")
+	nestedSb.From("users2 AS b")
+	nestedSb.Where(nestedSb.GreaterThan("b.age", 20))
+
+	// Build the main query with nested join
+	sb.Select("a.id", "a.user_id")
+	sb.From("users AS a")
+	sb.Join(
+		sb.BuilderAs(nestedSb, "b"),
+		"a.user_id = b.user_id",
+	)
+
+	sql, args := sb.Build()
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT a.id, a.user_id FROM users AS a JOIN (SELECT b.id, b.user_id FROM users2 AS b WHERE b.age > ?) AS b ON a.user_id = b.user_id
+	// [20]
+}
+
 func ExampleSelectBuilder_limit_offset() {
 	flavors := []Flavor{MySQL, PostgreSQL, SQLite, SQLServer, CQL, ClickHouse, Presto, Oracle, Informix, Doris}
 	results := make([][]string, len(flavors))

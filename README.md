@@ -15,6 +15,7 @@
   - [Build SQL for different systems](#build-sql-for-different-systems)
   - [Using `Struct` as a light weight ORM](#using-struct-as-a-light-weight-orm)
   - [Nested SQL](#nested-sql)
+  - [Nested `JOIN`](#nested-join)
   - [Use `sql.Named` in a builder](#use-sqlnamed-in-a-builder)
   - [Argument modifiers](#argument-modifiers)
   - [Freestyle builder](#freestyle-builder)
@@ -346,6 +347,38 @@ fmt.Println(args)
 // Output:
 // SELECT id FROM (SELECT id FROM user WHERE level > ?) AS user WHERE status IN (SELECT status FROM config WHERE state = ?)
 // [4 1]
+```
+
+### Nested `JOIN`
+
+In addition to nested subqueries, you can also use `BuilderAs` to create nested JOINs. This is particularly useful when you need to join with a filtered or transformed dataset.
+
+Here is an example showing how to join a table with a nested subquery:
+
+```go
+sb := sqlbuilder.NewSelectBuilder()
+nestedSb := sqlbuilder.NewSelectBuilder()
+
+// Build the nested subquery
+nestedSb.Select("b.id", "b.user_id")
+nestedSb.From("users2 AS b")
+nestedSb.Where(nestedSb.GreaterThan("b.age", 20))
+
+// Build the main query with nested join
+sb.Select("a.id", "a.user_id")
+sb.From("users AS a")
+sb.Join(
+    sb.BuilderAs(nestedSb, "b"),
+    "a.user_id = b.user_id",
+)
+
+sql, args := sb.Build()
+fmt.Println(sql)
+fmt.Println(args)
+
+// Output:
+// SELECT a.id, a.user_id FROM users AS a JOIN (SELECT b.id, b.user_id FROM users2 AS b WHERE b.age > ?) AS b ON a.user_id = b.user_id
+// [20]
 ```
 
 ### Use `sql.Named` in a builder
