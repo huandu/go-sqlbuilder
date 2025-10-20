@@ -263,7 +263,7 @@ func ExampleSelectBuilder_limit_offset() {
 	// #1: SELECT * FROM user
 	// #2: SELECT * FROM (SELECT ROWNUM r, * FROM (SELECT * FROM user) user) WHERE r >= :1 + 1
 	// #3: SELECT * FROM (SELECT ROWNUM r, * FROM (SELECT * FROM user) user) WHERE r BETWEEN :1 + 1 AND :2 + :3
-	// #4: SELECT * FROM (SELECT ROWNUM r, * FROM (SELECT * FROM user) user) WHERE r BETWEEN 1 AND :1 + 1
+	// #4: SELECT * FROM (SELECT ROWNUM r, * FROM (SELECT * FROM user) user) WHERE r BETWEEN 1 AND :1
 	// #5: SELECT * FROM (SELECT ROWNUM r, * FROM (SELECT * FROM user ORDER BY id) user) WHERE r BETWEEN :1 + 1 AND :2 + :3
 	//
 	// Informix
