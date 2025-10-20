@@ -543,7 +543,6 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 				} else {
 					buf.WriteString("1 AND ")
 					buf.WriteString(sb.limitVar)
-					buf.WriteString(" + 1")
 				}
 			} else {
 				// As oraclePage is true, sb.offsetVar must not be empty.
