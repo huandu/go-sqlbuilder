@@ -697,7 +697,7 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 			}
 
 			if elem := primative.Type().Elem(); elem.Kind() != reflect.Uint8 {
-				return nil, fmt.Errorf("%w: %s", ErrInterpolateUnsupportedArgs, elem.Name())
+				return nil, fmt.Errorf("%w: only byte slices are supported", ErrInterpolateUnsupportedArgs)
 			}
 
 			var data []byte
