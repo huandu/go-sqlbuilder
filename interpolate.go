@@ -803,12 +803,12 @@ func quoteStringValue(buf []byte, s string, flavor Flavor) []byte {
 			buf = append(buf, "\\Z"...)
 
 		case '\'':
-			if flavor == CQL {
+			switch flavor {
+			case SQLite, CQL:
 				buf = append(buf, "''"...)
-			} else {
+			default:
 				buf = append(buf, "\\'"...)
 			}
-
 		case '"':
 			buf = append(buf, "\\\""...)
 
