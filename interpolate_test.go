@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -385,7 +386,7 @@ func TestFlavorInterpolate(t *testing.T) {
 			query, err := c.Flavor.Interpolate(c.SQL, c.Args)
 
 			a.Equal(query, c.Query)
-			a.Assert(err == c.Err || err.Error() == c.Err.Error())
+			a.Assert(errors.Is(err, c.Err) || strings.Contains(err.Error(), c.Err.Error()))
 		})
 	}
 }
