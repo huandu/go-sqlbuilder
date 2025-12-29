@@ -697,7 +697,7 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 			}
 
 			if elem := primative.Type().Elem(); elem.Kind() != reflect.Uint8 {
-				return nil, ErrInterpolateUnsupportedArgs
+				return nil, fmt.Errorf("%w: only byte slices are supported", ErrInterpolateUnsupportedArgs)
 			}
 
 			var data []byte
@@ -750,11 +750,11 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 				buf = append(buf, "')"...)
 
 			default:
-				return nil, ErrInterpolateUnsupportedArgs
+				return nil, fmt.Errorf("%w: unsupported flavor for hex number", ErrInterpolateUnsupportedArgs)
 			}
 
 		default:
-			return nil, ErrInterpolateUnsupportedArgs
+			return nil, fmt.Errorf("%w: %s", ErrInterpolateUnsupportedArgs, primative.Type().Name())
 		}
 	}
 
