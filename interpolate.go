@@ -786,42 +786,42 @@ func quoteStringValue(buf []byte, s string, flavor Flavor) []byte {
 		switch r {
 		case '\x00':
 			switch flavor {
-			case SQLite: // SQLite doesn't support \0
+			case SQLite:
 				buf = append(buf, `'||char(0)||'`...)
 			default:
 				buf = append(buf, `\0`...)
 			}
 		case '\b':
 			switch flavor {
-			case SQLite: // SQLite doesn't have any special meaning for back slashes "\"
+			case SQLite:
 				buf = append(buf, '\b')
 			default:
 				buf = append(buf, `\b`...)
 			}
 		case '\n':
 			switch flavor {
-			case SQLite: // SQLite doesn't have any special meaning for back slashes "\"
+			case SQLite:
 				buf = append(buf, '\n')
 			default:
 				buf = append(buf, `\n`...)
 			}
 		case '\r':
 			switch flavor {
-			case SQLite: // SQLite doesn't have any special meaning for back slashes "\"
+			case SQLite:
 				buf = append(buf, '\r')
 			default:
 				buf = append(buf, `\r`...)
 			}
 		case '\t':
 			switch flavor {
-			case SQLite: // SQLite doesn't have any special meaning for back slashes "\"
+			case SQLite:
 				buf = append(buf, '\t')
 			default:
 				buf = append(buf, `\t`...)
 			}
 		case '\x1a':
 			switch flavor {
-			case SQLite: // SQLite doesn't have any special meaning for back slashes "\"
+			case SQLite:
 				buf = append(buf, '\x1a')
 			default:
 				buf = append(buf, `\Z`...)
@@ -835,14 +835,14 @@ func quoteStringValue(buf []byte, s string, flavor Flavor) []byte {
 			}
 		case '"':
 			switch flavor {
-			case SQLite: // SQLite Supports direct use of " inside strings
+			case SQLite:
 				buf = append(buf, '"')
 			default:
 				buf = append(buf, `\"`...)
 			}
 		case '\\':
 			switch flavor {
-			case SQLite: // SQLite doesn't have any special meaning for back slashes "\"
+			case SQLite:
 				buf = append(buf, '\\')
 			default:
 				buf = append(buf, `\\`...)
