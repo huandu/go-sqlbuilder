@@ -246,7 +246,7 @@ func (sb *SelectBuilder) GroupBy(col ...string) *SelectBuilder {
 
 // OrderBy sets columns of ORDER BY in SELECT.
 //
-// Deprecated: Use OrderByAsc or OrderByDesc instead for better support of multiple ORDER BY columns with different directions.
+// It's recommended to use OrderByAsc or OrderByDesc instead for better support of multiple ORDER BY columns with different directions.
 // OrderBy combined with Asc/Desc only supports a single direction for all columns.
 func (sb *SelectBuilder) OrderBy(col ...string) *SelectBuilder {
 	sb.orderByCols = append(sb.orderByCols, col...)

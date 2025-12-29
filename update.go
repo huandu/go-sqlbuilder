@@ -208,7 +208,7 @@ func (ub *UpdateBuilder) Div(field string, value interface{}) string {
 
 // OrderBy sets columns of ORDER BY in UPDATE.
 //
-// Deprecated: Use OrderByAsc or OrderByDesc instead for better support of multiple ORDER BY columns with different directions.
+// It's recommended to use OrderByAsc or OrderByDesc instead for better support of multiple ORDER BY columns with different directions.
 // OrderBy combined with Asc/Desc only supports a single direction for all columns.
 func (ub *UpdateBuilder) OrderBy(col ...string) *UpdateBuilder {
 	ub.orderByCols = col

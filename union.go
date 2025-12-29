@@ -108,7 +108,7 @@ func (ub *UnionBuilder) union(opt string, builders ...Builder) *UnionBuilder {
 
 // OrderBy sets columns of ORDER BY in SELECT.
 //
-// Deprecated: Use OrderByAsc or OrderByDesc instead for better support of multiple ORDER BY columns with different directions.
+// It's recommended to use OrderByAsc or OrderByDesc instead for better support of multiple ORDER BY columns with different directions.
 // OrderBy combined with Asc/Desc only supports a single direction for all columns.
 func (ub *UnionBuilder) OrderBy(col ...string) *UnionBuilder {
 	ub.orderByCols = col
