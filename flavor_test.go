@@ -105,7 +105,7 @@ func ExampleFlavor_Interpolate_sqlite() {
 	fmt.Println(err)
 
 	// Output:
-	// SELECT name FROM user WHERE id <> 1234 AND name = 'Charmy Liu' AND desc LIKE '%mother\'s day%'
+	// SELECT name FROM user WHERE id <> 1234 AND name = 'Charmy Liu' AND desc LIKE '%mother''s day%'
 	// <nil>
 }
 
