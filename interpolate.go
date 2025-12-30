@@ -785,36 +785,68 @@ func quoteStringValue(buf []byte, s string, flavor Flavor) []byte {
 	for ; sz != 0; r, sz = utf8.DecodeRuneInString(s) {
 		switch r {
 		case '\x00':
-			buf = append(buf, "\\0"...)
-
-		case '\b':
-			buf = append(buf, "\\b"...)
-
-		case '\n':
-			buf = append(buf, "\\n"...)
-
-		case '\r':
-			buf = append(buf, "\\r"...)
-
-		case '\t':
-			buf = append(buf, "\\t"...)
-
-		case '\x1a':
-			buf = append(buf, "\\Z"...)
-
-		case '\'':
-			if flavor == CQL {
-				buf = append(buf, "''"...)
-			} else {
-				buf = append(buf, "\\'"...)
+			switch flavor {
+			case SQLite:
+				buf = append(buf, `'||char(0)||'`...)
+			default:
+				buf = append(buf, `\0`...)
 			}
-
+		case '\b':
+			switch flavor {
+			case SQLite:
+				buf = append(buf, '\b')
+			default:
+				buf = append(buf, `\b`...)
+			}
+		case '\n':
+			switch flavor {
+			case SQLite:
+				buf = append(buf, '\n')
+			default:
+				buf = append(buf, `\n`...)
+			}
+		case '\r':
+			switch flavor {
+			case SQLite:
+				buf = append(buf, '\r')
+			default:
+				buf = append(buf, `\r`...)
+			}
+		case '\t':
+			switch flavor {
+			case SQLite:
+				buf = append(buf, '\t')
+			default:
+				buf = append(buf, `\t`...)
+			}
+		case '\x1a':
+			switch flavor {
+			case SQLite:
+				buf = append(buf, '\x1a')
+			default:
+				buf = append(buf, `\Z`...)
+			}
+		case '\'':
+			switch flavor {
+			case SQLite, CQL:
+				buf = append(buf, "''"...)
+			default:
+				buf = append(buf, `\'`...)
+			}
 		case '"':
-			buf = append(buf, "\\\""...)
-
+			switch flavor {
+			case SQLite:
+				buf = append(buf, '"')
+			default:
+				buf = append(buf, `\"`...)
+			}
 		case '\\':
-			buf = append(buf, "\\\\"...)
-
+			switch flavor {
+			case SQLite:
+				buf = append(buf, '\\')
+			default:
+				buf = append(buf, `\\`...)
+			}
 		default:
 			buf = append(buf, s[:sz]...)
 		}
