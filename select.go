@@ -519,7 +519,6 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 		}
 
 	case Oracle:
-		// It's required to make OFFSET...FETCH work.
 		if len(sb.offsetVar) > 0 {
 			buf.WriteLeadingString("OFFSET ")
 			buf.WriteString(sb.offsetVar)
