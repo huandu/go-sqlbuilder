@@ -261,10 +261,10 @@ func ExampleSelectBuilder_limit_offset() {
 	//
 	// Oracle
 	// #1: SELECT * FROM user
-	// #2: SELECT * FROM (SELECT ROWNUM r, * FROM (SELECT * FROM user) user) WHERE r >= :1 + 1
-	// #3: SELECT * FROM (SELECT ROWNUM r, * FROM (SELECT * FROM user) user) WHERE r BETWEEN :1 + 1 AND :2 + :3
-	// #4: SELECT * FROM (SELECT ROWNUM r, * FROM (SELECT * FROM user) user) WHERE r BETWEEN 1 AND :1
-	// #5: SELECT * FROM (SELECT ROWNUM r, * FROM (SELECT * FROM user ORDER BY id) user) WHERE r BETWEEN :1 + 1 AND :2 + :3
+	// #2: SELECT * FROM user OFFSET :1 ROWS
+	// #3: SELECT * FROM user OFFSET :1 ROWS FETCH NEXT :2 ROWS ONLY
+	// #4: SELECT * FROM user OFFSET 0 ROWS FETCH NEXT :1 ROWS ONLY
+	// #5: SELECT * FROM user ORDER BY id OFFSET :1 ROWS FETCH NEXT :2 ROWS ONLY
 	//
 	// Informix
 	// #1: SELECT * FROM user
