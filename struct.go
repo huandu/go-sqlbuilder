@@ -376,8 +376,16 @@ func (s *Struct) updateWithTags(table string, with, without []string, value inte
 	assignments := make([]string, 0, len(tagged.ForWrite))
 
 	for _, sf := range tagged.ForWrite {
-		name := sf.Name
-		val := v.FieldByName(name)
+		val, ok := fieldByIndex(v, sf.Index, false)
+
+		if !ok || !val.IsValid() {
+			if sf.ShouldOmitEmpty(with...) {
+				continue
+			}
+
+			assignments = append(assignments, ub.Assign(sf.Quote(s.Flavor), nil))
+			continue
+		}
 
 		if isEmptyValue(val) {
 			if sf.ShouldOmitEmpty(with...) {
@@ -387,7 +395,10 @@ func (s *Struct) updateWithTags(table string, with, without []string, value inte
 			val = dereferencedFieldValue(val)
 		}
 
-		data := val.Interface()
+		var data interface{}
+		if val.IsValid() {
+			data = val.Interface()
+		}
 		assignments = append(assignments, ub.Assign(sf.Quote(s.Flavor), data))
 	}
 
@@ -471,12 +482,16 @@ func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, with, without []str
 
 	for _, sf := range tagged.ForWrite {
 		cols = append(cols, sf.Quote(s.Flavor))
-		name := sf.Name
 		shouldOmitEmpty := sf.ShouldOmitEmpty(with...)
 		nilCnt := 0
 
 		for i, v := range vs {
-			val := v.FieldByName(name)
+			val, ok := fieldByIndex(v, sf.Index, false)
+			if !ok || !val.IsValid() {
+				nilCnt++
+				values[i] = append(values[i], nil)
+				continue
+			}
 
 			if isEmptyValue(val) && shouldOmitEmpty {
 				nilCnt++
@@ -639,8 +654,12 @@ func (s *Struct) addrWithFields(fields []*structField, st interface{}) []interfa
 	addrs := make([]interface{}, 0, len(fields))
 
 	for _, sf := range fields {
-		name := sf.Name
-		data := v.FieldByName(name).Addr().Interface()
+		field, ok := fieldByIndex(v, sf.Index, true)
+		if !ok || !field.IsValid() {
+			return nil
+		}
+
+		data := field.Addr().Interface()
 		addrs = append(addrs, data)
 	}
 
@@ -708,8 +727,13 @@ func (s *Struct) valuesWithTags(with, without []string, value interface{}) (valu
 	values = make([]interface{}, 0, len(tagged.ForWrite))
 
 	for _, sf := range tagged.ForWrite {
-		name := sf.Name
-		data := v.FieldByName(name).Interface()
+		field, ok := fieldByIndex(v, sf.Index, false)
+		if !ok || !field.IsValid() {
+			values = append(values, nil)
+			continue
+		}
+
+		data := field.Interface()
 		values = append(values, data)
 	}
 
@@ -770,15 +794,53 @@ func dereferencedFieldValue(v reflect.Value) reflect.Value {
 			break
 		}
 
+		if v.IsNil() {
+			return reflect.Value{}
+		}
+
 		v = v.Elem()
 	}
 
 	return v
 }
 
+func fieldByIndex(v reflect.Value, index []int, allocate bool) (reflect.Value, bool) {
+	field := v
+
+	for i, idx := range index {
+		for field.Kind() == reflect.Ptr || field.Kind() == reflect.Interface {
+			if field.IsNil() {
+				if !allocate || field.Kind() != reflect.Ptr {
+					return reflect.Value{}, false
+				}
+
+				field.Set(reflect.New(field.Type().Elem()))
+			}
+
+			field = field.Elem()
+		}
+
+		if field.Kind() != reflect.Struct || idx < 0 || idx >= field.NumField() {
+			return reflect.Value{}, false
+		}
+
+		field = field.Field(idx)
+
+		if i == len(index)-1 {
+			return field, true
+		}
+	}
+
+	return field, true
+}
+
 // isEmptyValue checks if v is zero.
 // Following code is borrowed from `IsZero` method in `reflect.Value` since Go 1.13.
 func isEmptyValue(v reflect.Value) bool {
+	if !v.IsValid() {
+		return true
+	}
+
 	switch v.Kind() {
 	case reflect.Bool:
 		return !v.Bool()

@@ -1,11 +1,14 @@
 package sqlbuilder
 
 import (
+	"database/sql"
 	"fmt"
 	"reflect"
 	"strings"
 	"sync"
 )
+
+var typeOfSQLScanner = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
 
 type structFields struct {
 	noTag  *structTaggedFields
@@ -30,6 +33,7 @@ type structField struct {
 	IsQuoted bool
 	DBTag    string
 	Field    reflect.StructField
+	Index    []int
 
 	omitEmptyTags omitEmptyTagMap
 }
@@ -57,14 +61,14 @@ func makeFieldsParser(t reflect.Type, mapper FieldMapperFunc, useDefault bool) s
 				mapper = DefaultFieldMapper
 			}
 
-			sfs.parse(t, mapper, "")
+			sfs.parse(t, mapper, "", nil)
 		})
 
 		return sfs
 	}
 }
 
-func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix string) {
+func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix string, index []int) {
 	l := t.NumField()
 	var anonymous []reflect.StructField
 
@@ -80,7 +84,7 @@ func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix st
 			ft := field.Type
 
 			// If field is an anonymous struct or pointer to struct, parse it later.
-			if k := ft.Kind(); k == reflect.Struct || (k == reflect.Ptr && ft.Elem().Kind() == reflect.Struct) {
+			if shouldExpandAnonymousStructField(ft) {
 				anonymous = append(anonymous, field)
 				continue
 			}
@@ -93,11 +97,20 @@ func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix st
 			continue
 		}
 
+		if shouldExpandTaggedStructField(field.Type, dbtag) {
+			sfs.parse(dereferencedType(field.Type), mapper, dbtag+".", appendFieldIndex(index, i))
+			continue
+		}
+
 		if alias == "" {
 			alias = field.Name
 			if mapper != nil {
 				alias = mapper(alias)
 			}
+		}
+
+		if prefix != "" && !strings.ContainsRune(alias, '.') {
+			alias = prefix + alias
 		}
 
 		// Parse FieldOpt.
@@ -138,6 +151,7 @@ func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix st
 			IsQuoted:      isQuoted,
 			DBTag:         dbtag,
 			Field:         field,
+			Index:         appendFieldIndex(index, i),
 			omitEmptyTags: omitEmptyTags,
 		}
 
@@ -151,8 +165,59 @@ func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix st
 
 	for _, field := range anonymous {
 		ft := dereferencedType(field.Type)
-		sfs.parse(ft, mapper, prefix+field.Name+".")
+		sfs.parse(ft, mapper, prefix, appendFieldIndex(index, field.Index...))
 	}
+}
+
+func appendFieldIndex(prefix []int, index ...int) []int {
+	path := make([]int, 0, len(prefix)+len(index))
+	path = append(path, prefix...)
+	path = append(path, index...)
+	return path
+}
+
+func shouldExpandAnonymousStructField(t reflect.Type) bool {
+	return canExpandStructType(t)
+}
+
+func shouldExpandTaggedStructField(t reflect.Type, dbtag string) bool {
+	return dbtag != "" && canExpandStructType(t)
+}
+
+func canExpandStructType(t reflect.Type) bool {
+	if t == nil {
+		return false
+	}
+
+	dt := dereferencedType(t)
+	if dt.Kind() != reflect.Struct {
+		return false
+	}
+
+	if implementsScannerOrValuer(t) || implementsScannerOrValuer(dt) {
+		return false
+	}
+
+	if dt != t && implementsScannerOrValuer(reflect.PtrTo(dt)) {
+		return false
+	}
+
+	for i := 0; i < dt.NumField(); i++ {
+		field := dt.Field(i)
+		if field.PkgPath == "" || field.Anonymous {
+			return true
+		}
+	}
+
+	return false
+}
+
+func implementsScannerOrValuer(t reflect.Type) bool {
+	if t == nil {
+		return false
+	}
+
+	return t.Implements(typeOfSQLDriverValuer) || t.Implements(typeOfSQLScanner)
 }
 
 func (sfs *structFields) FilterTags(with, without []string) *structTaggedFields {

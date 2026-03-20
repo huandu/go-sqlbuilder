@@ -21,7 +21,28 @@ type structUserForTest struct {
 	unexported struct{}
 }
 
+type structNestedPostForTest struct {
+	ID   string `db:"id" fieldtag:"post"`
+	Text string `db:"text"`
+}
+
+type structNestedCommentForTest struct {
+	ID   string `db:"id" fieldtag:"comment"`
+	Body string `db:"body"`
+}
+
+type structNestedJoinRowForTest struct {
+	Post    structNestedPostForTest     `db:"post"`
+	Comment *structNestedCommentForTest `db:"comment"`
+	Rank    int                         `db:"rank" fieldtag:"meta"`
+}
+
+type structTimeValueForTest struct {
+	CreatedAt time.Time `db:"created_at"`
+}
+
 var userForTest = NewStruct(new(structUserForTest))
+var nestedJoinRowForTest = NewStruct(new(structNestedJoinRowForTest))
 var _ = new(structUserForTest).unexported // disable lint warning
 
 func TestStructSelectFrom(t *testing.T) {
@@ -260,6 +281,75 @@ func TestStructColumns(t *testing.T) {
 	a.Equal(userForTest.ColumnsForTag("invalid"), nil)
 }
 
+func TestStructNestedAliasSelectAndColumns(t *testing.T) {
+	a := assert.New(t)
+	sql, args := nestedJoinRowForTest.SelectFrom("posts post").
+		Join("comments comment", "post.id = comment.post_id").
+		Build()
+
+	a.Equal(sql, "SELECT post.id, post.text, comment.id, comment.body, post.rank FROM posts post JOIN comments comment ON post.id = comment.post_id")
+	a.Equal(args, nil)
+	a.Equal(nestedJoinRowForTest.Columns(), []string{"post.id", "post.text", "comment.id", "comment.body", "rank"})
+	a.Equal(nestedJoinRowForTest.WithTag("post", "meta").Columns(), []string{"rank", "post.id"})
+}
+
+func TestStructNestedAliasAddrValuesAndWrites(t *testing.T) {
+	a := assert.New(t)
+	row := &structNestedJoinRowForTest{
+		Post: structNestedPostForTest{
+			ID:   "post-1",
+			Text: "hello",
+		},
+		Comment: &structNestedCommentForTest{
+			ID:   "comment-1",
+			Body: "world",
+		},
+		Rank: 7,
+	}
+
+	a.Equal(nestedJoinRowForTest.Values(row), []interface{}{"post-1", "hello", "comment-1", "world", 7})
+
+	updateSQL, updateArgs := nestedJoinRowForTest.Update("joined", row).Build()
+	a.Equal(updateSQL, "UPDATE joined SET post.id = ?, post.text = ?, comment.id = ?, comment.body = ?, rank = ?")
+	a.Equal(updateArgs, []interface{}{"post-1", "hello", "comment-1", "world", 7})
+
+	insertSQL, insertArgs := nestedJoinRowForTest.InsertInto("joined", row).Build()
+	a.Equal(insertSQL, "INSERT INTO joined (post.id, post.text, comment.id, comment.body, rank) VALUES (?, ?, ?, ?, ?)")
+	a.Equal(insertArgs, []interface{}{"post-1", "hello", "comment-1", "world", 7})
+
+	var scanned structNestedJoinRowForTest
+	_, _ = fmt.Sscan("post-2 newer comment-2 scanned 9", nestedJoinRowForTest.Addr(&scanned)...)
+	a.Equal(scanned.Post.ID, "post-2")
+	a.Equal(scanned.Post.Text, "newer")
+	a.Assert(scanned.Comment != nil)
+	a.Equal(scanned.Comment.ID, "comment-2")
+	a.Equal(scanned.Comment.Body, "scanned")
+	a.Equal(scanned.Rank, 9)
+
+	var reordered structNestedJoinRowForTest
+	_, _ = fmt.Sscan("comment-3 11 post-3 reverse", nestedJoinRowForTest.AddrWithCols([]string{"comment.id", "rank", "post.id", "comment.body"}, &reordered)...)
+	a.Assert(reordered.Comment != nil)
+	a.Equal(reordered.Comment.ID, "comment-3")
+	a.Equal(reordered.Rank, 11)
+	a.Equal(reordered.Post.ID, "post-3")
+	a.Equal(reordered.Comment.Body, "reverse")
+
+	withNilComment := &structNestedJoinRowForTest{
+		Post: structNestedPostForTest{ID: "post-4", Text: "nil"},
+		Rank: 13,
+	}
+	a.Equal(nestedJoinRowForTest.Values(withNilComment), []interface{}{"post-4", "nil", nil, nil, 13})
+}
+
+func TestStructTaggedTimeFieldRemainsScalar(t *testing.T) {
+	a := assert.New(t)
+	st := NewStruct(new(structTimeValueForTest))
+	a.Equal(st.Columns(), []string{"created_at"})
+
+	sql, _ := st.SelectFrom("events e").Build()
+	a.Equal(sql, "SELECT e.created_at FROM events e")
+}
+
 func TestWithAndWithoutTags(t *testing.T) {
 	type Tags struct {
 		A int `db:"a" fieldtag:"tag1"`
@@ -416,6 +506,33 @@ func ExampleStruct_buildJOIN() {
 	// Output:
 	// SELECT m.id, m.user_id, m.name, m.created_at, u.name, u.email FROM member m JOIN user u ON m.user_id = u.user_id WHERE m.name LIKE ?
 	// [Huan%]
+}
+
+func ExampleStruct_buildJOINWithNestedStructAlias() {
+	type Post struct {
+		ID   string `db:"id"`
+		Text string `db:"text"`
+	}
+
+	type Comment struct {
+		Body string `db:"body"`
+	}
+
+	type PostCommentJoined struct {
+		Post    Post    `db:"post"`
+		Comment Comment `db:"comment"`
+	}
+
+	joined := NewStruct(new(PostCommentJoined))
+	sb := joined.SelectFrom("posts post").Join("comments comment", "post.id = comment.post_id")
+	sql, args := sb.Build()
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT post.id, post.text, comment.body FROM posts post JOIN comments comment ON post.id = comment.post_id
+	// []
 }
 
 var orderDB testDB = 1

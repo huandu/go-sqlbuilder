@@ -283,6 +283,34 @@ type ATable struct {
 }
 ```
 
+If a field is itself a struct and has a `db` tag, `Struct` treats that tag as a database alias and expands the nested fields. This is useful for `JOIN` projections built from reusable structs.
+
+```go
+type Post struct {
+    ID   string `db:"id"`
+    Text string `db:"text"`
+}
+
+type Comment struct {
+    Body string `db:"body"`
+}
+
+type PostCommentJoined struct {
+    Post    Post    `db:"post"`
+    Comment Comment `db:"comment"`
+}
+
+joined := sqlbuilder.NewStruct(new(PostCommentJoined))
+sql, _ := joined.SelectFrom("posts post").
+    Join("comments comment", "post.id = comment.post_id").
+    Build()
+
+fmt.Println(sql)
+
+// Output:
+// SELECT post.id, post.text, comment.body FROM posts post JOIN comments comment ON post.id = comment.post_id
+```
+
 For detailed instructions on utilizing `Struct`, refer to the [examples](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Struct).
 
 Furthermore, `Struct` can be employed as a zero-configuration ORM. Unlike most ORM implementations that necessitate preliminary configurations for database connectivity, `Struct` operates without any configuration, functioning seamlessly with any SQL driver compatible with `database/sql`. `Struct` does not invoke any `database/sql` APIs; it solely generates the appropriate SQL statements with arguments for `DB#Query`/`DB#Exec` or an array of struct field addresses for `Rows#Scan`/`Row#Scan`.
