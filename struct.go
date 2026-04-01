@@ -476,11 +476,11 @@ func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, with, without []str
 		return
 	}
 
-	cols := make([]string, 0, len(tagged.ForWrite))
+	cols := make([]string, 0, len(tagged.ForInsert))
 	values := make([][]interface{}, len(vs))
-	nilCols := make([]int, 0, len(tagged.ForWrite))
+	nilCols := make([]int, 0, len(tagged.ForInsert))
 
-	for _, sf := range tagged.ForWrite {
+	for _, sf := range tagged.ForInsert {
 		cols = append(cols, sf.Quote(s.Flavor))
 		shouldOmitEmpty := sf.ShouldOmitEmpty(with...)
 		nilCnt := 0

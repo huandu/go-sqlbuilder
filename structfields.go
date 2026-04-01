@@ -23,6 +23,10 @@ type structTaggedFields struct {
 	// All columns which can be used in INSERT and UPDATE.
 	ForWrite     []*structField
 	colsForWrite map[string]struct{}
+
+	// All columns which can be used in INSERT.
+	ForInsert     []*structField
+	colsForInsert map[string]struct{}
 }
 
 type structField struct {
@@ -61,14 +65,14 @@ func makeFieldsParser(t reflect.Type, mapper FieldMapperFunc, useDefault bool) s
 				mapper = DefaultFieldMapper
 			}
 
-			sfs.parse(t, mapper, "", nil)
+			sfs.parse(t, mapper, "", nil, true)
 		})
 
 		return sfs
 	}
 }
 
-func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix string, index []int) {
+func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix string, index []int, allowInsert bool) {
 	l := t.NumField()
 	var anonymous []reflect.StructField
 
@@ -98,74 +102,96 @@ func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix st
 		}
 
 		if shouldExpandTaggedStructField(field.Type, dbtag) {
-			sfs.parse(dereferencedType(field.Type), mapper, dbtag+".", appendFieldIndex(index, i))
+			structField := makeStructField(field, alias, dbtag, mapper, prefix, index, i)
+			if allowInsert {
+				sfs.addInsertField(structField)
+			}
+			sfs.parse(dereferencedType(field.Type), mapper, dbtag+".", appendFieldIndex(index, i), false)
 			continue
 		}
 
-		if alias == "" {
-			alias = field.Name
-			if mapper != nil {
-				alias = mapper(alias)
-			}
-		}
-
-		if prefix != "" && !strings.ContainsRune(alias, '.') {
-			alias = prefix + alias
-		}
-
-		// Parse FieldOpt.
-		fieldopt := field.Tag.Get(FieldOpt)
-		opts := optRegex.FindAllString(fieldopt, -1)
-		isQuoted := false
-		omitEmptyTags := omitEmptyTagMap{}
-
-		for _, opt := range opts {
-			optMap := getOptMatchedMap(opt)
-
-			switch optMap[optName] {
-			case fieldOptOmitEmpty:
-				tags := getTagsFromOptParams(optMap[optParams])
-
-				for _, tag := range tags {
-					omitEmptyTags[tag] = struct{}{}
-				}
-
-			case fieldOptWithQuote:
-				isQuoted = true
-			}
-		}
-
-		// Parse FieldAs.
-		fieldas := field.Tag.Get(FieldAs)
-
-		// Parse FieldTag.
-		fieldtag := field.Tag.Get(FieldTag)
-		tags := splitTags(fieldtag)
-
-		// Make struct field.
-		structField := &structField{
-			Name:          field.Name,
-			Alias:         alias,
-			As:            fieldas,
-			Tags:          tags,
-			IsQuoted:      isQuoted,
-			DBTag:         dbtag,
-			Field:         field,
-			Index:         appendFieldIndex(index, i),
-			omitEmptyTags: omitEmptyTags,
-		}
-
-		// Make sure all fields can be added to noTag without conflict.
-		sfs.noTag.Add(structField)
-
-		for _, tag := range tags {
-			sfs.taggedFields(tag).Add(structField)
+		structField := makeStructField(field, alias, dbtag, mapper, prefix, index, i)
+		if allowInsert {
+			sfs.addField(structField)
+		} else {
+			sfs.addReadWriteField(structField)
 		}
 	}
 
 	for _, field := range anonymous {
 		ft := dereferencedType(field.Type)
-		sfs.parse(ft, mapper, prefix, appendFieldIndex(index, field.Index...))
+		sfs.parse(ft, mapper, prefix, appendFieldIndex(index, field.Index...), allowInsert)
+	}
+}
+
+func makeStructField(field reflect.StructField, alias, dbtag string, mapper FieldMapperFunc, prefix string, index []int, fieldIndex int) *structField {
+	if alias == "" {
+		alias = field.Name
+		if mapper != nil {
+			alias = mapper(alias)
+		}
+	}
+
+	if prefix != "" && !strings.ContainsRune(alias, '.') {
+		alias = prefix + alias
+	}
+
+	fieldopt := field.Tag.Get(FieldOpt)
+	opts := optRegex.FindAllString(fieldopt, -1)
+	isQuoted := false
+	omitEmptyTags := omitEmptyTagMap{}
+
+	for _, opt := range opts {
+		optMap := getOptMatchedMap(opt)
+
+		switch optMap[optName] {
+		case fieldOptOmitEmpty:
+			tags := getTagsFromOptParams(optMap[optParams])
+
+			for _, tag := range tags {
+				omitEmptyTags[tag] = struct{}{}
+			}
+
+		case fieldOptWithQuote:
+			isQuoted = true
+		}
+	}
+
+	fieldas := field.Tag.Get(FieldAs)
+	fieldtag := field.Tag.Get(FieldTag)
+	tags := splitTags(fieldtag)
+
+	return &structField{
+		Name:          field.Name,
+		Alias:         alias,
+		As:            fieldas,
+		Tags:          tags,
+		IsQuoted:      isQuoted,
+		DBTag:         dbtag,
+		Field:         field,
+		Index:         appendFieldIndex(index, fieldIndex),
+		omitEmptyTags: omitEmptyTags,
+	}
+}
+
+func (sfs *structFields) addField(field *structField) {
+	sfs.addReadWriteField(field)
+	sfs.addInsertField(field)
+}
+
+func (sfs *structFields) addReadWriteField(field *structField) {
+	sfs.noTag.AddReadWrite(field)
+
+	for _, tag := range field.Tags {
+		sfs.taggedFields(tag).AddReadWrite(field)
+	}
+}
+
+func (sfs *structFields) addInsertField(field *structField) {
+	sfs.noTag.AddInsert(field)
+
+	for _, tag := range field.Tags {
+		sfs.taggedFields(tag).AddInsert(field)
 	}
 }
 
@@ -233,11 +259,16 @@ func (sfs *structFields) FilterTags(with, without []string) *structTaggedFields 
 	// Find out all with and without fields.
 	taggedFields := makeStructTaggedFields()
 	filteredReadFields := make(map[string]struct{}, len(sfs.noTag.colsForRead))
+	filteredInsertFields := make(map[string]struct{}, len(sfs.noTag.colsForInsert))
 
 	for _, tag := range without {
 		if field, ok := sfs.tagged[tag]; ok {
 			for k := range field.colsForRead {
 				filteredReadFields[k] = struct{}{}
+			}
+
+			for k := range field.colsForInsert {
+				filteredInsertFields[k] = struct{}{}
 			}
 		}
 	}
@@ -247,7 +278,13 @@ func (sfs *structFields) FilterTags(with, without []string) *structTaggedFields 
 			k := field.Key()
 
 			if _, ok := filteredReadFields[k]; !ok {
-				taggedFields.Add(field)
+				taggedFields.AddReadWrite(field)
+			}
+		}
+
+		for _, field := range sfs.noTag.ForInsert {
+			if _, ok := filteredInsertFields[field.Alias]; !ok {
+				taggedFields.AddInsert(field)
 			}
 		}
 	} else {
@@ -257,7 +294,13 @@ func (sfs *structFields) FilterTags(with, without []string) *structTaggedFields 
 					k := field.Key()
 
 					if _, ok := filteredReadFields[k]; !ok {
-						taggedFields.Add(field)
+						taggedFields.AddReadWrite(field)
+					}
+				}
+
+				for _, field := range fields.ForInsert {
+					if _, ok := filteredInsertFields[field.Alias]; !ok {
+						taggedFields.AddInsert(field)
 					}
 				}
 			}
@@ -280,14 +323,20 @@ func (sfs *structFields) taggedFields(tag string) *structTaggedFields {
 
 func makeStructTaggedFields() *structTaggedFields {
 	return &structTaggedFields{
-		colsForRead:  map[string]*structField{},
-		colsForWrite: map[string]struct{}{},
+		colsForRead:   map[string]*structField{},
+		colsForWrite:  map[string]struct{}{},
+		colsForInsert: map[string]struct{}{},
 	}
 }
 
 // Add a new field to stfs.
 // If field's key exists in stfs.fields, the field is ignored.
 func (stfs *structTaggedFields) Add(field *structField) {
+	stfs.AddReadWrite(field)
+	stfs.AddInsert(field)
+}
+
+func (stfs *structTaggedFields) AddReadWrite(field *structField) {
 	key := field.Key()
 
 	if _, ok := stfs.colsForRead[key]; !ok {
@@ -300,6 +349,15 @@ func (stfs *structTaggedFields) Add(field *structField) {
 	if _, ok := stfs.colsForWrite[key]; !ok {
 		stfs.colsForWrite[key] = struct{}{}
 		stfs.ForWrite = append(stfs.ForWrite, field)
+	}
+}
+
+func (stfs *structTaggedFields) AddInsert(field *structField) {
+	key := field.Alias
+
+	if _, ok := stfs.colsForInsert[key]; !ok {
+		stfs.colsForInsert[key] = struct{}{}
+		stfs.ForInsert = append(stfs.ForInsert, field)
 	}
 }
 

@@ -314,8 +314,8 @@ func TestStructNestedAliasAddrValuesAndWrites(t *testing.T) {
 	a.Equal(updateArgs, []interface{}{"post-1", "hello", "comment-1", "world", 7})
 
 	insertSQL, insertArgs := nestedJoinRowForTest.InsertInto("joined", row).Build()
-	a.Equal(insertSQL, "INSERT INTO joined (post.id, post.text, comment.id, comment.body, rank) VALUES (?, ?, ?, ?, ?)")
-	a.Equal(insertArgs, []interface{}{"post-1", "hello", "comment-1", "world", 7})
+	a.Equal(insertSQL, "INSERT INTO joined (post, comment, rank) VALUES (?, ?, ?)")
+	a.Equal(insertArgs, []interface{}{row.Post, *row.Comment, 7})
 
 	var scanned structNestedJoinRowForTest
 	_, _ = fmt.Sscan("post-2 newer comment-2 scanned 9", nestedJoinRowForTest.Addr(&scanned)...)
@@ -339,6 +339,56 @@ func TestStructNestedAliasAddrValuesAndWrites(t *testing.T) {
 		Rank: 13,
 	}
 	a.Equal(nestedJoinRowForTest.Values(withNilComment), []interface{}{"post-4", "nil", nil, nil, 13})
+}
+
+func TestStructInsertIntoTaggedNestedFieldRemainsScalar(t *testing.T) {
+	type varRec struct {
+		ChnlPH string `json:"ph"`
+		ExpVK  int64  `json:"vk"`
+	}
+
+	type decRec struct {
+		DecID     string   `db:"dec_id"`
+		LiabVar   varRec   `db:"liab_var"`
+		AssetVars []varRec `db:"asset_vars"`
+	}
+
+	a := assert.New(t)
+	st := NewStruct(new(decRec)).For(PostgreSQL)
+	rec := decRec{
+		DecID:   "dec-1",
+		LiabVar: varRec{ChnlPH: "ph", ExpVK: 7},
+		AssetVars: []varRec{
+			{ChnlPH: "ph-1", ExpVK: 11},
+		},
+	}
+
+	sql, args := st.InsertInto("decs", rec).Build()
+	a.Equal(sql, "INSERT INTO decs (dec_id, liab_var, asset_vars) VALUES ($1, $2, $3)")
+	a.Equal(args, []interface{}{rec.DecID, rec.LiabVar, rec.AssetVars})
+}
+
+func TestStructInsertIntoAnonymousFieldHasNoPrefix(t *testing.T) {
+	type embedded struct {
+		ID   string `db:"id"`
+		Text string `db:"text"`
+	}
+
+	type row struct {
+		embedded
+		Rank int `db:"rank"`
+	}
+
+	a := assert.New(t)
+	st := NewStruct(new(row))
+	value := row{
+		embedded: embedded{ID: "post-1", Text: "hello"},
+		Rank:     7,
+	}
+
+	sql, args := st.InsertInto("joined", value).Build()
+	a.Equal(sql, "INSERT INTO joined (rank, id, text) VALUES (?, ?, ?)")
+	a.Equal(args, []interface{}{7, "post-1", "hello"})
 }
 
 func TestStructTaggedTimeFieldRemainsScalar(t *testing.T) {
