@@ -42,6 +42,12 @@ type structField struct {
 	omitEmptyTags omitEmptyTagMap
 }
 
+type structFieldOptions struct {
+	isQuoted      bool
+	omitEmptyTags omitEmptyTagMap
+	noExpand      bool
+}
+
 type structFieldsParser func() *structFields
 
 func makeDefaultFieldsParser(t reflect.Type) structFieldsParser {
@@ -101,8 +107,10 @@ func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix st
 			continue
 		}
 
-		if shouldExpandTaggedStructField(field.Type, dbtag) {
-			structField := makeStructField(field, alias, dbtag, mapper, prefix, index, i)
+		fieldOpts := parseStructFieldOptions(field)
+
+		if shouldExpandTaggedStructField(field.Type, dbtag, fieldOpts) {
+			structField := makeStructField(field, alias, dbtag, mapper, fieldOpts, prefix, index, i)
 			if allowInsert {
 				sfs.addInsertField(structField)
 			}
@@ -110,7 +118,7 @@ func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix st
 			continue
 		}
 
-		structField := makeStructField(field, alias, dbtag, mapper, prefix, index, i)
+		structField := makeStructField(field, alias, dbtag, mapper, fieldOpts, prefix, index, i)
 		if allowInsert {
 			sfs.addField(structField)
 		} else {
@@ -124,7 +132,7 @@ func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix st
 	}
 }
 
-func makeStructField(field reflect.StructField, alias, dbtag string, mapper FieldMapperFunc, prefix string, index []int, fieldIndex int) *structField {
+func makeStructField(field reflect.StructField, alias, dbtag string, mapper FieldMapperFunc, fieldOpts structFieldOptions, prefix string, index []int, fieldIndex int) *structField {
 	if alias == "" {
 		alias = field.Name
 		if mapper != nil {
@@ -136,27 +144,6 @@ func makeStructField(field reflect.StructField, alias, dbtag string, mapper Fiel
 		alias = prefix + alias
 	}
 
-	fieldopt := field.Tag.Get(FieldOpt)
-	opts := optRegex.FindAllString(fieldopt, -1)
-	isQuoted := false
-	omitEmptyTags := omitEmptyTagMap{}
-
-	for _, opt := range opts {
-		optMap := getOptMatchedMap(opt)
-
-		switch optMap[optName] {
-		case fieldOptOmitEmpty:
-			tags := getTagsFromOptParams(optMap[optParams])
-
-			for _, tag := range tags {
-				omitEmptyTags[tag] = struct{}{}
-			}
-
-		case fieldOptWithQuote:
-			isQuoted = true
-		}
-	}
-
 	fieldas := field.Tag.Get(FieldAs)
 	fieldtag := field.Tag.Get(FieldTag)
 	tags := splitTags(fieldtag)
@@ -166,12 +153,41 @@ func makeStructField(field reflect.StructField, alias, dbtag string, mapper Fiel
 		Alias:         alias,
 		As:            fieldas,
 		Tags:          tags,
-		IsQuoted:      isQuoted,
+		IsQuoted:      fieldOpts.isQuoted,
 		DBTag:         dbtag,
 		Field:         field,
 		Index:         appendFieldIndex(index, fieldIndex),
-		omitEmptyTags: omitEmptyTags,
+		omitEmptyTags: fieldOpts.omitEmptyTags,
 	}
+}
+
+func parseStructFieldOptions(field reflect.StructField) structFieldOptions {
+	fieldopt := field.Tag.Get(FieldOpt)
+	opts := optRegex.FindAllString(fieldopt, -1)
+	fieldOpts := structFieldOptions{
+		omitEmptyTags: omitEmptyTagMap{},
+	}
+
+	for _, opt := range opts {
+		optMap := getOptMatchedMap(opt)
+
+		switch optMap[optName] {
+		case fieldOptOmitEmpty:
+			tags := getTagsFromOptParams(optMap[optParams])
+
+			for _, tag := range tags {
+				fieldOpts.omitEmptyTags[tag] = struct{}{}
+			}
+
+		case fieldOptWithQuote:
+			fieldOpts.isQuoted = true
+
+		case fieldOptNoExpand:
+			fieldOpts.noExpand = true
+		}
+	}
+
+	return fieldOpts
 }
 
 func (sfs *structFields) addField(field *structField) {
@@ -206,8 +222,8 @@ func shouldExpandAnonymousStructField(t reflect.Type) bool {
 	return canExpandStructType(t)
 }
 
-func shouldExpandTaggedStructField(t reflect.Type, dbtag string) bool {
-	return dbtag != "" && canExpandStructType(t)
+func shouldExpandTaggedStructField(t reflect.Type, dbtag string, fieldOpts structFieldOptions) bool {
+	return dbtag != "" && !fieldOpts.noExpand && canExpandStructType(t)
 }
 
 func canExpandStructType(t reflect.Type) bool {

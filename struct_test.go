@@ -368,6 +368,41 @@ func TestStructInsertIntoTaggedNestedFieldRemainsScalar(t *testing.T) {
 	a.Equal(args, []interface{}{rec.DecID, rec.LiabVar, rec.AssetVars})
 }
 
+func TestStructTaggedNestedFieldNoExpand(t *testing.T) {
+	type varRec struct {
+		ChnlPH string `json:"ph"`
+		ExpVK  int64  `json:"vk"`
+	}
+
+	type decRec struct {
+		DecID   string `db:"dec_id"`
+		LiabVar varRec `db:"liab_var" fieldopt:"noexpand"`
+	}
+
+	a := assert.New(t)
+	st := NewStruct(new(decRec)).For(PostgreSQL)
+	rec := &decRec{
+		DecID:   "dec-1",
+		LiabVar: varRec{ChnlPH: "ph", ExpVK: 7},
+	}
+
+	selectSQL, selectArgs := st.SelectFrom("decs d").Build()
+	a.Equal(selectSQL, "SELECT d.dec_id, d.liab_var FROM decs d")
+	a.Equal(selectArgs, nil)
+	a.Equal(st.Columns(), []string{"dec_id", "liab_var"})
+	a.Equal(st.Values(rec), []interface{}{rec.DecID, rec.LiabVar})
+
+	updateSQL, updateArgs := st.Update("decs", rec).Build()
+	a.Equal(updateSQL, "UPDATE decs SET dec_id = $1, liab_var = $2")
+	a.Equal(updateArgs, []interface{}{rec.DecID, rec.LiabVar})
+
+	var scanned decRec
+	addrs := st.Addr(&scanned)
+	a.Equal(len(addrs), 2)
+	a.Equal(addrs[0], &scanned.DecID)
+	a.Equal(addrs[1], &scanned.LiabVar)
+}
+
 func TestStructInsertIntoAnonymousFieldHasNoPrefix(t *testing.T) {
 	type embedded struct {
 		ID   string `db:"id"`

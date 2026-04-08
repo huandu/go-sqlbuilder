@@ -31,6 +31,7 @@ var (
 const (
 	fieldOptWithQuote = "withquote"
 	fieldOptOmitEmpty = "omitempty"
+	fieldOptNoExpand  = "noexpand"
 
 	optName   = "optName"
 	optParams = "optParams"

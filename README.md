@@ -272,6 +272,7 @@ type ATable struct {
     unexported int                                       // Unexported field is not visible to Struct.
     Quoted     string `db:"quoted" fieldopt:"withquote"` // Add quote to the field using back quote or double quote. See `Flavor#Quote`.
     Empty      uint   `db:"empty" fieldopt:"omitempty"`  // Omit the field in UPDATE if it is a nil or zero value.
+    Payload    Meta   `db:"payload" fieldopt:"noexpand"` // Treat a nested struct as one column instead of expanding it.
 
     // The `omitempty` can be written as a function.
     // In this case, omit empty field `Tagged` when UPDATE for tag `tag1` and `tag3` but not `tag2`.
@@ -309,6 +310,27 @@ fmt.Println(sql)
 
 // Output:
 // SELECT post.id, post.text, comment.body FROM posts post JOIN comments comment ON post.id = comment.post_id
+```
+
+If a nested struct should stay as a single column, add `fieldopt:"noexpand"` to opt out of the automatic expansion. This is useful for JSON columns scanned into Go structs by the database driver.
+
+```go
+type Payload struct {
+    Key string `json:"key"`
+}
+
+type Row struct {
+    ID      string  `db:"id"`
+    Payload Payload `db:"payload" fieldopt:"noexpand"`
+}
+
+st := sqlbuilder.NewStruct(new(Row)).For(sqlbuilder.PostgreSQL)
+sql, _ := st.SelectFrom("events e").Build()
+
+fmt.Println(sql)
+
+// Output:
+// SELECT e.id, e.payload FROM events e
 ```
 
 For detailed instructions on utilizing `Struct`, refer to the [examples](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Struct).
