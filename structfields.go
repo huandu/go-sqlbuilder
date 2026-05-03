@@ -42,10 +42,18 @@ type structField struct {
 	omitEmptyTags omitEmptyTagMap
 }
 
+type structFieldExpandMode uint8
+
+const (
+	structFieldExpandDefault structFieldExpandMode = iota
+	structFieldExpandEnabled
+	structFieldExpandDisabled
+)
+
 type structFieldOptions struct {
 	isQuoted      bool
 	omitEmptyTags omitEmptyTagMap
-	noExpand      bool
+	expandMode    structFieldExpandMode
 }
 
 type structFieldsParser func() *structFields
@@ -182,8 +190,11 @@ func parseStructFieldOptions(field reflect.StructField) structFieldOptions {
 		case fieldOptWithQuote:
 			fieldOpts.isQuoted = true
 
+		case fieldOptExpand:
+			fieldOpts.expandMode = structFieldExpandEnabled
+
 		case fieldOptNoExpand:
-			fieldOpts.noExpand = true
+			fieldOpts.expandMode = structFieldExpandDisabled
 		}
 	}
 
@@ -223,7 +234,19 @@ func shouldExpandAnonymousStructField(t reflect.Type) bool {
 }
 
 func shouldExpandTaggedStructField(t reflect.Type, dbtag string, fieldOpts structFieldOptions) bool {
-	return dbtag != "" && !fieldOpts.noExpand && canExpandStructType(t)
+	if dbtag == "" || !canExpandStructType(t) {
+		return false
+	}
+
+	switch fieldOpts.expandMode {
+	case structFieldExpandEnabled:
+		return true
+
+	case structFieldExpandDisabled:
+		return false
+	}
+
+	return !NoExpand
 }
 
 func canExpandStructType(t reflect.Type) bool {

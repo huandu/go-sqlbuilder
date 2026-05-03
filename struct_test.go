@@ -403,6 +403,97 @@ func TestStructTaggedNestedFieldNoExpand(t *testing.T) {
 	a.Equal(addrs[1], &scanned.LiabVar)
 }
 
+func TestStructTaggedNestedFieldDisableExpand(t *testing.T) {
+	type varRec struct {
+		ChnlPH string `db:"ph"`
+		ExpVK  int64  `db:"vk"`
+	}
+
+	type decRec struct {
+		DecID   string `db:"dec_id"`
+		LiabVar varRec `db:"liab_var"`
+	}
+
+	a := assert.New(t)
+	old := NoExpand
+	NoExpand = true
+	defer func() {
+		NoExpand = old
+	}()
+
+	st := NewStruct(new(decRec)).For(PostgreSQL)
+	rec := &decRec{
+		DecID:   "dec-1",
+		LiabVar: varRec{ChnlPH: "ph", ExpVK: 7},
+	}
+
+	selectSQL, selectArgs := st.SelectFrom("decs d").Build()
+	a.Equal(selectSQL, "SELECT d.dec_id, d.liab_var FROM decs d")
+	a.Equal(selectArgs, nil)
+	a.Equal(st.Columns(), []string{"dec_id", "liab_var"})
+	a.Equal(st.Values(rec), []interface{}{rec.DecID, rec.LiabVar})
+
+	updateSQL, updateArgs := st.Update("decs", rec).Build()
+	a.Equal(updateSQL, "UPDATE decs SET dec_id = $1, liab_var = $2")
+	a.Equal(updateArgs, []interface{}{rec.DecID, rec.LiabVar})
+
+	insertSQL, insertArgs := st.InsertInto("decs", rec).Build()
+	a.Equal(insertSQL, "INSERT INTO decs (dec_id, liab_var) VALUES ($1, $2)")
+	a.Equal(insertArgs, []interface{}{rec.DecID, rec.LiabVar})
+
+	var scanned decRec
+	addrs := st.Addr(&scanned)
+	a.Equal(len(addrs), 2)
+	a.Equal(addrs[0], &scanned.DecID)
+	a.Equal(addrs[1], &scanned.LiabVar)
+}
+
+func TestStructTaggedNestedFieldExpandOverridesNoExpand(t *testing.T) {
+	type varRec struct {
+		ChnlPH string `db:"ph"`
+		ExpVK  int64  `db:"vk"`
+	}
+
+	type decRec struct {
+		DecID   string `db:"dec_id"`
+		LiabVar varRec `db:"liab_var" fieldopt:"expand"`
+	}
+
+	a := assert.New(t)
+	old := NoExpand
+	NoExpand = true
+	defer func() {
+		NoExpand = old
+	}()
+
+	st := NewStruct(new(decRec)).For(PostgreSQL)
+	rec := &decRec{
+		DecID:   "dec-1",
+		LiabVar: varRec{ChnlPH: "ph", ExpVK: 7},
+	}
+
+	selectSQL, selectArgs := st.SelectFrom("decs d").Build()
+	a.Equal(selectSQL, "SELECT d.dec_id, liab_var.ph, liab_var.vk FROM decs d")
+	a.Equal(selectArgs, nil)
+	a.Equal(st.Columns(), []string{"dec_id", "liab_var.ph", "liab_var.vk"})
+	a.Equal(st.Values(rec), []interface{}{rec.DecID, rec.LiabVar.ChnlPH, rec.LiabVar.ExpVK})
+
+	updateSQL, updateArgs := st.Update("decs", rec).Build()
+	a.Equal(updateSQL, "UPDATE decs SET dec_id = $1, liab_var.ph = $2, liab_var.vk = $3")
+	a.Equal(updateArgs, []interface{}{rec.DecID, rec.LiabVar.ChnlPH, rec.LiabVar.ExpVK})
+
+	insertSQL, insertArgs := st.InsertInto("decs", rec).Build()
+	a.Equal(insertSQL, "INSERT INTO decs (dec_id, liab_var) VALUES ($1, $2)")
+	a.Equal(insertArgs, []interface{}{rec.DecID, rec.LiabVar})
+
+	var scanned decRec
+	addrs := st.Addr(&scanned)
+	a.Equal(len(addrs), 3)
+	a.Equal(addrs[0], &scanned.DecID)
+	a.Equal(addrs[1], &scanned.LiabVar.ChnlPH)
+	a.Equal(addrs[2], &scanned.LiabVar.ExpVK)
+}
+
 func TestStructInsertIntoAnonymousFieldHasNoPrefix(t *testing.T) {
 	type embedded struct {
 		ID   string `db:"id"`
@@ -524,6 +615,38 @@ const (
 	OrderStateCreated
 	OrderStatePaid
 )
+
+func ExampleNoExpand() {
+	type Post struct {
+		ID   string `db:"id"`
+		Text string `db:"text"`
+	}
+
+	type DefaultRow struct {
+		Post Post `db:"post"`
+	}
+
+	type ExpandedRow struct {
+		Post Post `db:"post" fieldopt:"expand"`
+	}
+
+	old := NoExpand
+	defer func() {
+		NoExpand = old
+	}()
+
+	NoExpand = false
+	fmt.Println(NewStruct(new(DefaultRow)).Columns())
+
+	NoExpand = true
+	fmt.Println(NewStruct(new(DefaultRow)).Columns())
+	fmt.Println(NewStruct(new(ExpandedRow)).Columns())
+
+	// Output:
+	// [post.id post.text]
+	// [post]
+	// [post.id post.text]
+}
 
 func ExampleStruct_useStructAsORM() {
 	// Suppose we defined following type for user db.

@@ -272,6 +272,7 @@ type ATable struct {
     unexported int                                       // Unexported field is not visible to Struct.
     Quoted     string `db:"quoted" fieldopt:"withquote"` // Add quote to the field using back quote or double quote. See `Flavor#Quote`.
     Empty      uint   `db:"empty" fieldopt:"omitempty"`  // Omit the field in UPDATE if it is a nil or zero value.
+    Expanded   Meta   `db:"expanded" fieldopt:"expand"`  // Force a nested struct to expand even when sqlbuilder.NoExpand is true.
     Payload    Meta   `db:"payload" fieldopt:"noexpand"` // Treat a nested struct as one column instead of expanding it.
 
     // The `omitempty` can be written as a function.
@@ -284,7 +285,7 @@ type ATable struct {
 }
 ```
 
-If a field is itself a struct and has a `db` tag, `Struct` treats that tag as a database alias and expands the nested fields. This is useful for `JOIN` projections built from reusable structs.
+If a field is itself a struct and has a `db` tag, `Struct` treats that tag as a database alias and expands the nested fields by default. This is useful for `JOIN` projections built from reusable structs.
 
 ```go
 type Post struct {
@@ -310,6 +311,27 @@ fmt.Println(sql)
 
 // Output:
 // SELECT post.id, post.text, comment.body FROM posts post JOIN comments comment ON post.id = comment.post_id
+```
+
+Set `sqlbuilder.NoExpand = true` before first use of a `Struct` to keep tagged nested structs as a single column by default. When the flag is enabled, add `fieldopt:"expand"` to opt a specific field back into expansion.
+
+```go
+type Payload struct {
+    Key string `json:"key"`
+}
+
+type Row struct {
+    Payload Payload `db:"payload"`
+    Post    Post    `db:"post" fieldopt:"expand"`
+}
+
+sqlbuilder.NoExpand = true
+st := sqlbuilder.NewStruct(new(Row))
+
+fmt.Println(st.Columns())
+
+// Output:
+// [payload post.id post.text]
 ```
 
 If a nested struct should stay as a single column, add `fieldopt:"noexpand"` to opt out of the automatic expansion. This is useful for JSON columns scanned into Go structs by the database driver.

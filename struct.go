@@ -21,16 +21,23 @@ var (
 	FieldTag = "fieldtag"
 
 	// FieldOpt is the options for a struct field.
+	// Supported options include withquote, omitempty, expand, and noexpand.
 	// As db column can contain "," in theory, field options should be provided in a separated tag.
 	FieldOpt = "fieldopt"
 
 	// FieldAs is the column alias (AS) for a struct field.
 	FieldAs = "fieldas"
+
+	// NoExpand changes the default behavior for tagged nested struct fields.
+	// When true, tagged nested structs stay as a single column unless fieldopt:"expand" is set.
+	// Set it before first use of a Struct if that Struct should use the non-expanding default.
+	NoExpand = false
 )
 
 const (
 	fieldOptWithQuote = "withquote"
 	fieldOptOmitEmpty = "omitempty"
+	fieldOptExpand    = "expand"
 	fieldOptNoExpand  = "noexpand"
 
 	optName   = "optName"
