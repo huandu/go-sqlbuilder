@@ -13,6 +13,7 @@ const (
 	deleteMarkerInit injectionMarker = iota
 	deleteMarkerAfterWith
 	deleteMarkerAfterDeleteFrom
+	deleteMarkerAfterUsing
 	deleteMarkerAfterWhere
 	deleteMarkerAfterOrderBy
 	deleteMarkerAfterLimit
@@ -69,6 +70,7 @@ type DeleteBuilder struct {
 	cteBuilder    *CTEBuilder
 
 	tables      []string
+	usingTables []string
 	orderByCols []string
 	order       string
 	limitVar    string
@@ -99,6 +101,18 @@ func (db *DeleteBuilder) With(builder *CTEBuilder) *DeleteBuilder {
 func (db *DeleteBuilder) DeleteFrom(table ...string) *DeleteBuilder {
 	db.tables = table
 	db.marker = deleteMarkerAfterDeleteFrom
+	return db
+}
+
+// Using sets the USING clause in DELETE.
+// It's a PostgreSQL extension that allows referencing other tables in the WHERE clause,
+// similar to a JOIN.
+//
+//	db.DeleteFrom("orders").Using("customers").Where("orders.customer_id = customers.id", "customers.status = 'inactive'")
+//	// Generates: DELETE FROM orders USING customers WHERE orders.customer_id = customers.id AND customers.status = 'inactive'
+func (db *DeleteBuilder) Using(table ...string) *DeleteBuilder {
+	db.usingTables = table
+	db.marker = deleteMarkerAfterUsing
 	return db
 }
 
@@ -263,6 +277,13 @@ func (db *DeleteBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 
 		db.injection.WriteTo(buf, insertMarkerAfterReturning)
 	}
+
+	if len(db.usingTables) > 0 {
+		buf.WriteLeadingString("USING ")
+		buf.WriteStrings(db.usingTables, ", ")
+	}
+
+	db.injection.WriteTo(buf, deleteMarkerAfterUsing)
 
 	if db.WhereClause != nil {
 		db.whereClauseProxy.WhereClause = db.WhereClause
