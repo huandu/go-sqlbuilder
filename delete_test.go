@@ -194,6 +194,67 @@ func TestDeleteBuilderReturning(t *testing.T) {
 	a.Equal("WITH temp_user AS (SELECT id FROM inactive_users) DELETE FROM user, temp_user WHERE user.id IN (SELECT id FROM temp_user) RETURNING id, deleted_at", sql)
 }
 
+func ExampleDeleteBuilder_Using() {
+	db := NewDeleteBuilder()
+	db.DeleteFrom("orders")
+	db.Using("customers")
+	db.Where(
+		"orders.customer_id = customers.id",
+		db.Equal("customers.status", "inactive"),
+	)
+
+	sql, args := db.BuildWithFlavor(PostgreSQL)
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// DELETE FROM orders USING customers WHERE orders.customer_id = customers.id AND customers.status = $1
+	// [inactive]
+}
+
+func TestDeleteBuilderUsing(t *testing.T) {
+	a := assert.New(t)
+
+	// Single USING table
+	db := NewDeleteBuilder()
+	db.DeleteFrom("orders")
+	db.Using("customers")
+	db.Where("orders.customer_id = customers.id")
+
+	sql, _ := db.BuildWithFlavor(PostgreSQL)
+	a.Equal("DELETE FROM orders USING customers WHERE orders.customer_id = customers.id", sql)
+
+	// Multiple USING tables
+	db2 := NewDeleteBuilder()
+	db2.DeleteFrom("orders")
+	db2.Using("customers", "products")
+	db2.Where("orders.customer_id = customers.id", "orders.product_id = products.id")
+
+	sql, _ = db2.BuildWithFlavor(PostgreSQL)
+	a.Equal("DELETE FROM orders USING customers, products WHERE orders.customer_id = customers.id AND orders.product_id = products.id", sql)
+
+	// USING with RETURNING
+	db3 := NewDeleteBuilder()
+	db3.DeleteFrom("orders")
+	db3.Using("customers")
+	db3.Where(db3.Equal("customers.id", 42))
+	db3.Returning("orders.id")
+
+	sql, args := db3.BuildWithFlavor(PostgreSQL)
+	a.Equal("DELETE FROM orders USING customers WHERE customers.id = $1 RETURNING orders.id", sql)
+	a.Equal([]interface{}{42}, args)
+
+	// SQL injection after USING
+	db4 := NewDeleteBuilder()
+	db4.DeleteFrom("orders")
+	db4.Using("customers")
+	db4.SQL("/* after using */")
+	db4.Where("orders.customer_id = customers.id")
+
+	sql, _ = db4.BuildWithFlavor(PostgreSQL)
+	a.Equal("DELETE FROM orders USING customers /* after using */ WHERE orders.customer_id = customers.id", sql)
+}
+
 func TestDeleteBuilderClone(t *testing.T) {
 	a := assert.New(t)
 	cte := With(

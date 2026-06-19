@@ -96,9 +96,12 @@ type SelectBuilder struct {
 	groupByCols []string
 	orderByCols []string
 	order       string
-	limitVar    string
-	offsetVar   string
-	forWhat     string
+	limitVar      string
+	offsetVar     string
+	forWhat       string
+	forOf         []string
+	forSkipLocked bool
+	forNoWait     bool
 
 	args *Args
 
@@ -321,15 +324,35 @@ func (sb *SelectBuilder) Offset(offset int) *SelectBuilder {
 }
 
 // ForUpdate adds FOR UPDATE at the end of SELECT statement.
-func (sb *SelectBuilder) ForUpdate() *SelectBuilder {
+// Optional table names are appended as FOR UPDATE OF t1, t2, ...
+func (sb *SelectBuilder) ForUpdate(tables ...string) *SelectBuilder {
 	sb.forWhat = "UPDATE"
+	sb.forOf = tables
 	sb.marker = selectMarkerAfterFor
 	return sb
 }
 
 // ForShare adds FOR SHARE at the end of SELECT statement.
-func (sb *SelectBuilder) ForShare() *SelectBuilder {
+// Optional table names are appended as FOR SHARE OF t1, t2, ...
+func (sb *SelectBuilder) ForShare(tables ...string) *SelectBuilder {
 	sb.forWhat = "SHARE"
+	sb.forOf = tables
+	sb.marker = selectMarkerAfterFor
+	return sb
+}
+
+// SkipLocked appends SKIP LOCKED to a FOR UPDATE / FOR SHARE clause.
+func (sb *SelectBuilder) SkipLocked() *SelectBuilder {
+	sb.forSkipLocked = true
+	sb.forNoWait = false
+	sb.marker = selectMarkerAfterFor
+	return sb
+}
+
+// NoWait appends NOWAIT to a FOR UPDATE / FOR SHARE clause.
+func (sb *SelectBuilder) NoWait() *SelectBuilder {
+	sb.forNoWait = true
+	sb.forSkipLocked = false
 	sb.marker = selectMarkerAfterFor
 	return sb
 }
@@ -568,6 +591,17 @@ func (sb *SelectBuilder) BuildWithFlavor(flavor Flavor, initialArg ...interface{
 	if sb.forWhat != "" {
 		buf.WriteLeadingString("FOR ")
 		buf.WriteString(sb.forWhat)
+
+		if len(sb.forOf) > 0 {
+			buf.WriteString(" OF ")
+			buf.WriteStrings(sb.forOf, ", ")
+		}
+
+		if sb.forSkipLocked {
+			buf.WriteString(" SKIP LOCKED")
+		} else if sb.forNoWait {
+			buf.WriteString(" NOWAIT")
+		}
 
 		sb.injection.WriteTo(buf, selectMarkerAfterFor)
 	}
