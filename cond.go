@@ -254,7 +254,7 @@ func (c *Cond) ILike(field string, value interface{}) string {
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			switch ctx.Flavor {
-			case PostgreSQL, SQLite:
+			case PostgreSQL, ClickHouse:
 				ctx.WriteString(field)
 				ctx.WriteString(" ILIKE ")
 				ctx.WriteValue(value)
@@ -299,7 +299,7 @@ func (c *Cond) NotILike(field string, value interface{}) string {
 	return c.Var(condBuilder{
 		Builder: func(ctx *argsCompileContext) {
 			switch ctx.Flavor {
-			case PostgreSQL, SQLite:
+			case PostgreSQL, ClickHouse:
 				ctx.WriteString(field)
 				ctx.WriteString(" NOT ILIKE ")
 				ctx.WriteValue(value)
