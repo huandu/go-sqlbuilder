@@ -1,4 +1,4 @@
-module github.com/webdaad/go-sqlbuilder
+module github.com/huandu/go-sqlbuilder
 
 go 1.18
 
@@ -9,3 +9,7 @@ require (
 )
 
 require github.com/davecgh/go-spew v1.1.1 // indirect
+
+// v1.42.0 was published with an incorrect module path
+// (github.com/webdaad/go-sqlbuilder). Do not use.
+retract v1.42.0
