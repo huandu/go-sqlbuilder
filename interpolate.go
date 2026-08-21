@@ -774,6 +774,30 @@ func appendHex(buf, v []byte) []byte {
 }
 
 func quoteStringValue(buf []byte, s string, flavor Flavor) []byte {
+	// These dialects follow the SQL standard for string literals. A backslash
+	// is an ordinary character, so quotes must be escaped by doubling them and
+	// all other input bytes must be preserved literally.
+	if flavor == SQLServer || flavor == Oracle || flavor == Presto || flavor == Informix {
+		if flavor == SQLServer {
+			buf = append(buf, 'N')
+		}
+
+		buf = append(buf, '\'')
+		r, sz := utf8.DecodeRuneInString(s)
+
+		for ; sz != 0; r, sz = utf8.DecodeRuneInString(s) {
+			if r == '\'' {
+				buf = append(buf, "''"...)
+			} else {
+				buf = append(buf, s[:sz]...)
+			}
+
+			s = s[sz:]
+		}
+
+		return append(buf, '\'')
+	}
+
 	switch flavor {
 	case PostgreSQL:
 		buf = append(buf, 'E')

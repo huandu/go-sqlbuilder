@@ -123,7 +123,7 @@ func ExampleFlavor_Interpolate_sqlServer() {
 	fmt.Println(err)
 
 	// Output:
-	// SELECT name FROM user WHERE id <> 1234 AND name = N'Charmy Liu' AND desc LIKE N'%mother\'s day%'
+	// SELECT name FROM user WHERE id <> 1234 AND name = N'Charmy Liu' AND desc LIKE N'%mother''s day%'
 	// <nil>
 }
 
