@@ -142,12 +142,12 @@ func TestFlavorInterpolate(t *testing.T) {
 		{
 			SQLServer,
 			"SELECT * FROM a WHERE name = @p1 AND state IN (@p3, @P2, @p4, @P6, @p5)", []interface{}{"I'm fine", 42, int8(8), int16(-16), int32(32), int64(64)},
-			"SELECT * FROM a WHERE name = N'I\\'m fine' AND state IN (8, 42, -16, 64, 32)", nil,
+			"SELECT * FROM a WHERE name = N'I''m fine' AND state IN (8, 42, -16, 64, 32)", nil,
 		},
 		{
 			SQLServer,
 			"SELECT * FROM \"a@p1\" WHERE name = '@p1' AND state IN (@p2, '@p1', @p1, @p3, @p4, @p5, @p6)", []interface{}{"\r\n\b\t\x1a\x00\\\"'", uint(42), uint8(8), uint16(16), uint32(32), uint64(64), "useless"},
-			"SELECT * FROM \"a@p1\" WHERE name = '@p1' AND state IN (42, '@p1', N'\\r\\n\\b\\t\\Z\\0\\\\\\\"\\'', 8, 16, 32, 64)", nil,
+			"SELECT * FROM \"a@p1\" WHERE name = '@p1' AND state IN (42, '@p1', N'\r\n\b\t\x1a\x00\\\"''', 8, 16, 32, 64)", nil,
 		},
 		{
 			SQLServer,
@@ -242,12 +242,12 @@ func TestFlavorInterpolate(t *testing.T) {
 		{
 			Presto,
 			"SELECT * FROM a WHERE name = ? AND state IN (?, ?, ?, ?, ?)", []interface{}{"I'm fine", 42, int8(8), int16(-16), int32(32), int64(64)},
-			"SELECT * FROM a WHERE name = 'I\\'m fine' AND state IN (42, 8, -16, 32, 64)", nil,
+			"SELECT * FROM a WHERE name = 'I''m fine' AND state IN (42, 8, -16, 32, 64)", nil,
 		},
 		{
 			Presto,
 			"SELECT * FROM `a?` WHERE name = \"?\" AND state IN (?, '?', ?, ?, ?, ?, ?)", []interface{}{"\r\n\b\t\x1a\x00\\\"'", uint(42), uint8(8), uint16(16), uint32(32), uint64(64), "useless"},
-			"SELECT * FROM `a?` WHERE name = \"?\" AND state IN ('\\r\\n\\b\\t\\Z\\0\\\\\\\"\\'', '?', 42, 8, 16, 32, 64)", nil,
+			"SELECT * FROM `a?` WHERE name = \"?\" AND state IN ('\r\n\b\t\x1a\x00\\\"''', '?', 42, 8, 16, 32, 64)", nil,
 		},
 		{
 			Presto,
@@ -288,12 +288,12 @@ func TestFlavorInterpolate(t *testing.T) {
 		{
 			Oracle,
 			"SELECT * FROM a WHERE name = :3 AND state IN (:2, :4, :1, :6, :5)", []interface{}{"I'm fine", 42, int8(8), int16(-16), int32(32), int64(64)},
-			"SELECT * FROM a WHERE name = 8 AND state IN (42, -16, 'I\\'m fine', 64, 32)", nil,
+			"SELECT * FROM a WHERE name = 8 AND state IN (42, -16, 'I''m fine', 64, 32)", nil,
 		},
 		{
 			Oracle,
 			"SELECT * FROM :abc::1:abc:1:1 WHERE name = \":1\" AND state IN (:2, ':1', :3, :6, :5, :4, :2) :3", []interface{}{"\r\n\b\t\x1a\x00\\\"'", uint(42), uint8(8), uint16(16), uint32(32), uint64(64), "useless"},
-			"SELECT * FROM :abc::1:abc:1'\\r\\n\\b\\t\\Z\\0\\\\\\\"\\'' WHERE name = \":1\" AND state IN (42, ':1', 8, 64, 32, 16, 42) 8", nil,
+			"SELECT * FROM :abc::1:abc:1'\r\n\b\t\x1a\x00\\\"''' WHERE name = \":1\" AND state IN (42, ':1', 8, 64, 32, 16, 42) 8", nil,
 		},
 		{
 			Oracle,
@@ -308,7 +308,7 @@ func TestFlavorInterpolate(t *testing.T) {
 		{
 			Oracle,
 			"SELECT * FROM a WHERE name = 'Huan''Du'':1' AND desc = :1", []interface{}{"c'mon"},
-			"SELECT * FROM a WHERE name = 'Huan''Du'':1' AND desc = 'c\\'mon'", nil,
+			"SELECT * FROM a WHERE name = 'Huan''Du'':1' AND desc = 'c''mon'", nil,
 		},
 		{
 			Oracle,
@@ -328,12 +328,12 @@ func TestFlavorInterpolate(t *testing.T) {
 		{
 			Informix,
 			"SELECT * FROM a WHERE name = ? AND state IN (?, ?, ?, ?, ?)", []interface{}{"I'm fine", 42, int8(8), int16(-16), int32(32), int64(64)},
-			"SELECT * FROM a WHERE name = 'I\\'m fine' AND state IN (42, 8, -16, 32, 64)", nil,
+			"SELECT * FROM a WHERE name = 'I''m fine' AND state IN (42, 8, -16, 32, 64)", nil,
 		},
 		{
 			Informix,
 			"SELECT * FROM `a?` WHERE name = \"?\" AND state IN (?, '?', ?, ?, ?, ?, ?)", []interface{}{"\r\n\b\t\x1a\x00\\\"'", uint(42), uint8(8), uint16(16), uint32(32), uint64(64), "useless"},
-			"SELECT * FROM `a?` WHERE name = \"?\" AND state IN ('\\r\\n\\b\\t\\Z\\0\\\\\\\"\\'', '?', 42, 8, 16, 32, 64)", nil,
+			"SELECT * FROM `a?` WHERE name = \"?\" AND state IN ('\r\n\b\t\x1a\x00\\\"''', '?', 42, 8, 16, 32, 64)", nil,
 		},
 		{
 			Informix,
@@ -387,6 +387,32 @@ func TestFlavorInterpolate(t *testing.T) {
 
 			a.Equal(query, c.Query)
 			a.Assert(errors.Is(err, c.Err) || strings.Contains(err.Error(), c.Err.Error()))
+		})
+	}
+}
+
+func TestANSIInterpolationEscapesQuotes(t *testing.T) {
+	payload := "x'; DROP TABLE users; --"
+	cases := []struct {
+		flavor   Flavor
+		sql      string
+		expected string
+	}{
+		{SQLServer, "SELECT @p1", "SELECT N'x''; DROP TABLE users; --'"},
+		{Oracle, "SELECT :1", "SELECT 'x''; DROP TABLE users; --'"},
+		{Presto, "SELECT ?", "SELECT 'x''; DROP TABLE users; --'"},
+		{Informix, "SELECT ?", "SELECT 'x''; DROP TABLE users; --'"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.flavor.String(), func(t *testing.T) {
+			query, err := tc.flavor.Interpolate(tc.sql, []interface{}{payload})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if query != tc.expected {
+				t.Fatalf("unexpected query: %q", query)
+			}
 		})
 	}
 }
