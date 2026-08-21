@@ -31,6 +31,33 @@ func TestFlavor(t *testing.T) {
 	}
 }
 
+func TestFlavorQuoteEscapesDelimiters(t *testing.T) {
+	cases := []struct {
+		flavor Flavor
+		input  string
+		want   string
+	}{
+		{MySQL, "name` DESC", "`name`` DESC`"},
+		{ClickHouse, "name` DESC", "`name`` DESC`"},
+		{Doris, "name` DESC", "`name`` DESC`"},
+		{PostgreSQL, `name" DESC`, `"name"" DESC"`},
+		{SQLServer, `name" DESC`, `"name"" DESC"`},
+		{SQLite, `name" DESC`, `"name"" DESC"`},
+		{Presto, `name" DESC`, `"name"" DESC"`},
+		{Oracle, `name" DESC`, `"name"" DESC"`},
+		{Informix, `name" DESC`, `"name"" DESC"`},
+		{CQL, "name' DESC", "'name'' DESC'"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.flavor.String(), func(t *testing.T) {
+			if got := tc.flavor.Quote(tc.input); got != tc.want {
+				t.Fatalf("Quote(%q) = %q, want %q", tc.input, got, tc.want)
+			}
+		})
+	}
+}
+
 func ExampleFlavor() {
 	// Create a flavored builder.
 	sb := PostgreSQL.NewSelectBuilder()
