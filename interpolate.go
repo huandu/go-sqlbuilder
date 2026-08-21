@@ -4,8 +4,10 @@
 package sqlbuilder
 
 import (
+	"bytes"
 	"database/sql/driver"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"time"
@@ -682,10 +684,10 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 			buf = strconv.AppendUint(buf, primative.Uint(), 10)
 
 		case reflect.Float32:
-			buf = strconv.AppendFloat(buf, primative.Float(), 'g', -1, 32)
+			buf = encodeFloat(buf, primative.Float(), 32, flavor)
 
 		case reflect.Float64:
-			buf = strconv.AppendFloat(buf, primative.Float(), 'g', -1, 64)
+			buf = encodeFloat(buf, primative.Float(), 64, flavor)
 
 		case reflect.String:
 			buf = quoteStringValue(buf, primative.String(), flavor)
@@ -855,5 +857,43 @@ func quoteStringValue(buf []byte, s string, flavor Flavor) []byte {
 	}
 
 	buf = append(buf, '\'')
+	return buf
+}
+
+// encodeFloat appends the SQL literal for a float value to buf.
+//
+// For every flavor except ClickHouse the value is rendered exactly as
+// strconv.AppendFloat produces it, preserving the existing behavior. For
+// ClickHouse the output is adjusted so the literal keeps its floating-point
+// type and parses correctly:
+//
+//   - Non-finite values are emitted in lowercase (nan, inf, -inf) because
+//     ClickHouse's SQL parser only accepts the lowercase spellings and rejects
+//     Go's default NaN/+Inf/-Inf as unknown identifiers.
+//   - Whole numbers such as 1 gain a ".0" suffix so ClickHouse does not infer
+//     them as integers and silently narrow a Float column. Values that already
+//     carry a decimal point or an exponent (for example 1e+21) are left as-is.
+func encodeFloat(buf []byte, f float64, bitSize int, flavor Flavor) []byte {
+	if flavor == ClickHouse {
+		switch {
+		case math.IsNaN(f):
+			return append(buf, "nan"...)
+		case math.IsInf(f, 1):
+			return append(buf, "inf"...)
+		case math.IsInf(f, -1):
+			return append(buf, "-inf"...)
+		}
+	}
+
+	start := len(buf)
+	buf = strconv.AppendFloat(buf, f, 'g', -1, bitSize)
+
+	// For ClickHouse, ensure a whole-number float keeps a decimal point so the
+	// literal is inferred as a float rather than an integer. A rendering that
+	// already contains "." or an exponent (e.g. 1e+21) is unambiguous.
+	if flavor == ClickHouse && !bytes.ContainsAny(buf[start:], ".eE") {
+		buf = append(buf, ".0"...)
+	}
+
 	return buf
 }
