@@ -6,6 +6,7 @@ package sqlbuilder
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // Supported flavors.
@@ -168,11 +169,11 @@ func (f Flavor) NewCTEQueryBuilder() *CTEQueryBuilder {
 func (f Flavor) Quote(name string) string {
 	switch f {
 	case MySQL, ClickHouse, Doris:
-		return fmt.Sprintf("`%s`", name)
+		return fmt.Sprintf("`%s`", strings.ReplaceAll(name, "`", "``"))
 	case PostgreSQL, SQLServer, SQLite, Presto, Oracle, Informix:
-		return fmt.Sprintf(`"%s"`, name)
+		return fmt.Sprintf(`"%s"`, strings.ReplaceAll(name, `"`, `""`))
 	case CQL:
-		return fmt.Sprintf("'%s'", name)
+		return fmt.Sprintf("'%s'", strings.ReplaceAll(name, "'", "''"))
 	}
 
 	return name
