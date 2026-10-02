@@ -591,9 +591,16 @@ func encodeValue(buf []byte, arg interface{}, flavor Flavor) ([]byte, error) {
 			break
 		}
 
-		// In SQL standard, the precision of fractional seconds in time literal is up to 6 digits.
-		// Round up v.
-		v = v.Add(500 * time.Nanosecond)
+		// Round to the digits this literal keeps. Adding half a unit and then
+		// formatting truncates the rest. SQLite and Presto print milliseconds,
+		// so half a millisecond is the cutoff. 12:23:34.9995 was printed as
+		// 12:23:34.999.
+		round := 500 * time.Nanosecond
+		switch flavor {
+		case SQLite, Presto:
+			round = 500 * time.Microsecond
+		}
+		v = v.Add(round)
 
 		switch flavor {
 		case MySQL, ClickHouse, Informix, Doris:
