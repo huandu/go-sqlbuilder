@@ -522,3 +522,32 @@ func TestTypedNilInterpolation(t *testing.T) {
 		})
 	}
 }
+
+func TestInterpolateMillisecondRound(t *testing.T) {
+	half := time.Date(2019, 4, 24, 12, 23, 34, 123500000, time.UTC)
+	carry := time.Date(2019, 4, 24, 12, 23, 34, 999500000, time.UTC)
+	under := time.Date(2019, 4, 24, 12, 23, 34, 123456789, time.UTC)
+	cases := []struct {
+		flavor Flavor
+		tm     time.Time
+		want   string
+	}{
+		{SQLite, half, "SELECT '2019-04-24 12:23:34.124'"},
+		{Presto, half, "SELECT '2019-04-24 12:23:34.124'"},
+		{SQLite, carry, "SELECT '2019-04-24 12:23:35.000'"},
+		{Presto, carry, "SELECT '2019-04-24 12:23:35.000'"},
+		{SQLite, under, "SELECT '2019-04-24 12:23:34.123'"},
+		{Presto, under, "SELECT '2019-04-24 12:23:34.123'"},
+		{MySQL, half, "SELECT '2019-04-24 12:23:34.1235'"},
+		{MySQL, carry, "SELECT '2019-04-24 12:23:34.9995'"},
+	}
+	for _, tc := range cases {
+		got, err := tc.flavor.Interpolate("SELECT ?", []interface{}{tc.tm})
+		if err != nil {
+			t.Fatalf("%v %s: %s", tc.flavor, tc.tm, err)
+		}
+		if got != tc.want {
+			t.Errorf("%v %s: got %s, want %s", tc.flavor, tc.tm, got, tc.want)
+		}
+	}
+}
