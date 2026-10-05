@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -38,6 +39,9 @@ type structField struct {
 	DBTag    string
 	Field    reflect.StructField
 	Index    []int
+
+	SliceIndex []int
+	SliceDepth int
 
 	omitEmptyTags omitEmptyTagMap
 }
@@ -79,14 +83,14 @@ func makeFieldsParser(t reflect.Type, mapper FieldMapperFunc, useDefault bool) s
 				mapper = DefaultFieldMapper
 			}
 
-			sfs.parse(t, mapper, "", nil, true)
+			sfs.parse(t, mapper, "", nil, true, nil, 0, nil)
 		})
 
 		return sfs
 	}
 }
 
-func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix string, index []int, allowInsert bool) {
+func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix string, index []int, allowInsert bool, slicePath []int, sliceDepth int, inheritedTags []string) {
 	l := t.NumField()
 	var anonymous []reflect.StructField
 
@@ -117,16 +121,34 @@ func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix st
 
 		fieldOpts := parseStructFieldOptions(field)
 
-		if shouldExpandTaggedStructField(field.Type, dbtag, fieldOpts) {
-			structField := makeStructField(field, alias, dbtag, mapper, fieldOpts, prefix, index, i)
+		if expand, targetType, isSlice := shouldExpandTaggedField(field.Type, dbtag, fieldOpts); expand {
+			structField := makeStructField(field, alias, dbtag, mapper, fieldOpts, prefix, index, i, slicePath, sliceDepth, inheritedTags)
 			if allowInsert {
 				sfs.addInsertField(structField)
 			}
-			sfs.parse(dereferencedType(field.Type), mapper, dbtag+".", appendFieldIndex(index, i), false)
+			newSlicePath := slicePath
+			newSliceDepth := sliceDepth
+			if isSlice {
+				newSlicePath = appendFieldIndex(index, i)
+				newSliceDepth++
+			}
+			var nextTags []string
+			if len(structField.Tags) > 0 {
+				nextTags = append(nextTags, structField.Tags...)
+			}
+			if len(inheritedTags) > 0 {
+				nextTags = append(nextTags, inheritedTags...)
+			}
+			if len(nextTags) > 0 {
+				sort.Strings(nextTags)
+				nextTags = removeDuplicatedTags(nextTags)
+			}
+
+			sfs.parse(targetType, mapper, dbtag+".", appendFieldIndex(index, i), false, newSlicePath, newSliceDepth, nextTags)
 			continue
 		}
 
-		structField := makeStructField(field, alias, dbtag, mapper, fieldOpts, prefix, index, i)
+		structField := makeStructField(field, alias, dbtag, mapper, fieldOpts, prefix, index, i, slicePath, sliceDepth, inheritedTags)
 		if allowInsert {
 			sfs.addField(structField)
 		} else {
@@ -136,11 +158,11 @@ func (sfs *structFields) parse(t reflect.Type, mapper FieldMapperFunc, prefix st
 
 	for _, field := range anonymous {
 		ft := dereferencedType(field.Type)
-		sfs.parse(ft, mapper, prefix, appendFieldIndex(index, field.Index...), allowInsert)
+		sfs.parse(ft, mapper, prefix, appendFieldIndex(index, field.Index...), allowInsert, slicePath, sliceDepth, inheritedTags)
 	}
 }
 
-func makeStructField(field reflect.StructField, alias, dbtag string, mapper FieldMapperFunc, fieldOpts structFieldOptions, prefix string, index []int, fieldIndex int) *structField {
+func makeStructField(field reflect.StructField, alias, dbtag string, mapper FieldMapperFunc, fieldOpts structFieldOptions, prefix string, index []int, fieldIndex int, slicePath []int, sliceDepth int, inheritedTags []string) *structField {
 	if alias == "" {
 		alias = field.Name
 		if mapper != nil {
@@ -155,6 +177,11 @@ func makeStructField(field reflect.StructField, alias, dbtag string, mapper Fiel
 	fieldas := field.Tag.Get(FieldAs)
 	fieldtag := field.Tag.Get(FieldTag)
 	tags := splitTags(fieldtag)
+	if len(inheritedTags) > 0 {
+		tags = append(tags, inheritedTags...)
+		sort.Strings(tags)
+		tags = removeDuplicatedTags(tags)
+	}
 
 	return &structField{
 		Name:          field.Name,
@@ -165,6 +192,8 @@ func makeStructField(field reflect.StructField, alias, dbtag string, mapper Fiel
 		DBTag:         dbtag,
 		Field:         field,
 		Index:         appendFieldIndex(index, fieldIndex),
+		SliceIndex:    slicePath,
+		SliceDepth:    sliceDepth,
 		omitEmptyTags: fieldOpts.omitEmptyTags,
 	}
 }
@@ -233,20 +262,55 @@ func shouldExpandAnonymousStructField(t reflect.Type) bool {
 	return canExpandStructType(t)
 }
 
-func shouldExpandTaggedStructField(t reflect.Type, dbtag string, fieldOpts structFieldOptions) bool {
-	if dbtag == "" || !canExpandStructType(t) {
-		return false
+func canExpandType(t reflect.Type) (expandable bool, targetType reflect.Type, isSlice bool) {
+	if t == nil {
+		return false, nil, false
+	}
+
+	dt := dereferencedType(t)
+	if dt.Kind() == reflect.Slice {
+		elem := dereferencedType(dt.Elem())
+		if canExpandStructType(elem) {
+			return true, elem, true
+		}
+		return false, nil, false
+	}
+
+	if canExpandStructType(dt) {
+		return true, dt, false
+	}
+
+	return false, nil, false
+}
+
+func shouldExpandTaggedField(t reflect.Type, dbtag string, fieldOpts structFieldOptions) (expandable bool, targetType reflect.Type, isSlice bool) {
+	if dbtag == "" {
+		return false, nil, false
+	}
+
+	can, target, slice := canExpandType(t)
+	if !can {
+		return false, nil, false
 	}
 
 	switch fieldOpts.expandMode {
 	case structFieldExpandEnabled:
-		return true
+		return true, target, slice
 
 	case structFieldExpandDisabled:
-		return false
+		return false, nil, false
 	}
 
-	return !NoExpand
+	if NoExpand {
+		return false, nil, false
+	}
+
+	return true, target, slice
+}
+
+func shouldExpandTaggedStructField(t reflect.Type, dbtag string, fieldOpts structFieldOptions) bool {
+	expandable, _, _ := shouldExpandTaggedField(t, dbtag, fieldOpts)
+	return expandable
 }
 
 func canExpandStructType(t reflect.Type) bool {
