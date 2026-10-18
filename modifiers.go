@@ -47,7 +47,10 @@ func flatten(v reflect.Value) (elem interface{}, flattened []interface{}) {
 	}
 
 	if k != reflect.Slice && k != reflect.Array {
-		if !v.IsValid() || !v.CanInterface() {
+		if !v.IsValid() {
+			return nil, []interface{}{nil}
+		}
+		if !v.CanInterface() {
 			return
 		}
 
