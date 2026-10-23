@@ -391,6 +391,45 @@ func TestFlavorInterpolate(t *testing.T) {
 	}
 }
 
+func TestPostgreSQLInterpolateDollarQuoteTags(t *testing.T) {
+	for _, tag := range []string{"", "tag", "_", "tag_name", "tag1", "_tag_1", "标签1"} {
+		t.Run("tag="+tag, func(t *testing.T) {
+			delimiter := "$" + tag + "$"
+			quoted := delimiter + "literal $2" + delimiter
+			query, err := PostgreSQL.Interpolate("SELECT "+quoted+", $1", []interface{}{42})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := "SELECT " + quoted + ", 42"; query != want {
+				t.Fatalf("unexpected query: got %q, want %q", query, want)
+			}
+		})
+	}
+
+	// $0$ is invalid SQL; this only checks that a digit cannot start a quote tag.
+	query, err := PostgreSQL.Interpolate("SELECT $0$, $1", []interface{}{42})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "SELECT $0$, 42"; query != want {
+		t.Fatalf("unexpected query: got %q, want %q", query, want)
+	}
+}
+
+func TestPostgreSQLInterpolateDollarQuoteIdentifiers(t *testing.T) {
+	for _, identifier := range []string{"foo$_bar$", "foo$bar$", "foo$$", "foo1$_bar$", "foo$2$_bar$", "标签$_bar$"} {
+		t.Run(identifier, func(t *testing.T) {
+			query, err := PostgreSQL.Interpolate("SELECT "+identifier+", $1", []interface{}{42})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := "SELECT " + identifier + ", 42"; query != want {
+				t.Fatalf("unexpected query: got %q, want %q", query, want)
+			}
+		})
+	}
+}
+
 func TestANSIInterpolationEscapesQuotes(t *testing.T) {
 	payload := "x'; DROP TABLE users; --"
 	cases := []struct {
