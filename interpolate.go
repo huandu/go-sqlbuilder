@@ -170,6 +170,19 @@ func postgresqlInterpolate(query string, args ...interface{}) (string, error) {
 				continue
 			}
 
+			var tokenStart rune
+			for pos := offset - sz; pos > 0; {
+				previous, size := utf8.DecodeLastRuneInString(query[:pos])
+				if !unicode.IsLetter(previous) && previous != '_' && previous != '$' && (previous < '0' || previous > '9') {
+					break
+				}
+				tokenStart = previous
+				pos -= size
+			}
+			if tokenStart == '_' || unicode.IsLetter(tokenStart) {
+				continue
+			}
+
 			oldSz := sz
 			pos := offset
 			r, sz = utf8.DecodeRuneInString(target)
@@ -216,7 +229,7 @@ func postgresqlInterpolate(query string, args ...interface{}) (string, error) {
 				continue
 			}
 
-			for ; sz != 0 && (unicode.IsLetter(r) || r == '_' || '0' <= r && r <= '9'); r, sz = utf8.DecodeRuneInString(target) {
+			for ; sz != 0 && (unicode.IsLetter(r) || r == '_' || ('0' <= r && r <= '9')); r, sz = utf8.DecodeRuneInString(target) {
 				pos += sz
 				target = query[pos:]
 			}
