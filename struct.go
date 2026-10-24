@@ -5,10 +5,12 @@ package sqlbuilder
 
 import (
 	"database/sql/driver"
+	"fmt"
 	"math"
 	"reflect"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -384,6 +386,10 @@ func (s *Struct) updateWithTags(table string, with, without []string, value inte
 	assignments := make([]string, 0, len(tagged.ForWrite))
 
 	for _, sf := range tagged.ForWrite {
+		if sf.SliceDepth > 0 {
+			continue
+		}
+
 		val, ok := fieldByIndex(v, sf.Index, false)
 
 		if !ok || !val.IsValid() {
@@ -653,21 +659,72 @@ func (s *Struct) AddrWithCols(cols []string, st interface{}) []interface{} {
 
 func (s *Struct) addrWithFields(fields []*structField, st interface{}) []interface{} {
 	v := reflect.ValueOf(st)
+
+	if !v.IsValid() || v.Kind() != reflect.Ptr || v.IsNil() {
+		return nil
+	}
+
 	v = dereferencedValue(v)
 
-	if v.Type() != s.structType {
+	if !v.IsValid() || v.Type() != s.structType {
 		return nil
 	}
 
 	addrs := make([]interface{}, 0, len(fields))
+	activeSliceElements := make(map[string]reflect.Value)
 
 	for _, sf := range fields {
-		field, ok := fieldByIndex(v, sf.Index, true)
-		if !ok || !field.IsValid() {
+		if sf.SliceDepth == 0 {
+			field, ok := fieldByIndex(v, sf.Index, true)
+			if !ok || !field.IsValid() {
+				return nil
+			}
+
+			data := field.Addr().Interface()
+			addrs = append(addrs, data)
+			continue
+		}
+
+		key := indexPathKey(sf.SliceIndex)
+		childStruct, exists := activeSliceElements[key]
+		if !exists {
+			sliceField, ok := fieldByIndex(v, sf.SliceIndex, true)
+			if !ok || !sliceField.IsValid() {
+				return nil
+			}
+
+			for sliceField.Kind() == reflect.Ptr {
+				if sliceField.IsNil() {
+					sliceField.Set(reflect.New(sliceField.Type().Elem()))
+				}
+				sliceField = sliceField.Elem()
+			}
+
+			if sliceField.Kind() != reflect.Slice {
+				return nil
+			}
+
+			sliceElemType := sliceField.Type().Elem()
+			if sliceElemType.Kind() == reflect.Ptr {
+				childStructPtr := reflect.New(sliceElemType.Elem())
+				childStruct = childStructPtr.Elem()
+				sliceField.Set(reflect.Append(sliceField, childStructPtr))
+				activeSliceElements[key] = childStruct
+			} else {
+				newChildElem := reflect.New(sliceElemType).Elem()
+				sliceField.Set(reflect.Append(sliceField, newChildElem))
+				childStruct = sliceField.Index(sliceField.Len() - 1)
+				activeSliceElements[key] = childStruct
+			}
+		}
+
+		relIndex := sf.Index[len(sf.SliceIndex):]
+		childField, ok := fieldByIndex(childStruct, relIndex, true)
+		if !ok || !childField.IsValid() {
 			return nil
 		}
 
-		data := field.Addr().Interface()
+		data := childField.Addr().Interface()
 		addrs = append(addrs, data)
 	}
 
@@ -726,15 +783,50 @@ func (s *Struct) valuesWithTags(with, without []string, value interface{}) (valu
 	}
 
 	v := reflect.ValueOf(value)
+	if !v.IsValid() {
+		return nil
+	}
 	v = dereferencedValue(v)
 
-	if v.Type() != s.structType {
-		return
+	if !v.IsValid() || v.Type() != s.structType {
+		return nil
 	}
 
 	values = make([]interface{}, 0, len(tagged.ForWrite))
 
 	for _, sf := range tagged.ForWrite {
+		if sf.SliceDepth > 0 {
+			sliceField, ok := fieldByIndex(v, sf.SliceIndex, false)
+			if !ok || !sliceField.IsValid() {
+				values = append(values, nil)
+				continue
+			}
+
+			for sliceField.Kind() == reflect.Ptr {
+				if sliceField.IsNil() {
+					break
+				}
+				sliceField = sliceField.Elem()
+			}
+
+			if sliceField.Kind() != reflect.Slice || sliceField.Len() == 0 {
+				values = append(values, nil)
+				continue
+			}
+
+			lastElem := sliceField.Index(sliceField.Len() - 1)
+			lastElem = dereferencedValue(lastElem)
+			relIndex := sf.Index[len(sf.SliceIndex):]
+			field, ok := fieldByIndex(lastElem, relIndex, false)
+			if !ok || !field.IsValid() {
+				values = append(values, nil)
+				continue
+			}
+
+			values = append(values, field.Interface())
+			continue
+		}
+
 		field, ok := fieldByIndex(v, sf.Index, false)
 		if !ok || !field.IsValid() {
 			values = append(values, nil)
@@ -882,4 +974,210 @@ func isEmptyValue(v reflect.Value) bool {
 	}
 
 	return false
+}
+
+func indexPathKey(index []int) string {
+	if len(index) == 0 {
+		return ""
+	}
+	var buf strings.Builder
+	for i, n := range index {
+		if i > 0 {
+			buf.WriteByte('.')
+		}
+		buf.WriteString(strconv.Itoa(n))
+	}
+	return buf.String()
+}
+
+// SliceFields returns the names or aliases of all nested slice fields in s.
+func (s *Struct) SliceFields() []string {
+	sfs := s.structFieldsParser()
+	tagged := sfs.FilterTags(s.withTags, s.withoutTags)
+	if tagged == nil {
+		return nil
+	}
+
+	seen := make(map[string]struct{})
+	var result []string
+	for _, sf := range tagged.ForRead {
+		if sf.SliceDepth > 0 && len(sf.SliceIndex) > 0 {
+			dotIdx := strings.IndexByte(sf.Alias, '.')
+			if dotIdx != -1 {
+				name := sf.Alias[:dotIdx]
+				if _, ok := seen[name]; !ok {
+					seen[name] = struct{}{}
+					result = append(result, name)
+				}
+			}
+		}
+	}
+	return result
+}
+
+// SliceColumns returns all column names projected for the specified child slice field.
+// For example, s.SliceColumns("expenses") returns []string{"expenses.id", "expenses.name", ...}.
+func (s *Struct) SliceColumns(sliceField string) []string {
+	sfs := s.structFieldsParser()
+	tagged := sfs.FilterTags(s.withTags, s.withoutTags)
+	if tagged == nil {
+		return nil
+	}
+
+	prefix := sliceField + "."
+	var cols []string
+	for _, sf := range tagged.ForRead {
+		if sf.SliceDepth > 0 && strings.HasPrefix(sf.Alias, prefix) {
+			cols = append(cols, sf.Alias)
+		}
+	}
+	return cols
+}
+
+// PruneEmptySliceElements removes any elements from child slices on st where all fields
+// are zero or empty, such as from LEFT JOIN query rows where child records were NULL.
+func (s *Struct) PruneEmptySliceElements(st interface{}) {
+	if st == nil {
+		return
+	}
+	v := reflect.ValueOf(st)
+	v = dereferencedValue(v)
+
+	if !v.IsValid() || v.Type() != s.structType {
+		return
+	}
+
+	sfs := s.structFieldsParser()
+	tagged := sfs.FilterTags(s.withTags, s.withoutTags)
+	if tagged == nil {
+		return
+	}
+
+	sliceIndices := make(map[string][]int)
+	for _, sf := range tagged.ForRead {
+		if sf.SliceDepth > 0 && len(sf.SliceIndex) > 0 {
+			key := indexPathKey(sf.SliceIndex)
+			if _, ok := sliceIndices[key]; !ok {
+				sliceIndices[key] = sf.SliceIndex
+			}
+		}
+	}
+
+	for _, idx := range sliceIndices {
+		sliceField, ok := fieldByIndex(v, idx, false)
+		if !ok || !sliceField.IsValid() {
+			continue
+		}
+
+		for sliceField.Kind() == reflect.Ptr {
+			if sliceField.IsNil() {
+				break
+			}
+			sliceField = sliceField.Elem()
+		}
+
+		if sliceField.Kind() != reflect.Slice || sliceField.Len() == 0 {
+			continue
+		}
+
+		sliceLen := sliceField.Len()
+		validElements := make([]reflect.Value, 0, sliceLen)
+
+		for i := 0; i < sliceLen; i++ {
+			elem := sliceField.Index(i)
+			if !isChildElementEmpty(elem) {
+				validElements = append(validElements, elem)
+			}
+		}
+
+		if len(validElements) < sliceLen && sliceField.CanSet() {
+			newSlice := reflect.MakeSlice(sliceField.Type(), len(validElements), len(validElements))
+			for i, elem := range validElements {
+				newSlice.Index(i).Set(elem)
+			}
+			sliceField.Set(newSlice)
+		}
+	}
+}
+
+func isChildElementEmpty(v reflect.Value) bool {
+	v = dereferencedValue(v)
+	if !v.IsValid() {
+		return true
+	}
+	return isEmptyValue(v)
+}
+
+// ScannableRows is an interface matching rows from database/sql.
+type ScannableRows interface {
+	Next() bool
+	Scan(dest ...interface{}) error
+}
+
+type rowErrorChecker interface {
+	Err() error
+}
+
+// ScanJoined scans multiple rows from a scannable row iterator into st,
+// populating scalar fields and aggregating child slice records across all rows.
+// Any empty child elements from LEFT JOIN NULL records are pruned upon completion.
+func (s *Struct) ScanJoined(rows ScannableRows, st interface{}) error {
+	if rows == nil {
+		return fmt.Errorf("sqlbuilder: nil rows")
+	}
+	if st == nil {
+		return fmt.Errorf("sqlbuilder: nil destination struct")
+	}
+	v := reflect.ValueOf(st)
+	if !v.IsValid() || v.Kind() != reflect.Ptr || v.IsNil() {
+		return fmt.Errorf("sqlbuilder: destination must be non-nil pointer to struct, got %T", st)
+	}
+	for rows.Next() {
+		addrs := s.Addr(st)
+		if addrs == nil {
+			return fmt.Errorf("sqlbuilder: cannot get scan addresses for %T", st)
+		}
+		if err := rows.Scan(addrs...); err != nil {
+			return err
+		}
+	}
+	if checker, ok := rows.(rowErrorChecker); ok {
+		if err := checker.Err(); err != nil {
+			return err
+		}
+	}
+	s.PruneEmptySliceElements(st)
+	return nil
+}
+
+// ScanJoinedWithCols scans multiple rows from a scannable row iterator into st using specified columns,
+// populating scalar fields and aggregating child slice records across all rows.
+// Any empty child elements from LEFT JOIN NULL records are pruned upon completion.
+func (s *Struct) ScanJoinedWithCols(rows ScannableRows, cols []string, st interface{}) error {
+	if rows == nil {
+		return fmt.Errorf("sqlbuilder: nil rows")
+	}
+	if st == nil {
+		return fmt.Errorf("sqlbuilder: nil destination struct")
+	}
+	v := reflect.ValueOf(st)
+	if !v.IsValid() || v.Kind() != reflect.Ptr || v.IsNil() {
+		return fmt.Errorf("sqlbuilder: destination must be non-nil pointer to struct, got %T", st)
+	}
+	for rows.Next() {
+		addrs := s.AddrWithCols(cols, st)
+		if addrs == nil {
+			return fmt.Errorf("sqlbuilder: cannot get scan addresses for %T", st)
+		}
+		if err := rows.Scan(addrs...); err != nil {
+			return err
+		}
+	}
+	if checker, ok := rows.(rowErrorChecker); ok {
+		if err := checker.Err(); err != nil {
+			return err
+		}
+	}
+	s.PruneEmptySliceElements(st)
+	return nil
 }

@@ -341,6 +341,334 @@ func TestStructNestedAliasAddrValuesAndWrites(t *testing.T) {
 	a.Equal(nestedJoinRowForTest.Values(withNilComment), []interface{}{"post-4", "nil", nil, nil, 13})
 }
 
+type structExpenseForTest struct {
+	ID     uint64  `db:"id"`
+	UserID uint64  `db:"user_id"`
+	Name   string  `db:"name"`
+	Amount float64 `db:"amount"`
+}
+
+type structRoleForTest struct {
+	ID   int    `db:"id"`
+	Role string `db:"role"`
+}
+
+type structUserWithSlicesForTest struct {
+	ID       uint64                  `db:"id"`
+	Name     string                  `db:"name"`
+	Expenses []*structExpenseForTest `db:"expenses"`
+	Roles    []structRoleForTest     `db:"roles"`
+}
+
+type structUserWithPtrSliceForTest struct {
+	ID       uint64                   `db:"id"`
+	Name     string                   `db:"name"`
+	Expenses *[]*structExpenseForTest `db:"expenses"`
+	Roles    *[]structRoleForTest     `db:"roles"`
+}
+
+type mockJoinedRowsForTest struct {
+	rows [][]interface{}
+	idx  int
+	err  error
+}
+
+func (m *mockJoinedRowsForTest) Next() bool {
+	if m.idx < len(m.rows) {
+		m.idx++
+		return true
+	}
+	return false
+}
+
+func (m *mockJoinedRowsForTest) Scan(dest ...interface{}) error {
+	row := m.rows[m.idx-1]
+	for i, val := range row {
+		if i >= len(dest) {
+			break
+		}
+		if val == nil {
+			continue
+		}
+		destVal := reflect.ValueOf(dest[i])
+		if destVal.Kind() == reflect.Ptr {
+			elem := destVal.Elem()
+			srcVal := reflect.ValueOf(val)
+			if srcVal.Type().AssignableTo(elem.Type()) {
+				elem.Set(srcVal)
+			} else if srcVal.Type().ConvertibleTo(elem.Type()) {
+				elem.Set(srcVal.Convert(elem.Type()))
+			}
+		}
+	}
+	return nil
+}
+
+func (m *mockJoinedRowsForTest) Err() error {
+	return m.err
+}
+
+type mockFailingRowsForTest struct {
+	mockJoinedRowsForTest
+	failScanOnIndex int
+}
+
+func (m *mockFailingRowsForTest) Scan(dest ...interface{}) error {
+	if m.idx == m.failScanOnIndex {
+		return fmt.Errorf("simulated scan error")
+	}
+	return m.mockJoinedRowsForTest.Scan(dest...)
+}
+
+func TestStructSliceChildrenSelectAndColumns(t *testing.T) {
+	a := assert.New(t)
+	st := NewStruct(new(structUserWithSlicesForTest))
+
+	expectedCols := []string{
+		"id", "name",
+		"expenses.id", "expenses.user_id", "expenses.name", "expenses.amount",
+		"roles.id", "roles.role",
+	}
+	a.Equal(st.Columns(), expectedCols)
+
+	a.Equal(st.SliceFields(), []string{"expenses", "roles"})
+	a.Equal(st.SliceColumns("expenses"), []string{"expenses.id", "expenses.user_id", "expenses.name", "expenses.amount"})
+	a.Equal(st.SliceColumns("roles"), []string{"roles.id", "roles.role"})
+	a.Equal(len(st.SliceColumns("unknown")), 0)
+
+	sql, args := st.SelectFrom("users u").
+		Join("expenses e", "u.id = e.user_id").
+		Join("roles r", "u.id = r.user_id").
+		Build()
+
+	expectedSQL := "SELECT u.id, u.name, expenses.id, expenses.user_id, expenses.name, expenses.amount, roles.id, roles.role FROM users u JOIN expenses e ON u.id = e.user_id JOIN roles r ON u.id = r.user_id"
+	a.Equal(sql, expectedSQL)
+	a.Equal(args, nil)
+}
+
+func TestStructSliceChildrenAddrAndValues(t *testing.T) {
+	a := assert.New(t)
+	st := NewStruct(new(structUserWithSlicesForTest))
+
+	var user structUserWithSlicesForTest
+
+	// Row 1
+	addrs1 := st.Addr(&user)
+	a.Equal(len(addrs1), 8)
+	_, _ = fmt.Sscan("1 Alice 10 1 Lunch 15.5 100 Admin", addrs1...)
+	a.Equal(user.ID, uint64(1))
+	a.Equal(user.Name, "Alice")
+	a.Equal(len(user.Expenses), 1)
+	a.Equal(user.Expenses[0].ID, uint64(10))
+	a.Equal(user.Expenses[0].Name, "Lunch")
+	a.Equal(user.Expenses[0].Amount, 15.5)
+	a.Equal(len(user.Roles), 1)
+	a.Equal(user.Roles[0].ID, 100)
+	a.Equal(user.Roles[0].Role, "Admin")
+
+	// Row 2
+	addrs2 := st.Addr(&user)
+	a.Equal(len(addrs2), 8)
+	_, _ = fmt.Sscan("1 Alice 20 1 Dinner 35.0 200 Editor", addrs2...)
+	a.Equal(len(user.Expenses), 2)
+	a.Equal(user.Expenses[1].ID, uint64(20))
+	a.Equal(user.Expenses[1].Name, "Dinner")
+	a.Equal(user.Expenses[1].Amount, 35.0)
+	a.Equal(len(user.Roles), 2)
+	a.Equal(user.Roles[1].ID, 200)
+	a.Equal(user.Roles[1].Role, "Editor")
+
+	// Values returns values from scalar fields and last appended slice elements
+	vals := st.Values(&user)
+	expectedVals := []interface{}{
+		uint64(1), "Alice",
+		uint64(20), uint64(1), "Dinner", 35.0,
+		200, "Editor",
+	}
+	a.Equal(vals, expectedVals)
+
+	// Values on empty user returns nil for child slice fields
+	var emptyUser structUserWithSlicesForTest
+	emptyVals := st.Values(&emptyUser)
+	expectedEmptyVals := []interface{}{
+		uint64(0), "",
+		nil, nil, nil, nil,
+		nil, nil,
+	}
+	a.Equal(emptyVals, expectedEmptyVals)
+
+	// AddrWithCols with specific subset and ordering
+	var reorderedUser structUserWithSlicesForTest
+	cols := []string{"expenses.name", "id", "expenses.amount"}
+	addrsSubset1 := st.AddrWithCols(cols, &reorderedUser)
+	a.Equal(len(addrsSubset1), 3)
+	_, _ = fmt.Sscan("Breakfast 2 8.75", addrsSubset1...)
+	a.Equal(reorderedUser.ID, uint64(2))
+	a.Equal(len(reorderedUser.Expenses), 1)
+	a.Equal(reorderedUser.Expenses[0].Name, "Breakfast")
+	a.Equal(reorderedUser.Expenses[0].Amount, 8.75)
+
+	addrsSubset2 := st.AddrWithCols(cols, &reorderedUser)
+	_, _ = fmt.Sscan("Snack 2 3.50", addrsSubset2...)
+	a.Equal(len(reorderedUser.Expenses), 2)
+	a.Equal(reorderedUser.Expenses[1].Name, "Snack")
+	a.Equal(reorderedUser.Expenses[1].Amount, 3.50)
+
+	// Pointer-to-slice struct test
+	stPtr := NewStruct(new(structUserWithPtrSliceForTest))
+	var ptrUser structUserWithPtrSliceForTest
+	ptrAddrs := stPtr.Addr(&ptrUser)
+	a.Equal(len(ptrAddrs), 8)
+	_, _ = fmt.Sscan("5 Bob 50 5 Travel 120.0 300 Viewer", ptrAddrs...)
+	a.Equal(ptrUser.ID, uint64(5))
+	a.Equal(ptrUser.Name, "Bob")
+	a.Assert(ptrUser.Expenses != nil)
+	a.Equal(len(*ptrUser.Expenses), 1)
+	a.Equal((*ptrUser.Expenses)[0].Name, "Travel")
+	a.Assert(ptrUser.Roles != nil)
+	a.Equal(len(*ptrUser.Roles), 1)
+	a.Equal((*ptrUser.Roles)[0].Role, "Viewer")
+
+	ptrVals := stPtr.Values(&ptrUser)
+	expectedPtrVals := []interface{}{
+		uint64(5), "Bob",
+		uint64(50), uint64(5), "Travel", 120.0,
+		300, "Viewer",
+	}
+	a.Equal(ptrVals, expectedPtrVals)
+
+	// Nil / non-pointer destination checks
+	a.Equal(st.Addr(nil), nil)
+	a.Equal(st.Addr(user), nil)
+	a.Equal(st.AddrWithCols(cols, nil), nil)
+	a.Equal(st.AddrWithCols([]string{"non_existent_column"}, &user), nil)
+}
+
+func TestStructScanJoined(t *testing.T) {
+	a := assert.New(t)
+	st := NewStruct(new(structUserWithSlicesForTest))
+
+	// Happy path: 3 joined rows
+	rows := &mockJoinedRowsForTest{
+		rows: [][]interface{}{
+			{uint64(1), "Alice", uint64(10), uint64(1), "Lunch", 15.5, 100, "Admin"},
+			{uint64(1), "Alice", uint64(20), uint64(1), "Dinner", 35.0, 200, "Editor"},
+			{uint64(1), "Alice", uint64(30), uint64(1), "Taxi", 12.0, 300, "Viewer"},
+		},
+	}
+
+	var user structUserWithSlicesForTest
+	err := st.ScanJoined(rows, &user)
+	a.Equal(err, nil)
+	a.Equal(user.ID, uint64(1))
+	a.Equal(user.Name, "Alice")
+	a.Equal(len(user.Expenses), 3)
+	a.Equal(user.Expenses[0].ID, uint64(10))
+	a.Equal(user.Expenses[0].Name, "Lunch")
+	a.Equal(user.Expenses[1].ID, uint64(20))
+	a.Equal(user.Expenses[1].Name, "Dinner")
+	a.Equal(user.Expenses[2].ID, uint64(30))
+	a.Equal(user.Expenses[2].Name, "Taxi")
+	a.Equal(len(user.Roles), 3)
+	a.Equal(user.Roles[0].Role, "Admin")
+	a.Equal(user.Roles[1].Role, "Editor")
+	a.Equal(user.Roles[2].Role, "Viewer")
+
+	// LEFT JOIN with NULL child record (prunes empty child slice elements)
+	nullRows := &mockJoinedRowsForTest{
+		rows: [][]interface{}{
+			{uint64(2), "EmptyChild", uint64(0), uint64(0), "", 0.0, 0, ""},
+		},
+	}
+	var userNoChildren structUserWithSlicesForTest
+	err = st.ScanJoined(nullRows, &userNoChildren)
+	a.Equal(err, nil)
+	a.Equal(userNoChildren.ID, uint64(2))
+	a.Equal(userNoChildren.Name, "EmptyChild")
+	a.Equal(len(userNoChildren.Expenses), 0)
+	a.Equal(len(userNoChildren.Roles), 0)
+
+	// ScanJoinedWithCols
+	cols := []string{"id", "name", "expenses.id", "expenses.name"}
+	colRows := &mockJoinedRowsForTest{
+		rows: [][]interface{}{
+			{uint64(3), "Charlie", uint64(40), "Coffee"},
+			{uint64(3), "Charlie", uint64(50), "Bagel"},
+		},
+	}
+	var userCols structUserWithSlicesForTest
+	err = st.ScanJoinedWithCols(colRows, cols, &userCols)
+	a.Equal(err, nil)
+	a.Equal(userCols.ID, uint64(3))
+	a.Equal(userCols.Name, "Charlie")
+	a.Equal(len(userCols.Expenses), 2)
+	a.Equal(userCols.Expenses[0].ID, uint64(40))
+	a.Equal(userCols.Expenses[0].Name, "Coffee")
+	a.Equal(userCols.Expenses[1].ID, uint64(50))
+	a.Equal(userCols.Expenses[1].Name, "Bagel")
+	a.Equal(len(userCols.Roles), 0)
+
+	// Error handling tests
+	freshRows := func() *mockJoinedRowsForTest {
+		return &mockJoinedRowsForTest{
+			rows: [][]interface{}{
+				{uint64(1), "Alice"},
+			},
+		}
+	}
+	a.Assert(st.ScanJoined(nil, &user) != nil)
+	a.Assert(st.ScanJoined(freshRows(), nil) != nil)
+	a.Assert(st.ScanJoined(freshRows(), user) != nil)
+	a.Assert(st.ScanJoinedWithCols(nil, cols, &user) != nil)
+	a.Assert(st.ScanJoinedWithCols(freshRows(), cols, nil) != nil)
+	a.Assert(st.ScanJoinedWithCols(freshRows(), []string{"invalid"}, &user) != nil)
+
+	// Scan error propagation
+	failRows := &mockFailingRowsForTest{
+		mockJoinedRowsForTest: mockJoinedRowsForTest{
+			rows: [][]interface{}{
+				{uint64(4), "David", uint64(60), uint64(4), "Hotel", 200.0, 400, "Admin"},
+			},
+		},
+		failScanOnIndex: 1,
+	}
+	var failUser structUserWithSlicesForTest
+	err = st.ScanJoined(failRows, &failUser)
+	a.Assert(err != nil)
+
+	// Row error iteration checker propagation
+	errRows := &mockJoinedRowsForTest{
+		rows: [][]interface{}{
+			{uint64(4), "David", uint64(60), uint64(4), "Hotel", 200.0, 400, "Admin"},
+		},
+		err: fmt.Errorf("simulated iteration error"),
+	}
+	var errUser structUserWithSlicesForTest
+	err = st.ScanJoined(errRows, &errUser)
+	a.Assert(err != nil)
+}
+
+func TestStructSliceChildrenUpdateAndInsert(t *testing.T) {
+	a := assert.New(t)
+	st := NewStruct(new(structUserWithSlicesForTest))
+
+	user := &structUserWithSlicesForTest{
+		ID:   1,
+		Name: "Alice",
+		Expenses: []*structExpenseForTest{
+			{ID: 10, UserID: 1, Name: "Lunch", Amount: 15.5},
+		},
+		Roles: []structRoleForTest{
+			{ID: 100, Role: "Admin"},
+		},
+	}
+
+	// Update builder ignores child slice fields
+	updateSQL, updateArgs := st.Update("users", user).Build()
+	a.Equal(updateSQL, "UPDATE users SET id = ?, name = ?")
+	a.Equal(updateArgs, []interface{}{uint64(1), "Alice"})
+}
+
 func TestStructInsertIntoTaggedNestedFieldRemainsScalar(t *testing.T) {
 	type varRec struct {
 		ChnlPH string `json:"ph"`
@@ -740,6 +1068,32 @@ func ExampleStruct_buildJOINWithNestedStructAlias() {
 
 	// Output:
 	// SELECT post.id, post.text, comment.body FROM posts post JOIN comments comment ON post.id = comment.post_id
+	// []
+}
+
+func ExampleStruct_buildJOINWithSlice() {
+	type Expense struct {
+		ID     uint64  `db:"id"`
+		UserID uint64  `db:"user_id"`
+		Amount float64 `db:"amount"`
+	}
+
+	type UserWithExpenses struct {
+		ID       uint64     `db:"id"`
+		Name     string     `db:"name"`
+		Expenses []*Expense `db:"expenses"`
+	}
+
+	userStruct := NewStruct(new(UserWithExpenses))
+	sb := userStruct.SelectFrom("users u").
+		Join("expenses e", "u.id = e.user_id")
+	sql, args := sb.Build()
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT u.id, u.name, expenses.id, expenses.user_id, expenses.amount FROM users u JOIN expenses e ON u.id = e.user_id
 	// []
 }
 
