@@ -355,6 +355,40 @@ fmt.Println(sql)
 // SELECT e.id, e.payload FROM events e
 ```
 
+#### Collecting One-to-Many `JOIN` Rows with `fieldopt:"expand"` and `StructCollector`
+
+Slice fields stay as single columns by default so existing structs and `sql.Scanner`/`driver.Valuer` slice types are unaffected. Add `fieldopt:"expand"` to a slice of structs (e.g. `[]Expense`, `[]*Expense`, `*[]Expense`) to project its columns for `JOIN` queries, and use `Struct#NewCollector` to group flat rows into parent structs per query.
+
+`Struct` and `Struct#Addr` remain stateless and thread-safe. `StructCollector` is a separate, caller-owned value created once per query. When multiple child slices are expanded, call `WithChildKey` for each slice to detect `LEFT JOIN` `NULL` rows and deduplicate child records against cartesian row inflation. Expanded slice fields are omitted from `Update`, `InsertInto`, and `Values`, and slice children inherit `fieldtag` from the slice field (ordinary nested structs do not). Nested slices inside expanded slices are not supported and are rejected in `NewStruct`.
+
+```go
+type Expense struct {
+    ID     uint64  `db:"id"`
+    UserID uint64  `db:"user_id"`
+    Amount float64 `db:"amount"`
+}
+
+type User struct {
+    ID       uint64     `db:"id"`
+    Name     string     `db:"name"`
+    Expenses []*Expense `db:"e" fieldopt:"expand"`
+}
+
+var userStruct = sqlbuilder.NewStruct(new(User))
+
+sql, args := userStruct.SelectFrom("users u").
+    JoinWithOption(sqlbuilder.LeftJoin, "expenses e", "u.id = e.user_id").
+    Build()
+
+rows, err := db.Query(sql, args...)
+// handle err; defer rows.Close()
+
+var users []User
+err = userStruct.NewCollector("id").
+    WithChildKey("e", "e.id").
+    Collect(rows, &users)
+```
+
 For detailed instructions on utilizing `Struct`, refer to the [examples](https://pkg.go.dev/github.com/huandu/go-sqlbuilder#Struct).
 
 Furthermore, `Struct` can be employed as a zero-configuration ORM. Unlike most ORM implementations that necessitate preliminary configurations for database connectivity, `Struct` operates without any configuration, functioning seamlessly with any SQL driver compatible with `database/sql`. `Struct` does not invoke any `database/sql` APIs; it solely generates the appropriate SQL statements with arguments for `DB#Query`/`DB#Exec` or an array of struct field addresses for `Rows#Scan`/`Row#Scan`.

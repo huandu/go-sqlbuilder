@@ -74,6 +74,10 @@ func NewStruct(structValue interface{}) *Struct {
 		return &emptyStruct
 	}
 
+	if err := validateStructType(t, false); err != nil {
+		panic(err)
+	}
+
 	return &Struct{
 		Flavor:             DefaultFlavor,
 		structType:         t,
@@ -384,6 +388,10 @@ func (s *Struct) updateWithTags(table string, with, without []string, value inte
 	assignments := make([]string, 0, len(tagged.ForWrite))
 
 	for _, sf := range tagged.ForWrite {
+		if sf.SliceDepth > 0 {
+			continue
+		}
+
 		val, ok := fieldByIndex(v, sf.Index, false)
 
 		if !ok || !val.IsValid() {
@@ -489,6 +497,9 @@ func (s *Struct) buildColsAndValuesForTag(ib *InsertBuilder, with, without []str
 	nilCols := make([]int, 0, len(tagged.ForInsert))
 
 	for _, sf := range tagged.ForInsert {
+		if sf.SliceDepth > 0 {
+			continue
+		}
 		cols = append(cols, sf.Quote(s.Flavor))
 		shouldOmitEmpty := sf.ShouldOmitEmpty(with...)
 		nilCnt := 0
@@ -653,15 +664,24 @@ func (s *Struct) AddrWithCols(cols []string, st interface{}) []interface{} {
 
 func (s *Struct) addrWithFields(fields []*structField, st interface{}) []interface{} {
 	v := reflect.ValueOf(st)
+
+	if !v.IsValid() || v.Kind() != reflect.Ptr || v.IsNil() {
+		return nil
+	}
+
 	v = dereferencedValue(v)
 
-	if v.Type() != s.structType {
+	if !v.IsValid() || v.Type() != s.structType {
 		return nil
 	}
 
 	addrs := make([]interface{}, 0, len(fields))
 
 	for _, sf := range fields {
+		if sf.SliceDepth > 0 {
+			return nil
+		}
+
 		field, ok := fieldByIndex(v, sf.Index, true)
 		if !ok || !field.IsValid() {
 			return nil
@@ -726,15 +746,22 @@ func (s *Struct) valuesWithTags(with, without []string, value interface{}) (valu
 	}
 
 	v := reflect.ValueOf(value)
+	if !v.IsValid() {
+		return nil
+	}
 	v = dereferencedValue(v)
 
-	if v.Type() != s.structType {
-		return
+	if !v.IsValid() || v.Type() != s.structType {
+		return nil
 	}
 
 	values = make([]interface{}, 0, len(tagged.ForWrite))
 
 	for _, sf := range tagged.ForWrite {
+		if sf.SliceDepth > 0 {
+			continue
+		}
+
 		field, ok := fieldByIndex(v, sf.Index, false)
 		if !ok || !field.IsValid() {
 			values = append(values, nil)
@@ -882,4 +909,64 @@ func isEmptyValue(v reflect.Value) bool {
 	}
 
 	return false
+}
+
+type sliceFieldGroup struct {
+	name     string
+	indexKey string
+	cols     []string
+}
+
+func (s *Struct) sliceFieldGroups() []sliceFieldGroup {
+	sfs := s.structFieldsParser()
+	tagged := sfs.FilterTags(s.withTags, s.withoutTags)
+	if tagged == nil {
+		return nil
+	}
+
+	byIndex := make(map[string]int)
+	var groups []sliceFieldGroup
+	for _, sf := range tagged.ForRead {
+		if sf.SliceDepth > 0 && len(sf.SliceIndex) > 0 {
+			key := indexPathKey(sf.SliceIndex)
+			idx, ok := byIndex[key]
+			if !ok {
+				idx = len(groups)
+				byIndex[key] = idx
+				groups = append(groups, sliceFieldGroup{
+					name:     sf.SliceName,
+					indexKey: key,
+				})
+			}
+			groups[idx].cols = append(groups[idx].cols, sf.Alias)
+		}
+	}
+	return groups
+}
+
+// SliceFields returns the aliases of all expanded child slice fields in s.
+func (s *Struct) SliceFields() []string {
+	groups := s.sliceFieldGroups()
+	if len(groups) == 0 {
+		return nil
+	}
+
+	result := make([]string, len(groups))
+	for i, g := range groups {
+		result[i] = g.name
+	}
+	return result
+}
+
+// SliceColumns returns all column names projected for the specified child slice field.
+// For example, s.SliceColumns("expenses") returns []string{"expenses.id", "expenses.name", ...}.
+func (s *Struct) SliceColumns(sliceField string) []string {
+	groups := s.sliceFieldGroups()
+	var cols []string
+	for _, g := range groups {
+		if g.name == sliceField {
+			cols = append(cols, g.cols...)
+		}
+	}
+	return cols
 }

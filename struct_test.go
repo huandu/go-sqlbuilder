@@ -4,9 +4,11 @@
 package sqlbuilder
 
 import (
+	"database/sql"
 	"database/sql/driver"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -339,6 +341,413 @@ func TestStructNestedAliasAddrValuesAndWrites(t *testing.T) {
 		Rank: 13,
 	}
 	a.Equal(nestedJoinRowForTest.Values(withNilComment), []interface{}{"post-4", "nil", nil, nil, 13})
+}
+
+type structExpenseForTest struct {
+	ID     uint64  `db:"id"`
+	UserID uint64  `db:"user_id"`
+	Name   string  `db:"name"`
+	Amount float64 `db:"amount"`
+}
+
+type structRoleForTest struct {
+	ID   int    `db:"id"`
+	Role string `db:"role"`
+}
+
+type structUserWithSlicesForTest struct {
+	ID       uint64                  `db:"id"`
+	Name     string                  `db:"name"`
+	Expenses []*structExpenseForTest `db:"expenses" fieldopt:"expand"`
+	Roles    []structRoleForTest     `db:"roles" fieldopt:"expand"`
+}
+
+type structUserWithPtrSliceForTest struct {
+	ID       uint64                   `db:"id"`
+	Name     string                   `db:"name"`
+	Expenses *[]*structExpenseForTest `db:"expenses" fieldopt:"expand"`
+	Roles    *[]structRoleForTest     `db:"roles" fieldopt:"expand"`
+}
+
+// mockJoinedRowsForTest simulates database/sql Rows.Scan semantics:
+// - If dest[i] implements sql.Scanner, it calls Scan(val) even when val is nil (SQL NULL).
+// - If dest[i] does not implement sql.Scanner and val is nil, it returns an error just like database/sql.
+type mockJoinedRowsForTest struct {
+	rows [][]interface{}
+	idx  int
+	err  error
+}
+
+func (m *mockJoinedRowsForTest) Next() bool {
+	if m.idx < len(m.rows) {
+		m.idx++
+		return true
+	}
+	return false
+}
+
+func (m *mockJoinedRowsForTest) Scan(dest ...interface{}) error {
+	row := m.rows[m.idx-1]
+	for i, val := range row {
+		if i >= len(dest) {
+			break
+		}
+		if scanner, ok := dest[i].(sql.Scanner); ok {
+			if err := scanner.Scan(val); err != nil {
+				return err
+			}
+			continue
+		}
+		if val == nil {
+			return fmt.Errorf("sql: Scan error on column index %d: converting NULL to %T is unsupported", i, dest[i])
+		}
+		destVal := reflect.ValueOf(dest[i])
+		if destVal.Kind() == reflect.Ptr {
+			elem := destVal.Elem()
+			srcVal := reflect.ValueOf(val)
+			if srcVal.Type().AssignableTo(elem.Type()) {
+				elem.Set(srcVal)
+			} else if srcVal.Type().ConvertibleTo(elem.Type()) {
+				elem.Set(srcVal.Convert(elem.Type()))
+			} else {
+				return fmt.Errorf("sql: Scan error on column index %d: cannot assign %T to %s", i, val, elem.Type())
+			}
+		}
+	}
+	return nil
+}
+
+func (m *mockJoinedRowsForTest) Err() error {
+	return m.err
+}
+
+type mockFailingRowsForTest struct {
+	mockJoinedRowsForTest
+	failScanOnIndex int
+}
+
+func (m *mockFailingRowsForTest) Scan(dest ...interface{}) error {
+	if m.idx == m.failScanOnIndex {
+		return fmt.Errorf("simulated scan error")
+	}
+	return m.mockJoinedRowsForTest.Scan(dest...)
+}
+
+func TestStructSliceChildrenSelectAndColumns(t *testing.T) {
+	a := assert.New(t)
+	st := NewStruct(new(structUserWithSlicesForTest))
+
+	expectedCols := []string{
+		"id", "name",
+		"expenses.id", "expenses.user_id", "expenses.name", "expenses.amount",
+		"roles.id", "roles.role",
+	}
+	a.Equal(st.Columns(), expectedCols)
+
+	a.Equal(st.SliceFields(), []string{"expenses", "roles"})
+	a.Equal(st.SliceColumns("expenses"), []string{"expenses.id", "expenses.user_id", "expenses.name", "expenses.amount"})
+	a.Equal(st.SliceColumns("roles"), []string{"roles.id", "roles.role"})
+	a.Equal(len(st.SliceColumns("unknown")), 0)
+
+	sql, args := st.SelectFrom("users u").
+		Join("expenses", "u.id = expenses.user_id").
+		Join("roles", "u.id = roles.user_id").
+		Build()
+
+	expectedSQL := "SELECT u.id, u.name, expenses.id, expenses.user_id, expenses.name, expenses.amount, roles.id, roles.role FROM users u JOIN expenses ON u.id = expenses.user_id JOIN roles ON u.id = roles.user_id"
+	a.Equal(sql, expectedSQL)
+	a.Equal(args, nil)
+}
+
+func TestStructSliceChildrenAddrAndValues(t *testing.T) {
+	a := assert.New(t)
+	st := NewStruct(new(structUserWithSlicesForTest))
+
+	user := &structUserWithSlicesForTest{
+		ID:   1,
+		Name: "Alice",
+		Expenses: []*structExpenseForTest{
+			{ID: 10, UserID: 1, Name: "Lunch", Amount: 15.5},
+		},
+		Roles: []structRoleForTest{
+			{ID: 100, Role: "Admin"},
+		},
+	}
+
+	// Stateless Struct.Addr returns nil when expanded slice fields are selected.
+	a.Equal(st.Addr(user), nil)
+	a.Equal(st.AddrWithCols([]string{"id", "expenses.id"}, user), nil)
+
+	// AddrWithCols with only scalar columns still works statelessly.
+	var scalarUser structUserWithSlicesForTest
+	addrs := st.AddrWithCols([]string{"id", "name"}, &scalarUser)
+	a.Equal(len(addrs), 2)
+	_, _ = fmt.Sscan("7 Alice", addrs...)
+	a.Equal(scalarUser.ID, uint64(7))
+	a.Equal(scalarUser.Name, "Alice")
+
+	// Values skips expanded child slice fields consistently with Update and InsertInto.
+	a.Equal(st.Values(user), []interface{}{uint64(1), "Alice"})
+}
+
+func TestStructCollector(t *testing.T) {
+	a := assert.New(t)
+	st := NewStruct(new(structUserWithSlicesForTest))
+
+	// 1. Multi-parent grouping + multi-slice cartesian deduplication.
+	// User 1 has 2 expenses (10, 20) and 2 roles (100, 200) -> 4 joined rows.
+	// User 2 has 1 expense (30) and 1 role (300) -> 1 row (interleaved to verify non-contiguous grouping).
+	rows := &mockJoinedRowsForTest{
+		rows: [][]interface{}{
+			{uint64(1), "Alice", uint64(10), uint64(1), "Lunch", 15.5, 100, "Admin"},
+			{uint64(2), "Bob", uint64(30), uint64(2), "Coffee", 4.5, 300, "Viewer"},
+			{uint64(1), "Alice", uint64(10), uint64(1), "Lunch", 15.5, 200, "Editor"},
+			{uint64(1), "Alice", uint64(20), uint64(1), "Dinner", 35.0, 100, "Admin"},
+			{uint64(1), "Alice", uint64(20), uint64(1), "Dinner", 35.0, 200, "Editor"},
+		},
+	}
+
+	var users []structUserWithSlicesForTest
+	err := st.NewCollector("id").
+		WithChildKey("expenses", "expenses.id").
+		WithChildKey("roles", "roles.id").
+		Collect(rows, &users)
+	a.NilError(err)
+	a.Equal(len(users), 2)
+
+	a.Equal(users[0].ID, uint64(1))
+	a.Equal(users[0].Name, "Alice")
+	a.Equal(len(users[0].Expenses), 2)
+	a.Equal(users[0].Expenses[0].ID, uint64(10))
+	a.Equal(users[0].Expenses[0].Name, "Lunch")
+	a.Equal(users[0].Expenses[1].ID, uint64(20))
+	a.Equal(users[0].Expenses[1].Name, "Dinner")
+	a.Equal(len(users[0].Roles), 2)
+	a.Equal(users[0].Roles[0].Role, "Admin")
+	a.Equal(users[0].Roles[1].Role, "Editor")
+
+	a.Equal(users[1].ID, uint64(2))
+	a.Equal(users[1].Name, "Bob")
+	a.Equal(len(users[1].Expenses), 1)
+	a.Equal(users[1].Expenses[0].ID, uint64(30))
+	a.Equal(len(users[1].Roles), 1)
+	a.Equal(users[1].Roles[0].Role, "Viewer")
+
+	// 2. Collect into []*User with LEFT JOIN NULL child rows AND legitimate zero-value child row.
+	// User 3: expenses.id is SQL NULL (nil), roles.id is SQL NULL (nil) -> no children appended, no NULL scan error on uint64/int.
+	// User 4: expenses.id is 0 (non-NULL zero value), roles.id is SQL NULL -> expense IS kept, role is NOT appended.
+	leftJoinRows := &mockJoinedRowsForTest{
+		rows: [][]interface{}{
+			{uint64(3), "NoChildren", nil, nil, nil, nil, nil, nil},
+			{uint64(4), "ZeroExpense", int64(0), int64(0), "", 0.0, nil, nil},
+		},
+	}
+	var userPtrs []*structUserWithSlicesForTest
+	err = st.NewCollector("id").
+		WithChildKey("expenses", "expenses.id").
+		WithChildKey("roles", "roles.id").
+		Collect(leftJoinRows, &userPtrs)
+	a.NilError(err)
+	a.Equal(len(userPtrs), 2)
+	a.Equal(userPtrs[0].ID, uint64(3))
+	a.Equal(len(userPtrs[0].Expenses), 0)
+	a.Equal(len(userPtrs[0].Roles), 0)
+	a.Equal(userPtrs[1].ID, uint64(4))
+	a.Equal(len(userPtrs[1].Expenses), 1)
+	a.Equal(userPtrs[1].Expenses[0].ID, uint64(0))
+	a.Equal(len(userPtrs[1].Roles), 0)
+
+	// 3. CollectWithCols with single child slice (no WithChildKey required for single slice).
+	cols := []string{"id", "name", "expenses.id", "expenses.name"}
+	colRows := &mockJoinedRowsForTest{
+		rows: [][]interface{}{
+			{uint64(5), "Charlie", uint64(40), "Coffee"},
+			{uint64(5), "Charlie", uint64(50), "Bagel"},
+		},
+	}
+	var colUsers []structUserWithSlicesForTest
+	err = st.NewCollector("id").CollectWithCols(colRows, cols, &colUsers)
+	a.NilError(err)
+	a.Equal(len(colUsers), 1)
+	a.Equal(len(colUsers[0].Expenses), 2)
+	a.Equal(colUsers[0].Expenses[0].Name, "Coffee")
+	a.Equal(colUsers[0].Expenses[1].Name, "Bagel")
+	a.Equal(len(colUsers[0].Roles), 0)
+
+	// 4. Pointer-to-slice (*[]*T and *[]T) fields.
+	stPtr := NewStruct(new(structUserWithPtrSliceForTest))
+	ptrRows := &mockJoinedRowsForTest{
+		rows: [][]interface{}{
+			{uint64(6), "Dana", uint64(60), uint64(6), "Travel", 120.0, 600, "Owner"},
+		},
+	}
+	var ptrUsers []structUserWithPtrSliceForTest
+	err = stPtr.NewCollector("id").
+		WithChildKey("expenses", "expenses.id").
+		WithChildKey("roles", "roles.id").
+		Collect(ptrRows, &ptrUsers)
+	a.NilError(err)
+	a.Equal(len(ptrUsers), 1)
+	a.Assert(ptrUsers[0].Expenses != nil)
+	a.Equal(len(*ptrUsers[0].Expenses), 1)
+	a.Equal((*ptrUsers[0].Expenses)[0].Name, "Travel")
+	a.Assert(ptrUsers[0].Roles != nil)
+	a.Equal(len(*ptrUsers[0].Roles), 1)
+	a.Equal((*ptrUsers[0].Roles)[0].Role, "Owner")
+
+	// 5. Error handling (all prefixed with "go-sqlbuilder:").
+	freshRows := func() *mockJoinedRowsForTest {
+		return &mockJoinedRowsForTest{
+			rows: [][]interface{}{
+				{uint64(1), "Alice", uint64(10), uint64(1), "Lunch", 15.5, 100, "Admin"},
+			},
+		}
+	}
+	checkErrPrefix := func(err error) {
+		a.Assert(err != nil)
+		a.Assert(strings.HasPrefix(err.Error(), "go-sqlbuilder:"))
+	}
+
+	checkErrPrefix(st.NewCollector("id").Collect(nil, &users))
+	checkErrPrefix(st.NewCollector("id").Collect(freshRows(), nil))
+	checkErrPrefix(st.NewCollector("id").Collect(freshRows(), users))
+	checkErrPrefix(st.NewCollector().Collect(freshRows(), &users))
+	checkErrPrefix(st.NewCollector("unknown_col").Collect(freshRows(), &users))
+	// Multi-slice without WithChildKey is rejected to prevent cartesian inflation.
+	checkErrPrefix(st.NewCollector("id").Collect(freshRows(), &users))
+	checkErrPrefix(st.NewCollector("id").WithChildKey("expenses", "expenses.unknown").WithChildKey("roles", "roles.id").Collect(freshRows(), &users))
+	checkErrPrefix(st.NewCollector("id").CollectWithCols(freshRows(), []string{"invalid"}, &users))
+
+	// Scan error propagation
+	failRows := &mockFailingRowsForTest{
+		mockJoinedRowsForTest: mockJoinedRowsForTest{
+			rows: [][]interface{}{
+				{uint64(4), "David", uint64(60), uint64(4), "Hotel", 200.0, 400, "Admin"},
+			},
+		},
+		failScanOnIndex: 1,
+	}
+	err = st.NewCollector("id").
+		WithChildKey("expenses", "expenses.id").
+		WithChildKey("roles", "roles.id").
+		Collect(failRows, &users)
+	a.Assert(err != nil)
+
+	// Row error iteration checker propagation
+	errRows := &mockJoinedRowsForTest{
+		rows: [][]interface{}{
+			{uint64(4), "David", uint64(60), uint64(4), "Hotel", 200.0, 400, "Admin"},
+		},
+		err: fmt.Errorf("simulated iteration error"),
+	}
+	err = st.NewCollector("id").
+		WithChildKey("expenses", "expenses.id").
+		WithChildKey("roles", "roles.id").
+		Collect(errRows, &users)
+	a.Assert(err != nil)
+}
+
+func TestStructSliceChildrenUpdateAndInsert(t *testing.T) {
+	a := assert.New(t)
+	st := NewStruct(new(structUserWithSlicesForTest))
+
+	user := &structUserWithSlicesForTest{
+		ID:   1,
+		Name: "Alice",
+		Expenses: []*structExpenseForTest{
+			{ID: 10, UserID: 1, Name: "Lunch", Amount: 15.5},
+		},
+		Roles: []structRoleForTest{
+			{ID: 100, Role: "Admin"},
+		},
+	}
+
+	// Both Update and InsertInto skip expanded child slice fields.
+	updateSQL, updateArgs := st.Update("users", user).Build()
+	a.Equal(updateSQL, "UPDATE users SET id = ?, name = ?")
+	a.Equal(updateArgs, []interface{}{uint64(1), "Alice"})
+
+	insertSQL, insertArgs := st.InsertInto("users", user).Build()
+	a.Equal(insertSQL, "INSERT INTO users (id, name) VALUES (?, ?)")
+	a.Equal(insertArgs, []interface{}{uint64(1), "Alice"})
+}
+
+type structScannerSlice []structExpenseForTest
+
+func (s *structScannerSlice) Scan(src interface{}) error {
+	return nil
+}
+
+func (s structScannerSlice) Value() (driver.Value, error) {
+	return "[]", nil
+}
+
+func TestStructScannerValuerSliceNotExpanded(t *testing.T) {
+	type row struct {
+		ID        uint64              `db:"id"`
+		Expenses  structScannerSlice  `db:"expenses" fieldopt:"expand"`
+		ExpensesP *structScannerSlice `db:"expenses_p" fieldopt:"expand"`
+	}
+
+	a := assert.New(t)
+	st := NewStruct(new(row))
+	a.Equal(st.Columns(), []string{"id", "expenses", "expenses_p"})
+	a.Equal(len(st.SliceFields()), 0)
+}
+
+func TestStructNestedAndSliceFieldTags(t *testing.T) {
+	type inner struct {
+		A int `db:"a"`
+		B int `db:"b" fieldtag:"g2"`
+	}
+	type child struct {
+		ID   int    `db:"id"`
+		Name string `db:"name" fieldtag:"extra"`
+	}
+	type parent struct {
+		ID    int     `db:"id"`
+		In    inner   `db:"in" fieldtag:"g1"`
+		Items []child `db:"items" fieldtag:"items_tag" fieldopt:"expand"`
+	}
+
+	a := assert.New(t)
+	st := NewStruct(new(parent))
+
+	// Ordinary nested struct does NOT inherit parent's fieldtag, preserving WithoutTag/WithTag behavior.
+	a.Equal(st.WithoutTag("g1").Columns(), []string{"id", "in.a", "in.b", "items.id", "items.name"})
+	a.Equal(len(st.WithTag("g1").Columns()), 0)
+
+	// Slice children inherit the slice field's fieldtag.
+	a.Equal(st.WithTag("items_tag").Columns(), []string{"items.id", "items.name"})
+	a.Equal(st.WithoutTag("items_tag").Columns(), []string{"id", "in.a", "in.b"})
+	a.Equal(st.WithTag("extra").Columns(), []string{"items.name"})
+}
+
+func TestStructNestedSliceOfSliceRejected(t *testing.T) {
+	type item struct {
+		ID int `db:"id"`
+	}
+	type order struct {
+		ID    int    `db:"id"`
+		Items []item `db:"items" fieldopt:"expand"`
+	}
+	type user struct {
+		ID     int     `db:"id"`
+		Orders []order `db:"orders" fieldopt:"expand"`
+	}
+
+	a := assert.New(t)
+	var recovered interface{}
+	func() {
+		defer func() {
+			recovered = recover()
+		}()
+		NewStruct(new(user))
+	}()
+	a.Assert(recovered != nil)
+	err, ok := recovered.(error)
+	a.Assert(ok)
+	a.Assert(strings.HasPrefix(err.Error(), "go-sqlbuilder:"))
 }
 
 func TestStructInsertIntoTaggedNestedFieldRemainsScalar(t *testing.T) {
@@ -740,6 +1149,32 @@ func ExampleStruct_buildJOINWithNestedStructAlias() {
 
 	// Output:
 	// SELECT post.id, post.text, comment.body FROM posts post JOIN comments comment ON post.id = comment.post_id
+	// []
+}
+
+func ExampleStruct_buildJOINWithSlice() {
+	type Expense struct {
+		ID     uint64  `db:"id"`
+		UserID uint64  `db:"user_id"`
+		Amount float64 `db:"amount"`
+	}
+
+	type UserWithExpenses struct {
+		ID       uint64     `db:"id"`
+		Name     string     `db:"name"`
+		Expenses []*Expense `db:"e" fieldopt:"expand"`
+	}
+
+	userStruct := NewStruct(new(UserWithExpenses))
+	sb := userStruct.SelectFrom("users u").
+		Join("expenses e", "u.id = e.user_id")
+	sql, args := sb.Build()
+
+	fmt.Println(sql)
+	fmt.Println(args)
+
+	// Output:
+	// SELECT u.id, u.name, e.id, e.user_id, e.amount FROM users u JOIN expenses e ON u.id = e.user_id
 	// []
 }
 
