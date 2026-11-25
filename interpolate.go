@@ -36,6 +36,10 @@ func mysqlLikeInterpolate(flavor Flavor, query string, args ...interface{}) (str
 	target := query
 	r, sz := utf8.DecodeRuneInString(target)
 
+	// SQLite, CQL, Presto and Informix follow the SQL standard: a backslash in
+	// a quoted string or identifier is an ordinary character.
+	backslashEscapes := flavor == MySQL || flavor == ClickHouse || flavor == Doris
+
 	for ; sz != 0; r, sz = utf8.DecodeRuneInString(target) {
 		offset += sz
 		target = query[offset:]
@@ -97,7 +101,7 @@ func mysqlLikeInterpolate(flavor Flavor, query string, args ...interface{}) (str
 			}
 
 		case '\\':
-			if quote != 0 {
+			if quote != 0 && backslashEscapes {
 				escaping = true
 			}
 		}
@@ -120,6 +124,7 @@ func postgresqlInterpolate(query string, args ...interface{}) (string, error) {
 	var idx int64
 	max := len(args)
 	escaping := false
+	escapeString := false
 	offset := 0
 	target := query
 	r, sz := utf8.DecodeRuneInString(target)
@@ -265,6 +270,7 @@ func postgresqlInterpolate(query string, args ...interface{}) (string, error) {
 
 			if quote == 0 {
 				quote = '\''
+				escapeString = isPostgreSQLEscapeStringPrefix(query[:offset-sz])
 			}
 
 		case '"':
@@ -278,7 +284,8 @@ func postgresqlInterpolate(query string, args ...interface{}) (string, error) {
 			}
 
 		case '\\':
-			if quote == '\'' || quote == '"' {
+			// A backslash is an escape character only in E'...' strings.
+			if quote == '\'' && escapeString {
 				escaping = true
 			}
 		}
@@ -286,6 +293,20 @@ func postgresqlInterpolate(query string, args ...interface{}) (string, error) {
 
 	buf = append(buf, query...)
 	return *(*string)(unsafe.Pointer(&buf)), nil
+}
+
+// isPostgreSQLEscapeStringPrefix reports whether the text before a quote ends
+// with the E or e that starts an escape string constant like E'...'.
+func isPostgreSQLEscapeStringPrefix(s string) bool {
+	r, sz := utf8.DecodeLastRuneInString(s)
+
+	if r != 'E' && r != 'e' {
+		return false
+	}
+
+	// The E must not be the last letter of an identifier, e.g. ELSE'...'.
+	r, _ = utf8.DecodeLastRuneInString(s[:len(s)-sz])
+	return !unicode.IsLetter(r) && r != '_' && r != '$' && (r < '0' || r > '9')
 }
 
 // sqlserverInterpolate parses query and replace all "@p*" with encoded args.
@@ -299,7 +320,6 @@ func sqlserverInterpolate(query string, args ...interface{}) (string, error) {
 	var err error
 	var idx int64
 	max := len(args)
-	escaping := false
 	offset := 0
 	target := query
 	r, sz := utf8.DecodeRuneInString(target)
@@ -307,11 +327,6 @@ func sqlserverInterpolate(query string, args ...interface{}) (string, error) {
 	for ; sz != 0; r, sz = utf8.DecodeRuneInString(target) {
 		offset += sz
 		target = query[offset:]
-
-		if escaping {
-			escaping = false
-			continue
-		}
 
 		switch r {
 		case '@':
@@ -388,11 +403,6 @@ func sqlserverInterpolate(query string, args ...interface{}) (string, error) {
 			if quote == 0 {
 				quote = '"'
 			}
-
-		case '\\':
-			if quote != 0 {
-				escaping = true
-			}
 		}
 	}
 
@@ -438,7 +448,6 @@ func oracleInterpolate(query string, args ...interface{}) (string, error) {
 	var err error
 	var idx int64
 	max := len(args)
-	escaping := false
 	offset := 0
 	target := query
 	r, sz := utf8.DecodeRuneInString(target)
@@ -446,11 +455,6 @@ func oracleInterpolate(query string, args ...interface{}) (string, error) {
 	for ; sz != 0; r, sz = utf8.DecodeRuneInString(target) {
 		offset += sz
 		target = query[offset:]
-
-		if escaping {
-			escaping = false
-			continue
-		}
 
 		switch r {
 		case ':':
@@ -577,11 +581,6 @@ func oracleInterpolate(query string, args ...interface{}) (string, error) {
 
 			if quote == 0 {
 				quote = '"'
-			}
-
-		case '\\':
-			if quote == '\'' || quote == '"' {
-				escaping = true
 			}
 		}
 	}

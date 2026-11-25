@@ -94,8 +94,8 @@ func TestFlavorInterpolate(t *testing.T) {
 		},
 		{
 			PostgreSQL,
-			"SELECT '\\'$1', \"\\\"$1\", `$1`, \\$1a, $$1$$, $a $b$ $a $ $1$b$1$1 $a$ $", []interface{}{MySQL},
-			"SELECT '\\'$1', \"\\\"$1\", `E'MySQL'`, \\E'MySQL'a, $$1$$, $a $b$ $a $ $1$b$1E'MySQL' $a$ $", nil,
+			"SELECT E'\\'$1', '''$1', \"\"\"$1\", '\\', `$1`, \\$1a, $$1$$, $a $b$ $a $ $1$b$1$1 $a$ $", []interface{}{MySQL},
+			"SELECT E'\\'$1', '''$1', \"\"\"$1\", '\\', `E'MySQL'`, \\E'MySQL'a, $$1$$, $a $b$ $a $ $1$b$1E'MySQL' $a$ $", nil,
 		},
 		{
 			PostgreSQL,
@@ -135,8 +135,8 @@ func TestFlavorInterpolate(t *testing.T) {
 		},
 		{
 			SQLite,
-			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\?", []interface{}{SQLite},
-			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\'SQLite'", nil,
+			"SELECT '''?', \"\"\"?\", `?`, '\\', \\?", []interface{}{SQLite},
+			"SELECT '''?', \"\"\"?\", `?`, '\\', \\'SQLite'", nil,
 		},
 
 		{
@@ -156,8 +156,8 @@ func TestFlavorInterpolate(t *testing.T) {
 		},
 		{
 			SQLServer,
-			"SELECT '\\'@p1', \"\\\"@p1\", \\@p1, @abc", []interface{}{SQLServer},
-			"SELECT '\\'@p1', \"\\\"@p1\", \\N'SQLServer', @abc", nil,
+			"SELECT '''@p1', \"\"\"@p1\", '\\', \\@p1, @abc", []interface{}{SQLServer},
+			"SELECT '''@p1', \"\"\"@p1\", '\\', \\N'SQLServer', @abc", nil,
 		},
 		{
 			SQLServer,
@@ -181,8 +181,8 @@ func TestFlavorInterpolate(t *testing.T) {
 		},
 		{
 			CQL,
-			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\?", []interface{}{CQL},
-			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\'CQL'", nil,
+			"SELECT '''?', \"\"\"?\", `?`, '\\', \\?", []interface{}{CQL},
+			"SELECT '''?', \"\"\"?\", `?`, '\\', \\'CQL'", nil,
 		},
 		{
 			CQL,
@@ -256,8 +256,8 @@ func TestFlavorInterpolate(t *testing.T) {
 		},
 		{
 			Presto,
-			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\?", []interface{}{MySQL},
-			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\'MySQL'", nil,
+			"SELECT '''?', \"\"\"?\", `?`, '\\', \\?", []interface{}{MySQL},
+			"SELECT '''?', \"\"\"?\", `?`, '\\', \\'MySQL'", nil,
 		},
 		{
 			Presto,
@@ -302,8 +302,8 @@ func TestFlavorInterpolate(t *testing.T) {
 		},
 		{
 			Oracle,
-			"SELECT '\\':1', \"\\\":1\", `:1`, \\:1a, ::1::, :a :b: :a : :1:b:1:1 :a: :", []interface{}{Oracle},
-			"SELECT '\\':1', \"\\\":1\", `'Oracle'`, \\'Oracle'a, ::1::, :a :b: :a : :1:b:1'Oracle' :a: :", nil,
+			"SELECT ''':1', \"\"\":1\", '\\', `:1`, \\:1a, ::1::, :a :b: :a : :1:b:1:1 :a: :", []interface{}{Oracle},
+			"SELECT ''':1', \"\"\":1\", '\\', `'Oracle'`, \\'Oracle'a, ::1::, :a :b: :a : :1:b:1'Oracle' :a: :", nil,
 		},
 		{
 			Oracle,
@@ -343,8 +343,8 @@ func TestFlavorInterpolate(t *testing.T) {
 		},
 		{
 			Informix,
-			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\?", []interface{}{Informix},
-			"SELECT '\\'?', \"\\\"?\", `\\`?`, \\'Informix'", nil,
+			"SELECT '''?', \"\"\"?\", `?`, '\\', \\?", []interface{}{Informix},
+			"SELECT '''?', \"\"\"?\", `?`, '\\', \\'Informix'", nil,
 		},
 		{
 			Informix,
@@ -451,6 +451,47 @@ func TestANSIInterpolationEscapesQuotes(t *testing.T) {
 			}
 			if query != tc.expected {
 				t.Fatalf("unexpected query: %q", query)
+			}
+		})
+	}
+}
+
+func TestInterpolateBackslashInStandardStrings(t *testing.T) {
+	pattern := `a\_%`
+	cases := []struct {
+		flavor   Flavor
+		sql      string
+		args     []interface{}
+		expected string
+	}{
+		// A backslash is an ordinary character in these dialects, so '\' is a
+		// complete literal.
+		{SQLite, `SELECT * FROM t WHERE name LIKE ? ESCAPE '\' AND id = ?`, []interface{}{pattern, 1}, `SELECT * FROM t WHERE name LIKE 'a\_%' ESCAPE '\' AND id = 1`},
+		{SQLite, `SELECT '\', '?', ?`, []interface{}{1}, `SELECT '\', '?', 1`},
+		{CQL, `SELECT '\', "\", ?`, []interface{}{1}, `SELECT '\', "\", 1`},
+		{Presto, `SELECT * FROM t WHERE name LIKE ? ESCAPE '\' AND id = ?`, []interface{}{pattern, 1}, `SELECT * FROM t WHERE name LIKE 'a\_%' ESCAPE '\' AND id = 1`},
+		{Informix, `SELECT * FROM t WHERE name LIKE ? ESCAPE '\' AND id = ?`, []interface{}{pattern, 1}, `SELECT * FROM t WHERE name LIKE 'a\_%' ESCAPE '\' AND id = 1`},
+		{SQLServer, `SELECT * FROM t WHERE name LIKE @p1 ESCAPE '\' AND id = @p2`, []interface{}{pattern, 1}, `SELECT * FROM t WHERE name LIKE N'a\_%' ESCAPE '\' AND id = 1`},
+		{Oracle, `SELECT * FROM t WHERE name LIKE :1 ESCAPE '\' AND id = :2`, []interface{}{pattern, 1}, `SELECT * FROM t WHERE name LIKE 'a\_%' ESCAPE '\' AND id = 1`},
+		{PostgreSQL, `SELECT * FROM t WHERE name LIKE $1 ESCAPE '\' AND id = $2`, []interface{}{pattern, 1}, `SELECT * FROM t WHERE name LIKE E'a\\_%' ESCAPE '\' AND id = 1`},
+		{PostgreSQL, `SELECT "a\", $1`, []interface{}{1}, `SELECT "a\", 1`},
+		{PostgreSQL, `SELECT CASE WHEN TRUE THEN 'x' ELSE'\' END, $1`, []interface{}{1}, `SELECT CASE WHEN TRUE THEN 'x' ELSE'\' END, 1`},
+
+		// A backslash still escapes a quote where the dialect says so.
+		{MySQL, `SELECT '\'?', ?`, []interface{}{1}, `SELECT '\'?', 1`},
+		{ClickHouse, `SELECT '\'?', ?`, []interface{}{1}, `SELECT '\'?', 1`},
+		{Doris, `SELECT '\'?', ?`, []interface{}{1}, `SELECT '\'?', 1`},
+		{PostgreSQL, `SELECT E'\'$1', e'\\', $1`, []interface{}{1}, `SELECT E'\'$1', e'\\', 1`},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.flavor.String()+" "+tc.sql, func(t *testing.T) {
+			query, err := tc.flavor.Interpolate(tc.sql, tc.args)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if query != tc.expected {
+				t.Fatalf("unexpected query: got %q, want %q", query, tc.expected)
 			}
 		})
 	}
