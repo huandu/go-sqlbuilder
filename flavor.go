@@ -76,6 +76,10 @@ func (f Flavor) String() string {
 // Interpolate parses sql returned by `Args#Compile` or `Builder`,
 // and interpolate args to replace placeholders in the sql.
 //
+// Interpolation follows each dialect's default string and identifier syntax on a best-effort basis.
+// It does not model non-default server settings or every edge-case syntax; for instance, PostgreSQL
+// strings are scanned assuming standard_conforming_strings is on.
+//
 // If there are some args missing in sql, e.g. the number of placeholders are larger than len(args),
 // returns ErrMissingArgs error.
 func (f Flavor) Interpolate(sql string, args []interface{}) (string, error) {
